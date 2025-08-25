@@ -16,15 +16,21 @@
 
 ## Table of Contents
 
-* [What lives here](#what-lives-here)
-* [Repository structure](#repository-structure)
-* [Conventions & required files](#conventions--required-files)
-* [Git quickstart (basic commands)](#git-quickstart-basic-commands)
-* [Forking & submitting a PR](#forking--submitting-a-pr)
-* [Contribution checklist](#contribution-checklist)
-* [Issue labels & triage](#issue-labels--triage)
-* [Best Practices](#best-practices)
-* [FAQ & common pitfalls](#faq--common-pitfalls)
+- [Rev Engineering Common Repo](#rev-engineering-common-repo)
+  - [TL;DR (10‑minute start)](#tldr-10minute-start)
+  - [Table of Contents](#table-of-contents)
+  - [What lives here](#what-lives-here)
+  - [Repository structure](#repository-structure)
+  - [Conventions \& required files](#conventions--required-files)
+  - [Git quickstart (basic commands)](#git-quickstart-basic-commands)
+  - [Forking \& submitting a PR](#forking--submitting-a-pr)
+    - [PR expectations](#pr-expectations)
+  - [Contribution checklist](#contribution-checklist)
+  - [Issue labels \& triage](#issue-labels--triage)
+  - [Best Practices](#best-practices)
+    - [Do's](#dos)
+    - [Don'ts](#donts)
+  - [FAQ \& common pitfalls](#faq--common-pitfalls)
 
 ---
 
@@ -136,7 +142,7 @@ git fetch origin
 git rebase origin/main         # or: git merge origin/main
 ```
 
-Basic command quicklist:
+Basic command quick list:
 
 | Command | Purpose | When to Use |
 |---------|---------|-------------|
@@ -146,6 +152,75 @@ Basic command quicklist:
 | `git push` | Upload your changes | After committing |
 | `git stash` | Temporarily save changes | Switch branches quickly |
 | `git stash pop` | Restore saved changes | Return to stashed work |
+
+For more advanced users. It is recommended that you setup git to automatically recognize your personal git and your work related repositories.
+If it doesn't exist, create `.config/git/` and create your main `config` file:
+
+```bash
+mkdir -p .config/git
+touch .config/git/config
+vi .config/git/config
+```
+
+Once you are editing the file, it should have content similar to this:
+
+```conf
+[user]
+    name = Boris 'B' Kurktchiev
+    # set to your normal github email
+    email = kurktchiev@gmail.com
+    signingkey = /Users/boris/.ssh/id_rsa.pub
+# this include is important
+[includeIf "hasconfig:remote.*.url:git@github.com:gravitational/**"]
+    path = config-work
+[core]
+    excludesfile = ~/.gitignore_global
+    quotepath = false
+    # set to your preferred code editor
+    editor = code --wait -r
+[push]
+    default = simple
+[filter "lfs"]
+    clean = git-lfs clean -- %f
+    smudge = git-lfs smudge -- %f
+    required = true
+    process = git-lfs filter-process
+[pager]
+    branch = false
+[pull]
+    rebase = true
+[credential]
+   # this uses the MacOS Keychain for password store
+    helper = osxkeychain
+[gpg]
+    format = ssh
+[gpg "ssh"]
+   # if you store your SSH keys in 1Password leave this here, otherwise remove
+    program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+[commit]
+    gpgsign = true
+[url "ssh://git@github.com/"]
+    insteadOf = https://github.com/
+[init]
+    defaultBranch = main
+```
+
+Now in the same `.config/git` directory create a second file and name it `config-work`:
+
+```bash
+touch .config/git/config-work
+vi .config/git/config-work
+```
+
+The contents should look like this:
+
+```conf
+[user]
+  # set to your work email
+  email = boris.kurktchiev@goteleport.com
+```
+
+Now when you edit any repositories under the `gravitational` org it will automatically use your work e-mail, while using your normal git for everything else.
 
 ---
 
