@@ -94,7 +94,7 @@ Every contribution (use‑case, POC, template, or integration) **must include**:
    * Prerequisites (versions, accounts)
    * Setup (step‑by‑step)
    * How to run (commands)
-   * Expected output / screenshots
+   * Expected output/screenshots
    * Troubleshooting
    * Support/owners
 
@@ -129,10 +129,10 @@ git status
 git add path/to/files
 git commit -m "feat(demos): add awesome demo with README"
 
-# 5) Push your branch and open PR
+# 5) Push your branch and open a PR
 git push -u origin feature/my-awesome-demo
 
-# 6) Update your branch later with latest main (before merging)
+# 6) Update your branch later with the latest main (before merging)
 git fetch origin
 git rebase origin/main         # or: git merge origin/main
 ```
@@ -189,7 +189,7 @@ Before opening (or merging) a PR:
 * [ ] Placed content in the correct top‑level folder (`use-cases/`, `proof-of-concepts/`, `templates/`, `integrations/`)
 * [ ] Added **`README.md`** with usage & troubleshooting
 * [ ] Requested reviews
-* [ ] PR title uses a sensible prefix (e.g., `feat:`, `fix:`, `docs:`)
+* [ ] PR title uses a sensible prefix (e.g., `feat:`, `fix:`, `docs:`, `add:`, `update:`, `remove:`)
 
 ---
 
@@ -203,13 +203,25 @@ Recommended labels:
 
 ---
 
-## Security & data handling
+## 💡 Best Practices
 
-* **No customer data** or identifiable information. Use sanitized, small samples only.
-* **Never commit secrets**. Use `.env` (ignored by Git) and provide `.env.example`.
-* If a demo requires credentials, document how to obtain *test* credentials.
-* Large binaries (>50 MB)? Use **Git LFS** or link to generated artifacts.
-* Third‑party code: include license/NOTICE and verify compatibility.
+### Do's
+
+✅ Always test your code/configs before committing
+✅ Keep customer data anonymized
+✅ Use meaningful commit messages
+✅ Update existing solutions rather than duplicating
+✅ Tag your submissions with relevant keywords
+✅ Include error handling in scripts
+✅ Document any dependencies clearly
+
+### Don'ts
+
+❌ Don't commit customer credentials or sensitive data
+❌ Don't commit large binary files (use Git LFS if needed)
+❌ Don't work directly on the main branch
+❌ Don't merge your own PRs without review
+❌ Don't forget to pull the latest changes before starting work
 
 ---
 
