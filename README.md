@@ -23,9 +23,8 @@
 * [Forking & submitting a PR](#forking--submitting-a-pr)
 * [Contribution checklist](#contribution-checklist)
 * [Issue labels & triage](#issue-labels--triage)
-* [Security & data handling](#security--data-handling)
+* [Best Practices](#best-practices)
 * [FAQ & common pitfalls](#faq--common-pitfalls)
-* [Appendix: Templates & samples](#appendix-templates--samples)
 
 ---
 
@@ -203,25 +202,25 @@ Recommended labels:
 
 ---
 
-## 💡 Best Practices
+## Best Practices
 
 ### Do's
 
-✅ Always test your code/configs before committing
-✅ Keep customer data anonymized
-✅ Use meaningful commit messages
-✅ Update existing solutions rather than duplicating
-✅ Tag your submissions with relevant keywords
-✅ Include error handling in scripts
-✅ Document any dependencies clearly
+* ✅ Always test your code/configs before committing
+* ✅ Keep customer data anonymized
+* ✅ Use meaningful commit messages
+* ✅ Update existing solutions rather than duplicating
+* ✅ Tag your submissions with relevant keywords
+* ✅ Include error handling in scripts
+* ✅ Document any dependencies clearly
 
 ### Don'ts
 
-❌ Don't commit customer credentials or sensitive data
-❌ Don't commit large binary files (use Git LFS if needed)
-❌ Don't work directly on the main branch
-❌ Don't merge your own PRs without review
-❌ Don't forget to pull the latest changes before starting work
+* ❌ Don't commit customer credentials or sensitive data
+* ❌ Don't commit large binary files (use Git LFS if needed)
+* ❌ Don't work directly on the main branch
+* ❌ Don't merge your own PRs without review
+* ❌ Don't forget to pull the latest changes before starting work
 
 ---
 
