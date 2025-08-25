@@ -1,28 +1,26 @@
 # Rev Engineering Common Repo
 
-## TL;DR (10‑minute start)
+## TL;DR (1‑minute start)
 
-1. **Fork** this repository.
-2. Clone your **fork**: `git clone git@github.com:yourusername/rev-tech.git`
-3. Create a **feature branch**: `git switch -c feature/my-awesome-demo`.
-4. Add your work under the right top‑level folder (see below), and include:
+1. Clone this **repo**: `git clone git@github.com:gravitational/rev-tech.git`
+2. Create a **feature branch**: `git switch -c feature/my-awesome-demo`.
+3. Add your work under the right top‑level folder (see below), and include:
    * `README.md` (how to run/use)
    * sample config: `.env.example` (no secrets!)
    * quick test or smoke script if applicable
-5. **Open a Pull Request (PR)** to `main`. Request reviewers.
-6. Address comments; reviews are in, **merge** (squash).
+4. **Open a Pull Request (PR)** to `main`. Request reviewers.
+5. Address comments; reviews are in, **merge** (squash).
 
 ---
 
 ## Table of Contents
 
 - [Rev Engineering Common Repo](#rev-engineering-common-repo)
-  - [TL;DR (10‑minute start)](#tldr-10minute-start)
+  - [TL;DR (1‑minute start)](#tldr-1minute-start)
   - [Table of Contents](#table-of-contents)
   - [What lives here](#what-lives-here)
   - [Repository structure](#repository-structure)
   - [Conventions \& required files](#conventions--required-files)
-  - [Git quickstart (basic commands)](#git-quickstart-basic-commands)
   - [Forking \& submitting a PR](#forking--submitting-a-pr)
     - [PR expectations](#pr-expectations)
   - [Contribution checklist](#contribution-checklist)
@@ -31,6 +29,7 @@
     - [Do's](#dos)
     - [Don'ts](#donts)
   - [FAQ \& common pitfalls](#faq--common-pitfalls)
+    - [Advanced Git identity setup](#advanced-git-identity-setup)
 
 ---
 
@@ -40,7 +39,9 @@
 * **`proof-of-concepts/`**: Short‑lived, experimental demos proving feasibility.
 * **`templates/`**: Production‑grade starter kits and reusable snippets for common scenarios.
 * **`integrations/`**: Connectors and adapters to third‑party products/platforms.
-* **`tools/`**: Helper scripts to streamline workflows
+* **`docs/`**: Any integration, solution, poc, etc that does not require code.
+* **`tools/`**: Helper scripts to streamline workflows.
+* **`archive/`**: Outdated code, useful for reference only.
 
 Rule of thumb:
 
@@ -78,6 +79,8 @@ Rule of thumb:
 │     ├── setup/
 │     └── testing/
 ├─ docs/
+├─ archive
+│     └── README.md
 ├─ .github/
 │  ├─ workflows/
 │  ├─ ISSUE_TEMPLATE/
@@ -113,48 +116,112 @@ Every contribution (use‑case, POC, template, or integration) **must include**:
 
 ---
 
-## Git quickstart (basic commands)
+## Forking & submitting a PR
 
-If you’re new to Git, this is enough to be productive.
+1. First-time setup (needed only once)
 
 ```bash
-# 1) First-time setup (once)
 git config --global user.name "Your Name"
 git config --global user.email "you@goteleport.com"
+```
 
-# 2) Clone the repo from your fork
-git clone git@github.com:yourusername/rev-tech.git
+2. Clone the repository:
+
+```bash
+git clone git@github.com:gravitational/rev-tech.git
 cd rev-tech
+```
 
-# 3) Create a feature branch
-git switch -c feature/my-awesome-demo
+3. Create a branch on the repository: `git switch -c feature/<short-title>`.
+4. Do work and push to the branch:
 
-# 4) Work and commit
+```bash
 git status
 git add path/to/files
 git commit -m "feat(demos): add awesome demo with README"
-
-# 5) Push your branch and open a PR
 git push -u origin feature/my-awesome-demo
-
-# 6) Update your branch later with the latest main (before merging)
-git fetch origin
-git rebase origin/main         # or: git merge origin/main
 ```
+
+5. Go to browser and switch to your branch, click `Create Pull Request`.
+
+### PR expectations
+
+* Clear title: `feat(templates): kafka ingest starter`
+* Description: what/why, setup summary, screenshots if useful
+* Tick the **Contribution checklist** (below)
+* Request reviewers
+
+---
+
+## Contribution checklist
+
+Before opening (or merging) a PR:
+
+* [ ] Placed content in the correct top‑level folder (`use-cases/`, `proof-of-concepts/`, `templates/`, `integrations/`)
+* [ ] Added **`README.md`** with usage & troubleshooting
+* [ ] Requested reviews
+* [ ] PR title uses a sensible prefix (e.g., `feat:`, `fix:`, `docs:`, `add:`, `update:`, `remove:`)
+
+---
+
+## Issue labels & triage
+
+Recommended labels:
+
+* **type:** `use-case`, `poc`, `template`, `integration`, `docs`
+* **status:** `draft`, `review`, `help-wanted`, `blocked`, `good-first-issue`
+* **area:** `data`, `streaming`, `auth`, `ui`, `infra`, `cloud/<provider>`, `vendor/<name>`
+
+---
+
+## Best Practices
+
+### Do's
+
+* ✅ Always test your code/configs before committing
+* ✅ Keep customer data anonymized
+* ✅ Use meaningful commit messages
+* ✅ Update existing solutions rather than duplicating
+* ✅ Tag your submissions with relevant keywords
+* ✅ Include error handling in scripts
+* ✅ Document any dependencies clearly
+
+### Don'ts
+
+* ❌ Don't commit customer credentials or sensitive data
+* ❌ Don't commit large binary files (use Git LFS if needed)
+* ❌ Don't work directly on the main branch
+* ❌ Don't merge your own PRs without review
+* ❌ Don't forget to pull the latest changes before starting work
+
+---
+
+## FAQ & common pitfalls
 
 Basic command quick list:
 
-| Command | Purpose | When to Use |
-|---------|---------|-------------|
-| `git status` | Check what's changed | Before adding/committing |
-| `git diff` | See detailed changes | Review before committing |
-| `git pull` | Get latest changes | Start of each work session |
-| `git push` | Upload your changes | After committing |
-| `git stash` | Temporarily save changes | Switch branches quickly |
-| `git stash pop` | Restore saved changes | Return to stashed work |
+| Command         | Purpose                  | When to Use                |
+| --------------- | ------------------------ | -------------------------- |
+| `git status`    | Check what's changed     | Before adding/committing   |
+| `git diff`      | See detailed changes     | Review before committing   |
+| `git pull`      | Get latest changes       | Start of each work session |
+| `git push`      | Upload your changes      | After committing           |
+| `git stash`     | Temporarily save changes | Switch branches quickly    |
+| `git stash pop` | Restore saved changes    | Return to stashed work     |
 
-For more advanced users. It is recommended that you setup git to automatically recognize your personal git and your work related repositories.
-If it doesn't exist, create `.config/git/` and create your main `config` file:
+* **“My branch is behind `main`.”**
+  `git fetch origin && git rebase origin/main` (or merge if you prefer).
+
+* **“Accidentally committed a secret.”**
+  Remove it, rotate the secret, and contact a repo admin to purge history.
+  (Don’t rely solely on `git revert`; secrets may persist in history.)
+
+* **“Merge conflicts!”**
+  Update your branch (`rebase`/`merge`) and use your IDE’s conflict tool. Keep commits small to minimize conflicts.
+
+### Advanced Git identity setup
+
+For more advanced users. It is recommended that you setup git to automatically recognize your personal git and your work related repositories. If it doesn't exist, create `.config/git/` and create your main `config` file:
 
 ```bash
 mkdir -p .config/git
@@ -221,92 +288,3 @@ The contents should look like this:
 ```
 
 Now when you edit any repositories under the `gravitational` org it will automatically use your work e-mail, while using your normal git for everything else.
-
----
-
-## Forking & submitting a PR
-
-1. Click **Fork** on GitHub → your fork is `yourname/rev-tech`.
-2. Clone your fork:
-
-   ```bash
-   git clone git@github.com:yourusername/rev-tech.git
-   cd rev-tech
-   git remote add upstream git@github.com:gravitational/rev-tech.git
-   ```
-
-3. Create a branch on your fork: `git switch -c feature/<short-title>`.
-4. Push to your fork: `git push -u origin feature/<short-title>`.
-5. Open a PR **from your fork/branch** → **to org/main**.
-6. Keep fork in sync later:
-
-   ```bash
-   git fetch upstream
-   git switch main
-   git rebase upstream/main
-   git push origin main --force-with-lease
-   ```
-
-### PR expectations
-
-* Clear title: `feat(templates): kafka ingest starter`
-* Description: what/why, setup summary, screenshots if useful
-* Tick the **Contribution checklist** (below)
-* Request reviewers
-
----
-
-## Contribution checklist
-
-Before opening (or merging) a PR:
-
-* [ ] Placed content in the correct top‑level folder (`use-cases/`, `proof-of-concepts/`, `templates/`, `integrations/`)
-* [ ] Added **`README.md`** with usage & troubleshooting
-* [ ] Requested reviews
-* [ ] PR title uses a sensible prefix (e.g., `feat:`, `fix:`, `docs:`, `add:`, `update:`, `remove:`)
-
----
-
-## Issue labels & triage
-
-Recommended labels:
-
-* **type:** `use-case`, `poc`, `template`, `integration`, `docs`
-* **status:** `draft`, `review`, `help-wanted`, `blocked`, `good-first-issue`
-* **area:** `data`, `streaming`, `auth`, `ui`, `infra`, `cloud/<provider>`, `vendor/<name>`
-
----
-
-## Best Practices
-
-### Do's
-
-* ✅ Always test your code/configs before committing
-* ✅ Keep customer data anonymized
-* ✅ Use meaningful commit messages
-* ✅ Update existing solutions rather than duplicating
-* ✅ Tag your submissions with relevant keywords
-* ✅ Include error handling in scripts
-* ✅ Document any dependencies clearly
-
-### Don'ts
-
-* ❌ Don't commit customer credentials or sensitive data
-* ❌ Don't commit large binary files (use Git LFS if needed)
-* ❌ Don't work directly on the main branch
-* ❌ Don't merge your own PRs without review
-* ❌ Don't forget to pull the latest changes before starting work
-
----
-
-## FAQ & common pitfalls
-
-* **“My branch is behind `main`.”**
-  `git fetch origin && git rebase origin/main` (or merge if you prefer).
-
-* **“Accidentally committed a secret.”**
-  Remove it, rotate the secret, and contact a repo admin to purge history.
-  (Don’t rely solely on `git revert`; secrets may persist in history.)
-
-* **“Merge conflicts!”**
-  Update your branch (`rebase`/`merge`) and use your IDE’s conflict tool. Keep commits small to minimize conflicts.
