@@ -37,11 +37,11 @@
 * **`integrations/`**: Connectors and adapters to third‑party products/platforms.
 * **`tools/`**: Helper scripts to streamline workflows
 
-> Rule of thumb:
->
-> * If it’s **reusable** → `templates/` or `integrations/`.
-> * If it’s **storytelling**/**pattern** → `use-cases/`.
-> * If it’s **experimental** or unproven → `proof-of-concepts/`.
+Rule of thumb:
+
+* If it’s **reusable** → `templates/` or `integrations/`.
+* If it’s **storytelling**/**pattern** → `use-cases/`.
+* If it’s **experimental** or unproven → `proof-of-concepts/`.
 
 ---
 
@@ -77,7 +77,6 @@
 │  ├─ workflows/
 │  ├─ ISSUE_TEMPLATE/
 │  └─ PULL_REQUEST_TEMPLATE.md
-└─ CODEOWNERS
 ```
 
 **Naming:** use **kebab‑case** for folders; keep names concise and descriptive.
