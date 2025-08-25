@@ -110,15 +110,7 @@ Every contribution (use‑case, POC, template, or integration) **must include**:
 
 ## Git quickstart (basic commands)
 
-> If you’re new to Git, this is enough to be productive.
-| Command | Purpose | When to Use |
-|---------|---------|-------------|
-| `git status` | Check what's changed | Before adding/committing |
-| `git diff` | See detailed changes | Review before committing |
-| `git pull` | Get latest changes | Start of each work session |
-| `git push` | Upload your changes | After committing |
-| `git stash` | Temporarily save changes | Switch branches quickly |
-| `git stash pop` | Restore saved changes | Return to stashed work |
+If you’re new to Git, this is enough to be productive.
 
 ```bash
 # 1) First-time setup (once)
@@ -144,6 +136,17 @@ git push -u origin feature/my-awesome-demo
 git fetch origin
 git rebase origin/main         # or: git merge origin/main
 ```
+
+Basic command quicklist:
+
+| Command | Purpose | When to Use |
+|---------|---------|-------------|
+| `git status` | Check what's changed | Before adding/committing |
+| `git diff` | See detailed changes | Review before committing |
+| `git pull` | Get latest changes | Start of each work session |
+| `git push` | Upload your changes | After committing |
+| `git stash` | Temporarily save changes | Switch branches quickly |
+| `git stash pop` | Restore saved changes | Return to stashed work |
 
 ---
 
