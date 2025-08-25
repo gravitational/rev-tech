@@ -21,7 +21,7 @@
   - [What lives here](#what-lives-here)
   - [Repository structure](#repository-structure)
   - [Conventions \& required files](#conventions--required-files)
-  - [Forking \& submitting a PR](#forking--submitting-a-pr)
+  - [Cloning \& submitting a PR](#cloning--submitting-a-pr)
     - [PR expectations](#pr-expectations)
   - [Contribution checklist](#contribution-checklist)
   - [Issue labels \& triage](#issue-labels--triage)
@@ -116,7 +116,7 @@ Every contribution (use‑case, POC, template, or integration) **must include**:
 
 ---
 
-## Forking & submitting a PR
+## Cloning & submitting a PR
 
 1. First-time setup (needed only once)
 
