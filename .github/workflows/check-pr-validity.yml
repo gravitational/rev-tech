@@ -1,0 +1,89 @@
+name: Require README presence
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  readme-check:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Confirm README exists in each touched contribution folder
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const core = require('@actions/core');
+            const fs = require('fs');
+            const path = require('path');
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = context.payload.pull_request.number;
+
+            // Top-level areas where we require a README in the folder
+            const ROOTS = ['use-cases', 'proof-of-concepts', 'templates', 'integrations'];
+            const README_CANDIDATES = ['README.md'];
+
+            // All files in the PR (handles pagination)
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              { owner, repo, pull_number, per_page: 100 }
+            );
+
+            // Track which contribution "slugs" (e.g., templates/my-template) were touched
+            // and whether they had any non-removed changes.
+            const slugs = new Map(); // slug -> { addedOrModified: number, removed: number }
+
+            function getSlug(fp) {
+              const parts = fp.split('/');
+              if (parts.length < 2) return null;
+              if (!ROOTS.includes(parts[0])) return null;
+              return `${parts[0]}/${parts[1]}`;
+            }
+
+            for (const f of files) {
+              const slug = getSlug(f.filename);
+              if (!slug) continue;
+              const entry = slugs.get(slug) || { addedOrModified: 0, removed: 0 };
+              if (f.status === 'removed') entry.removed++;
+              else entry.addedOrModified++;
+              slugs.set(slug, entry);
+            }
+
+            // Only enforce for slugs that have any added/modified files (skip pure deletions)
+            const candidates = [...slugs.entries()].filter(([_, s]) => s.addedOrModified > 0);
+
+            if (candidates.length === 0) {
+              core.info('No contribution folders added/modified in this PR; skipping README presence check.');
+              return;
+            }
+
+            const missing = [];
+            for (const [slug] of candidates) {
+              const hasReadme = README_CANDIDATES.some(name =>
+                fs.existsSync(path.join(process.cwd(), slug, name))
+              );
+              if (!hasReadme) missing.push(`${slug}/README.md`);
+            }
+
+            if (missing.length) {
+              core.setFailed(
+                [
+                  'README.md must exist for each contribution folder touched by this PR (no need to modify it).',
+                  'Missing:',
+                  ...missing.map(s => `  - ${s}`)
+                ].join('\n')
+              );
+            } else {
+              core.info('README presence confirmed for all touched folders ✅');
+            }

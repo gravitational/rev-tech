@@ -132,7 +132,12 @@ git clone git@github.com:gravitational/rev-tech.git
 cd rev-tech
 ```
 
-3. Create a branch on the repository: `git switch -c feature/<short-title>`.
+3. Create a branch on the repository:
+
+```bash
+git switch -c feature/<short-title>
+```
+
 4. Do work and push to the branch:
 
 ```bash
@@ -211,11 +216,9 @@ Basic command quick list:
 
 * **“My branch is behind `main`.”**
   `git fetch origin && git rebase origin/main` (or merge if you prefer).
-
 * **“Accidentally committed a secret.”**
   Remove it, rotate the secret, and contact a repo admin to purge history.
   (Don’t rely solely on `git revert`; secrets may persist in history.)
-
 * **“Merge conflicts!”**
   Update your branch (`rebase`/`merge`) and use your IDE’s conflict tool. Keep commits small to minimize conflicts.
 
@@ -237,7 +240,8 @@ Once you are editing the file, it should have content similar to this:
     # set to your normal github email
     email = kurktchiev@gmail.com
     signingkey = /Users/boris/.ssh/id_rsa.pub
-# this include is important
+# this include is important, you can have as many of these as includes as you want with different identities
+# and matches for different orgs/repos
 [includeIf "hasconfig:remote.*.url:git@github.com:gravitational/**"]
     path = config-work
 [core]
