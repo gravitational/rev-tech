@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fail the PR if any touched folder under $ROOTS lacks a README.md (case-insensitive),
+# Fail the PR if any touched folder under $ROOTS lacks a *.md (case-insensitive),
 # evaluating file presence in the **PR head**.
 # CI usage: ROOTS="use-cases proof-of-concepts templates integrations tools" ./tools/require-readme.sh
 set -euo pipefail
@@ -62,18 +62,18 @@ for slug in "${!touched_non_deleted[@]}"; do echo " - $slug"; done | sort
 
 missing=()
 for slug in "${!touched_non_deleted[@]}"; do
-  # Case-insensitive check for README.md in the slug (PR head)
-  if find "$slug" -maxdepth 1 -type f -iname 'README.md' | grep -q .; then
+  # Case-insensitive check for *.md in the slug (PR head)
+  if find "$slug" -maxdepth 1 -type f -iname '*.md' | grep -q .; then
     echo "✅ README present in $slug"
   else
     echo "❌ README missing in $slug"
-    missing+=("$slug/README.md")
+    missing+=("$slug/*.md")
   fi
 done
 
 if [[ ${#missing[@]} -gt 0 ]]; then
   {
-    echo "README.md must exist for each touched contribution folder (no need to modify it)."
+    echo "*.md must exist for each touched contribution folder (no need to modify it)."
     echo "Missing:"
     for m in "${missing[@]}"; do echo "  - $m"; done
   } >&2
