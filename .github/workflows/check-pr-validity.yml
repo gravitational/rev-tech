@@ -23,5 +23,5 @@ jobs:
           ROOTS: "use-cases proof-of-concepts templates integrations"
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           BASE_REF: ${{ github.base_ref }}
-        run: bash tools/testing/require-readme.sh
+        run: bash tools/require-readme.sh
 
