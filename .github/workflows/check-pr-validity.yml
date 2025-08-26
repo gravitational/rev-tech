@@ -15,15 +15,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR
-        uses: actions/checkout@v4
+        uses: actions/checkout
         with:
           fetch-depth: 0
 
       - name: Confirm README exists in each touched contribution folder
-        uses: actions/github-script@v7
+        uses: actions/github-script
         with:
           script: |
-            const core = require('@actions/core');
+            const git_core = require('@actions/core');
             const fs = require('fs');
             const path = require('path');
 
@@ -65,7 +65,7 @@ jobs:
             const candidates = [...slugs.entries()].filter(([_, s]) => s.addedOrModified > 0);
 
             if (candidates.length === 0) {
-              core.info('No contribution folders added/modified in this PR; skipping README presence check.');
+              git_core.info('No contribution folders added/modified in this PR; skipping README presence check.');
               return;
             }
 
@@ -78,7 +78,7 @@ jobs:
             }
 
             if (missing.length) {
-              core.setFailed(
+              git_core.setFailed(
                 [
                   'README.md must exist for each contribution folder touched by this PR (no need to modify it).',
                   'Missing:',
@@ -86,5 +86,5 @@ jobs:
                 ].join('\n')
               );
             } else {
-              core.info('README presence confirmed for all touched folders ✅');
+              git_core.info('README presence confirmed for all touched folders ✅');
             }
