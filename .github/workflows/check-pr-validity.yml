@@ -1,7 +1,6 @@
 name: Require README presence
 
 on:
-  workflow_dispatch: {}
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
@@ -14,14 +13,19 @@ jobs:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR
-        uses: actions/checkout@v5
+      - name: Checkout PR head
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 2
-      - name: Verify README exists in PR
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Add base remote and fetch base branch
+        run: |
+          git remote add upstream https://github.com/${{ github.event.pull_request.base.repo.full_name }}.git
+          git fetch --no-tags --prune --depth=1 upstream ${{ github.event.pull_request.base.ref }}
+      - name: Verify README has been added to PR
         env:
-          ROOTS: "use-cases proof-of-concepts templates integrations"
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          BASE_REF: ${{ github.base_ref }}
+          ROOTS: "use-cases proof-of-concepts templates integrations tools"
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_REMOTE: "upstream"
         run: bash tools/require-readme.sh
-
