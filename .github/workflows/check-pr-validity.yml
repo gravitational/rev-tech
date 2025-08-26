@@ -15,12 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR
-        uses: actions/checkout
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Confirm README exists in each touched contribution folder
-        uses: actions/github-script
+        uses: actions/github-script@v7
         with:
           script: |
             const git_core = require('@actions/core');
