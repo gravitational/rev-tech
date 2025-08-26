@@ -1,4 +1,3 @@
-```markdown
 ## Summary
 Short description of what/why.
 
@@ -16,4 +15,3 @@ Commands, expected results, screenshots.
 - [ ] README included
 - [ ] .env.example (no secrets)
 - [ ] Requested reviews
-```
