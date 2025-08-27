@@ -1,4 +1,7 @@
-# Rev Engineering Common Repo
+# Rev Engineering Common Examples
+
+> [!CAUTION]
+> Please note that this repository was developed for testing environments and should not be used as is in your production environment. It is intended to serve as a reference or example. Use at your own risk; no support or warranty provided.
 
 ## TL;DR (1‑minute start)
 
@@ -147,7 +150,7 @@ git commit -m "feat(demos): add awesome demo with README"
 git push -u origin feature/my-awesome-demo
 ```
 
-5. Go to browser and switch to your branch, click `Create Pull Request`.
+5. Go to the browser and switch to your branch, click `Create Pull Request`.
 
 ### PR expectations
 
@@ -224,7 +227,7 @@ Basic command quick list:
 
 ### Advanced Git identity setup
 
-For more advanced users. It is recommended that you setup git to automatically recognize your personal git and your work related repositories. If it doesn't exist, create `.config/git/` and create your main `config` file:
+It is recommended that you set up Git to recognize both your personal repositories and your work-related repositories automatically. If it doesn't exist, create `.config/git/` and create your main `config` file:
 
 ```bash
 mkdir -p .config/git
@@ -237,7 +240,7 @@ Once you are editing the file, it should have content similar to this:
 ```conf
 [user]
     name = Boris 'B' Kurktchiev
-    # set to your normal github email
+    # set to your normal GitHub email
     email = kurktchiev@gmail.com
     signingkey = /Users/boris/.ssh/id_rsa.pub
 # this include is important, you can have as many of these as includes as you want with different identities
@@ -266,7 +269,7 @@ Once you are editing the file, it should have content similar to this:
 [gpg]
     format = ssh
 [gpg "ssh"]
-   # if you store your SSH keys in 1Password leave this here, otherwise remove
+   # if you store your SSH keys in 1Password, leave this here; otherwise, remove
     program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
 [commit]
     gpgsign = true
@@ -276,7 +279,7 @@ Once you are editing the file, it should have content similar to this:
     defaultBranch = main
 ```
 
-Now in the same `.config/git` directory create a second file and name it `config-work`:
+Now, in the same `.config/git` directory, create a second file and name it `config-work`:
 
 ```bash
 touch .config/git/config-work
@@ -291,4 +294,4 @@ The contents should look like this:
   email = boris.kurktchiev@goteleport.com
 ```
 
-Now when you edit any repositories under the `gravitational` org it will automatically use your work e-mail, while using your normal git for everything else.
+Now, when you edit any repositories under the `gravitational` org, it will automatically use your work e-mail, while using your normal git for everything else.
