@@ -10,4 +10,4 @@ Documentation‑only assets: how‑tos, design notes, architecture diagrams, and
 
 ## Use Cases
 
-- [MWI](mwi/mwi.md)
+- [MWI](/use-cases/mwi/README.md)
