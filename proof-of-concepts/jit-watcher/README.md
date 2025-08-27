@@ -47,8 +47,8 @@ rules:
 
 ```bash
 # Clone the repository
-git clone https://github.com/djohns7/Teleport-JIT-Watcher
-cd Teleport-JIT-Watcher
+git clone https://github.com/gravitational/rev-tech/tree/main/proof-of-concepts/jit-watcher
+cd jit-watcher
 
 # Build for your platform
 go build -o watcher main.go
