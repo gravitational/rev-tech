@@ -1,0 +1,80 @@
+name: tbot Database Tunnel Example
+
+on:
+  push: {}
+  workflow_dispatch: {}
+  pull_request:
+
+jobs:
+  tbotDbTunnelExample:
+    name: Teleport tbot Database Tunnel Example
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      actions: read
+      contents: read  # Access to the repository contents (e.g., checkouts, fetching)
+      pull-requests: write  # If the CD pipeline interacts with PRs
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Set Variables
+        id: version
+        run: |
+          echo "TELEPORT_CLUSTER_VERSION=$(curl https://${{ secrets.TELEPORT_CLUSTER_DOMAIN }}/v1/webapi/automaticupgrades/channel/default/version | sed 's/v//')" >> $GITHUB_ENV
+
+      - name: Fetch Teleport binaries
+        uses: teleport-actions/setup@v1
+        with:
+          version: ${{ env.TELEPORT_CLUSTER_VERSION }}
+
+      - name: Start Database Tunnel Bot
+        run: |
+          cat <<EOF > /tmp/bot-config.yaml
+          version: v2
+          onboarding:
+            join_method: github
+            token: ${{ secrets.TELEPORT_BOT_TOKEN }}
+          storage:
+            type: directory
+            path: /tmp/tbot
+            symlinks: try-secure
+            acls: "off"
+          services:
+            - type: database-tunnel
+              listen: tcp://127.0.0.1:5432
+              service: dev-psql-rds
+              database: transactionsDb
+              username: teleport-db-admin
+          debug: false
+          proxy_server: ${{ secrets.TELEPORT_CLUSTER_DOMAIN }}:443
+          oneshot: false
+          fips: false
+          EOF
+          
+          export TELEPORT_ANONYMOUS_TELEMETRY=1 
+          nohup tbot start -c /tmp/bot-config.yaml  --certificate-ttl 10m --renewal-interval 5m &
+          # Write tbot PID to file
+          echo $! > /tmp/tbot.pid
+
+      - name: Exec Database Query (Retry for 5 minutes)
+        run: |
+          end=$((SECONDS+300))
+          while [ $SECONDS -lt $end ]; do
+            psql -h 127.0.0.1 -U teleport-db-admin -p 5432 -d transactionsDb -c "SELECT version();" || true
+            sleep 5
+          done
+
+      - name: Clean up
+        if: always()
+        run: |
+          if [[ -f /tmp/tbot.pid ]]; then
+            echo "Killing tbot with PID $(cat /tmp/tbot.pid)"
+            kill "$(cat /tmp/tbot.pid)" || true
+            rm -f /tmp/tbot.pid
+          fi
+          rm -rf /tmp/tbot /tmp/bot-config.yaml /tmp/tbot.log

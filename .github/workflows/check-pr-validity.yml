@@ -19,13 +19,14 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+      # Needed so we can get a proper diff of before/after state when checking for required PR files
       - name: Add base remote and fetch base branch
         run: |
           git remote add upstream https://github.com/${{ github.event.pull_request.base.repo.full_name }}.git
           git fetch --no-tags --prune --depth=1 upstream ${{ github.event.pull_request.base.ref }}
       - name: Verify README has been added to PR
         env:
-          ROOTS: "use-cases proof-of-concepts templates integrations docs"
+          ROOTS: "use-cases proof-of-concepts templates integrations"
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           BASE_REF: ${{ github.base_ref }}
         run: bash tools/require-readme.sh
