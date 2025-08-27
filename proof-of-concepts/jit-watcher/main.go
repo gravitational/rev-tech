@@ -19,7 +19,7 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	AuthServer       string
+	ProxyServer       string
 	IdentityFile     string
 	MaxResources     int
 	CheckResources   bool
@@ -54,7 +54,7 @@ func NewWatcher(config Config) (*Watcher, error) {
 
 	// Create Teleport client
 	teleportClient, err := client.New(context.Background(), client.Config{
-		Addrs:       []string{config.AuthServer},
+		Addrs:       []string{config.ProxyServer},
 		Credentials: []client.Credentials{creds},
 	})
 	if err != nil {
@@ -586,7 +586,7 @@ func (w *Watcher) processAllUsers(ctx context.Context) error {
 // Watch starts the monitoring (polling version)
 func (w *Watcher) Watch(ctx context.Context) error {
 	w.logInfo("Starting Teleport JIT Access Request Watcher (Polling Mode)")
-	w.logInfo("Auth Service: %s", w.config.AuthServer)
+	w.logInfo("Proxy Service: %s", w.config.ProxyServer)
 	w.logInfo("Identity File: %s", w.config.IdentityFile)
 	w.logInfo("Poll Interval: %s", w.config.PollInterval)
 
@@ -656,7 +656,7 @@ func main() {
 	var config Config
 	var conflictPatterns StringSliceFlag
 	
-	flag.StringVar(&config.AuthServer, "p", "", "Teleport auth service (required, e.g., example.teleport.sh:443)")
+	flag.StringVar(&config.ProxyServer, "p", "", "Teleport auth service (required, e.g., example.teleport.sh:443)")
 	flag.StringVar(&config.IdentityFile, "i", "", "Path to Teleport identity file (required)")
 	flag.IntVar(&config.MaxResources, "m", 3, "Maximum approved resources per user")
 	flag.BoolVar(&config.CheckResources, "resource-limit", true, "Enable resource limit checking")
@@ -695,8 +695,8 @@ func main() {
 	config.ConflictPatterns = conflictPatterns
 
 	// Validate required arguments
-	if config.AuthServer == "" {
-		fmt.Fprintf(os.Stderr, "Error: Auth service is required (-p option)\n\n")
+	if config.ProxyServer == "" {
+		fmt.Fprintf(os.Stderr, "Error: Proxy service is required (-p option)\n\n")
 		flag.Usage()
 		os.Exit(1)
 	}
