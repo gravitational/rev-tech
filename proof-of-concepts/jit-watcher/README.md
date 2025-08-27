@@ -1,23 +1,25 @@
 # Teleport JIT Access Request Watcher
 
-An automated policy enforcement system for Teleport Just-in-Time access requests that provides configurable resource limits and environment separation controls.
+An automated policy enforcement system for Teleport Just-in-Time access requests, providing configurable resource limits and environment separation controls.
 
 ## Features
 
 - **Auto-approval**: Automatically approves compliant access requests
 - **Real-time enforcement**: Configurable polling for near real-time policy enforcement
 - **Environment separation**: Prevents users from having conflicting role patterns (configurable)
-- **Resource limits**: Enforces maximum number of approved resources per user
+- **Resource limits**: Enforces the maximum number of approved resources per user
 - **Smart locking**: Locks older requests when policies are violated
 - **Comprehensive logging**: Debug output shows policy decisions and enforcement actions
 
 ## Policy Enforcement
 
 ### Resource Limits
+
 Users can have a maximum number of approved resources at any time (default: 3). When this limit is exceeded, older requests are locked while the newest requests remain active.
 
 ### Role Conflict Detection
-Users cannot have roles matching conflicting patterns simultaneously. The system detects conflicts by matching configurable patterns in role names (default: `prod` and `research`).
+
+Users cannot hold roles that conflict with each other simultaneously. The system detects conflicts by matching configurable patterns in role names (default: `prod` and `research`).
 
 - Single requests containing roles matching multiple conflict patterns are automatically denied
 - Multi-request conflicts result in older requests being locked
@@ -31,7 +33,7 @@ Users cannot have roles matching conflicting patterns simultaneously. The system
 
 ### Required Permissions
 
-Your Machine ID identity requires these permissions:
+Your Machine ID requires these permissions:
 
 ```yaml
 rules:
@@ -123,6 +125,7 @@ GOOS=linux GOARCH=amd64 go build -o watcher-linux main.go
 ## Examples
 
 ### Production/Development Separation
+
 ```bash
 # Prevent users from having both production and development access
 ./watcher -p teleport.company.com:443 -i ./identity \
@@ -130,6 +133,7 @@ GOOS=linux GOARCH=amd64 go build -o watcher-linux main.go
 ```
 
 ### Multi-Environment Setup
+
 ```bash
 # Enforce separation between test, staging, and production
 ./watcher -p teleport.company.com:443 -i ./identity \
@@ -138,6 +142,7 @@ GOOS=linux GOARCH=amd64 go build -o watcher-linux main.go
 ```
 
 ### Team-Based Access Control
+
 ```bash
 # Prevent cross-team access conflicts
 ./watcher -p teleport.company.com:443 -i ./identity \
@@ -145,6 +150,7 @@ GOOS=linux GOARCH=amd64 go build -o watcher-linux main.go
 ```
 
 ### Regional Separation
+
 ```bash
 # Enforce geographic access boundaries
 ./watcher -p teleport.company.com:443 -i ./identity \
