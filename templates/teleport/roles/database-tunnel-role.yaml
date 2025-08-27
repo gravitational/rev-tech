@@ -1,0 +1,41 @@
+kind: role
+metadata:
+  description: Allow Database Tunnels to all dev dbs
+  labels:
+    resource-type: database
+  name: dev-db-tunnel-role
+spec:
+  allow:
+    db_labels:
+      env: dev
+    db_names:
+    - '{{internal.db_names}}'
+    - transactionsDb
+    db_roles:
+    - '{{internal.db_roles}}'
+    db_service_labels:
+      env: dev
+    db_users:
+    - '{{internal.db_users}}'
+    - teleport-db-admin
+  deny: {}
+  options:
+    cert_format: standard
+    create_db_user: false
+    create_desktop_user: false
+    desktop_clipboard: true
+    desktop_directory_sharing: true
+    enhanced_recording:
+    - command
+    - network
+    forward_agent: false
+    idp:
+      saml:
+        enabled: true
+    max_session_ttl: 1h0m0s
+    pin_source_ip: false
+    record_session:
+      default: best_effort
+      desktop: true
+    ssh_file_copy: false
+version: v7

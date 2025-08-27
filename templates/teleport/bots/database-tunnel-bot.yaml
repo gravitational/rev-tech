@@ -1,0 +1,10 @@
+kind: bot
+version: v1
+metadata:
+  # name is a unique identifier for the Bot in the cluster.
+  name:  github-action-db-tunnel-example-bot
+spec:
+  # roles is a list of roles to grant to the Bot. Don't worry if you don't know
+  # what roles you need to specify here, the Access Guides will walk you through
+  # creating and assigning roles to the already created Bot.
+  roles: ["dev-db-tunnel-role"]
