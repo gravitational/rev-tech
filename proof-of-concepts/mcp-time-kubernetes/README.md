@@ -1,6 +1,11 @@
-# Teleport container running an MCP Tool
+# Purpose
 Basic example of teleport running in a container on kubernetes that can run uvx to execute MCP tools for using stdio instead of sse/http. 
 In this case, the MCP tool is able to provide the current time to the AI model.
+
+This is intended for anyone looking to run Teleport's MCP integration in a container on Kubernetes.
+
+## Prerequisites
+You should have a Teleport Cluster >=18.1.0 running in Kubernetes. If the cluster is outside of kubernetes, you may need to change the join method. You should also have an AI client capable of using MCP. I tested this with LM-Studio using Qwen3. Claude and Cursor should work fine as well. 
 
 ## Configure
 There's a few placeholder values:
@@ -36,3 +41,23 @@ The current time in Denver (America/Denver) is 2:40 PM on Thursday, October 16th
 I can see in the container's logs that is is actively sending/receiving information from my local tool with my teleport user.
 
 This is just an example, but it shows you can run teleport and the MCP tool in the same container, use teleport to access the tool remotely, and auto-join the teleport-cluster with a service account.
+
+## Troubleshooting
+Teleport is not able to connect to my cluster!
+
+- Verify you have changed the proxy address in `configmap.yaml`
+- Verify the token name matches from `token.yaml` with `configmap.yaml` 
+- Verify you have created the service account (`sa.yaml`), the service account name is listed properly in `deployment.yaml`, and service_account is in the format namespace:serviceaccountname in `token.yaml`
+
+I don't see any MCP tools listed when running `tsh mcp ls`!
+
+- Verify teleport is running and connected in the container, and app_service is enabled under `configmap.yaml` 
+
+I added the MCP tool to lm-studio/claude/cursor, but it's not working!
+
+- Verify the model you are using supports MCP tools. In LM-Studio, you can check by looking for the hammer icon next to the model name. 
+- Check the logs in the container to see if any errors occur when running the time tool
+- Check the audit log in Teleport for any errors in the MCP request
+
+## Support
+This example was created by Rhett Sandal. Please reach out for any help in Slack or to my email: rhett.sandal@goteleport.com 
