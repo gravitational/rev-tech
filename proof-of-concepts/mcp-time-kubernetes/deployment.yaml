@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teleport-mcp-time
+  namespace: your-mcp-namespace
+  labels:
+    app: teleport-mcp-time
+spec:
+  selector:
+    matchLabels:
+      app: teleport-mcp-time
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: teleport-mcp-time
+    spec:
+      serviceAccountName: teleport-mcp-agent
+      containers:
+      - name:  teleport-mcp-time
+        image: your-repo-here/image:tag
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: teleport-config-mcp
+          mountPath: /teleport/teleport.yaml
+          subPath: "teleport.yaml"
+      restartPolicy: Always
+      volumes:
+        - name: teleport-config-mcp
+          configMap:
+            name: teleport-config-mcp
