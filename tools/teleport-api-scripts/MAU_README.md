@@ -28,7 +28,7 @@ Users utilizing just-in-time access and governance features:
 
 - Go 1.19+ installed
 - Access to a Teleport cluster
-- Valid Teleport credentials (see Authentication section below)
+- Valid Teleport credentials (see [Authentication](#authentication) section below)
 - Network connectivity to your Teleport proxy
 
 ## Installation

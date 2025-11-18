@@ -23,7 +23,7 @@ The script tracks the following types of Teleport Protected Resources:
 
 - Go 1.19+ installed
 - Access to a Teleport cluster with audit log read permissions
-- Valid Teleport credentials (see Authentication section below)
+- Valid Teleport credentials (see [Authentication](#authentication) section below)
 - Network connectivity to your Teleport proxy
 
 ## Installation
