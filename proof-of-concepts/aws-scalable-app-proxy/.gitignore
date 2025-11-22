@@ -1,0 +1,8 @@
+# Local env & artifacts
+id_ed25519
+backend.tf
+*private.*
+.terraform
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate*
