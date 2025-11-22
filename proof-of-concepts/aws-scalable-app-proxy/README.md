@@ -46,7 +46,7 @@ terraform apply
 
 #### Teleport user update
 
-- Update the user's User Roles to include the `teleport-demo-awscli-proxy` role. If you're using an external authentication, update the connector configuration instead. Refer to the [Step 2/4. Configure Teleport IAM role mapping](https://goteleport.com/docs/enroll-resources/application-access/cloud-apis/aws-console/#step-24-configure-teleport-iam-role-mapping) for more information.
+- Update the user's User Roles to include the `teleport-demo-aws-proxy` role. If you're using an external authentication, update the connector configuration instead. Refer to the [Step 2/4. Configure Teleport IAM role mapping](https://goteleport.com/docs/enroll-resources/application-access/cloud-apis/aws-console/#step-24-configure-teleport-iam-role-mapping) for more information.
 - Logout/Login to propagate the access change above.
 
 ## Testing

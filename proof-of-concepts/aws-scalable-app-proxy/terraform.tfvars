@@ -1,4 +1,4 @@
-name = "teleport-demo-awscli-proxy"
+name = "teleport-demo-aws-proxy"
 
 cidr = "10.112.0.0/16"
 
