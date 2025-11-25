@@ -56,5 +56,5 @@ Once the deployment completed, you should have a new application called **awscon
 To test the AWS Console proxying:
 - Connect to the both EC2 instances and follow the Teleport logs
   - `sudo journalctl -u teleport.service -f`
-- Launch the AWS Console from the Teleport UI and observe the logs showing proxy traffic been load balanced on both instances.
-- Downscale the ASG capacity to single instance for testing Teleport's app proxy traffic handling in a scenario where an agent dropping out of the cluster. 
+- Launch the AWS Console from the Teleport UI and observe the logs showing proxy traffic being load balanced on both instances.
+- Downscale the ASG capacity to single instance for testing Teleport's app proxy traffic handling in a scenario where an agent drops out of the cluster. 

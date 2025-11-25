@@ -10,16 +10,6 @@ apt-get update
 
 apt-get install -y curl gnupg2 ca-certificates apt-transport-https jq awscli
 
-# Get AWS credentials for interacting with AWS resources
-#TOKEN=$(curl -fsSL -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-#REGION=$(curl -fsSL -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')
-#ROLE=$(curl -fsSL -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials)
-#CREDS=$(curl -fsSL -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE)
-#
-#export AWS_ACCESS_KEY_ID=$(echo $CREDS | jq -r '.AccessKeyId')
-#export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | jq -r '.SecretAccessKey')
-#export AWS_SESSION_TOKEN=$(echo $CREDS | jq -r '.Token')
-#export AWS_DEFAULT_REGION=$REGION
 
 install -m 0755 -d /var/lib/teleport/
 
@@ -106,7 +96,6 @@ resource "aws_launch_template" "this" {
 
 resource "aws_autoscaling_group" "this" {
   name_prefix = var.name
-  # availability_zones = [aws_subnet.this.id]
   desired_capacity    = var.capacity.desired
   max_size            = var.capacity.max_size
   min_size            = var.capacity.min_size

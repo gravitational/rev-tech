@@ -34,7 +34,7 @@ firewall_rules = [
 
 ami = {
   discovery_node = {
-    ami   = "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"
+    ami   = "ubuntu/images/hvm-ssd/ubuntu-focal-24.04-amd64-server-*"
     owner = "099720109477"
   }
 }
