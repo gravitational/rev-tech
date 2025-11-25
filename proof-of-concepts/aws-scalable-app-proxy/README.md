@@ -22,7 +22,18 @@ This primarily focuses on the ability to use IAM invite tokens for authenticatin
 ## Setup
 
 > [!WARNING]
-> Port `22` on the Security Group will be open. This can be changed in the [terraform.tfvars](terraform.tfvars) should you require.
+> **EC2 instances are not publicly exposed since they will be available on your Teleport tenant.**
+> If you require direct access to the nodes, add the below rule to the `firewall_rules` section in the [terraform.tfvars](terraform.tfvars):
+> ```terraform
+>{
+>  ingress   = true
+>  proto     = "tcp"
+>  action    = "allow"
+>  cidr      = "<<add-your-public-ip-here>>"
+>  from_port = 22
+>  to_port   = 22
+>},
+>```
 
 ### Configuration
 
@@ -51,10 +62,10 @@ terraform apply
 
 ## Testing
 
-Once the deployment completed, you should have a new application called **awsconsole** along side two new EC2 instances. Deployment allows the EC2 SSH proxy to illustrate being able to join multiple resource using the IAM join method.
+Once the deployment completed, you should have a new application called **awsconsole** along side three new EC2 instances. Deployment allows the EC2 SSH proxy to illustrate being able to join multiple resource using the IAM join method.
 
 To test the AWS Console proxying:
 - Connect to the both EC2 instances and follow the Teleport logs
   - `sudo journalctl -u teleport.service -f`
-- Launch the AWS Console from the Teleport UI and observe the logs showing proxy traffic being load balanced on both instances.
-- Downscale the ASG capacity to single instance for testing Teleport's app proxy traffic handling in a scenario where an agent drops out of the cluster. 
+- Launch the AWS Console from the Teleport UI and observe the logs showing proxy traffic being load balanced on all instances.
+- Downscale the ASG capacity to two instance for testing Teleport's app proxy traffic handling in a scenario where an agent drops out of the cluster.

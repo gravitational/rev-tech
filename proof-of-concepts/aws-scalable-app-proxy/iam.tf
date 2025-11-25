@@ -31,13 +31,13 @@ data "aws_iam_policy_document" "assume_role" {
 resource "aws_iam_policy" "this" {
   name   = "${lower(var.name)}-policy"
   policy = data.aws_iam_policy_document.pass_role.json
-  tags   = var.tags
+  tags   = local.tags
 }
 
 resource "aws_iam_role" "this" {
   name               = "${lower(var.name)}-role"
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
-  tags               = var.tags
+  tags               = local.tags
 }
 
 resource "aws_iam_role_policy_attachment" "this" {
@@ -48,7 +48,7 @@ resource "aws_iam_role_policy_attachment" "this" {
 resource "aws_iam_instance_profile" "this" {
   name = "${lower(var.name)}-profile"
   role = aws_iam_role.this.name
-  tags = var.tags
+  tags = local.tags
 }
 
 data "aws_iam_policy" "read_only_access" {
@@ -71,6 +71,7 @@ data "aws_iam_policy_document" "read_only_access_assume_role" {
 resource "aws_iam_role" "ro_access" {
   name               = "${lower(var.name)}-ro_access-role"
   assume_role_policy = data.aws_iam_policy_document.read_only_access_assume_role.json
+  tags = local.tags
 }
 
 resource "aws_iam_role_policy_attachment" "ro_access" {
@@ -89,6 +90,7 @@ data "aws_iam_policy_document" "assume_example_readonly_role" {
 resource "aws_iam_policy" "teleport_aws_access" {
   name   = "${var.name}-teleport_aws_access-policy"
   policy = data.aws_iam_policy_document.assume_example_readonly_role.json
+  tags = local.tags
 }
 
 resource "aws_iam_role_policy_attachment" "teleport_aws_access" {

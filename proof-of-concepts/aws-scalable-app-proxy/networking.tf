@@ -7,21 +7,22 @@ resource "aws_vpc" "this" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags = var.tags
+  tags = local.tags
 }
 
 resource "aws_internet_gateway" "this" {
   vpc_id = aws_vpc.this.id
-  tags   = var.tags
+  tags   = local.tags
 }
 
 resource "aws_subnet" "this" {
+  for_each = {for i, az in data.aws_availability_zones.this.names: i+1 => az}
   vpc_id                  = aws_vpc.this.id
-  cidr_block              = cidrsubnet(var.cidr, 8, 1)
-  availability_zone       = data.aws_availability_zones.this.names[0] // Only using single subnet for testing
+  cidr_block              = cidrsubnet(var.cidr, 8, each.key)
+  availability_zone       = each.value
   map_public_ip_on_launch = true
 
-  tags = var.tags
+  tags = local.tags
 }
 
 resource "aws_route_table" "this" {
@@ -30,11 +31,14 @@ resource "aws_route_table" "this" {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.this.id
   }
+
+  tags = local.tags
 }
 
 resource "aws_route_table_association" "this" {
+  for_each = {for i, sb in aws_subnet.this: i => sb}
   route_table_id = aws_route_table.this.id
-  subnet_id      = aws_subnet.this.id
+  subnet_id      = each.value.id
 }
 
 resource "aws_security_group" "this" {
@@ -49,7 +53,7 @@ resource "aws_security_group" "this" {
     to_port     = 0
   }
 
-  tags = var.tags
+  tags = local.tags
 }
 
 resource "aws_vpc_security_group_ingress_rule" "this" {
@@ -61,7 +65,7 @@ resource "aws_vpc_security_group_ingress_rule" "this" {
   from_port         = each.value.from_port
   to_port           = each.value.to_port
 
-  tags = var.tags
+  tags = local.tags
 }
 
 resource "aws_vpc_security_group_egress_rule" "this" {
@@ -75,12 +79,12 @@ resource "aws_vpc_security_group_egress_rule" "this" {
   from_port         = each.value.from_port
   to_port           = each.value.to_port
 
-  tags = var.tags
+  tags = local.tags
 }
 
-resource "aws_network_interface" "this" {
-  subnet_id       = aws_subnet.this.id
-  security_groups = [aws_security_group.this.id]
-
-  tags = var.tags
-}
+# resource "aws_network_interface" "this" {
+#   subnet_id       = aws_subnet.this.id
+#   security_groups = [aws_security_group.this.id]
+#
+#   tags = var.tags
+# }

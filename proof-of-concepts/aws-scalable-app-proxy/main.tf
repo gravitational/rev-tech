@@ -15,6 +15,16 @@ terraform {
   }
 }
 
+locals {
+  tags = merge(var.tags, { Name : var.name })
+}
+
+provider "aws" {
+  default_tags {
+    tags = local.tags
+  }
+}
+
 data "aws_caller_identity" "this" {}
 
 resource "tls_private_key" "this" {

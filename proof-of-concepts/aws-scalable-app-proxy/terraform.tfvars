@@ -5,9 +5,9 @@ cidr = "10.112.0.0/16"
 instance_type = "t3a.micro"
 
 capacity = {
-  max_size = 3
+  max_size = 6
   min_size = 1
-  desired  = 2
+  desired  = 3
 }
 
 firewall_rules = [
@@ -20,21 +20,11 @@ firewall_rules = [
     from_port = 0
     to_port   = 0
   },
-
-  # ====== Ingress =========
-  {
-    ingress   = true
-    proto     = "tcp"
-    action    = "allow"
-    cidr      = "0.0.0.0/0"
-    from_port = 22
-    to_port   = 22
-  },
 ]
 
 ami = {
   discovery_node = {
-    ami   = "ubuntu/images/hvm-ssd/ubuntu-focal-24.04-amd64-server-*"
+    ami   = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
     owner = "099720109477"
   }
 }

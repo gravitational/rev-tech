@@ -8,8 +8,7 @@ source /etc/os-release
 
 apt-get update
 
-apt-get install -y curl gnupg2 ca-certificates apt-transport-https jq awscli
-
+apt-get install -y curl gnupg2 ca-certificates apt-transport-https
 
 install -m 0755 -d /var/lib/teleport/
 
@@ -80,18 +79,18 @@ resource "aws_launch_template" "this" {
   tag_specifications {
     resource_type = "instance"
 
-    tags = var.tags
+    tags = local.tags
   }
 
   tag_specifications {
     resource_type = "volume"
 
-    tags = var.tags
+    tags = local.tags
   }
 
   user_data = base64encode(local.user_data)
 
-  tags = var.tags
+  tags = local.tags
 }
 
 resource "aws_autoscaling_group" "this" {
@@ -99,7 +98,7 @@ resource "aws_autoscaling_group" "this" {
   desired_capacity    = var.capacity.desired
   max_size            = var.capacity.max_size
   min_size            = var.capacity.min_size
-  vpc_zone_identifier = [aws_subnet.this.id]
+  vpc_zone_identifier = [for sb in aws_subnet.this: sb.id]
 
   launch_template {
     id      = aws_launch_template.this.id
@@ -107,7 +106,7 @@ resource "aws_autoscaling_group" "this" {
   }
 
   dynamic "tag" {
-    for_each = { for k, v in merge(var.tags, { Name : var.name }) : k => v }
+    for_each = { for k, v in local.tags : k => v }
     content {
       key                 = tag.key
       value               = tag.value
