@@ -16,10 +16,10 @@ resource "aws_internet_gateway" "this" {
 }
 
 resource "aws_subnet" "this" {
-  for_each = {for i, az in data.aws_availability_zones.this.names: i+1 => az}
+  for_each = {for i, az in data.aws_availability_zones.this.names: az => i}
   vpc_id                  = aws_vpc.this.id
-  cidr_block              = cidrsubnet(var.cidr, 8, each.key)
-  availability_zone       = each.value
+  cidr_block              = cidrsubnet(var.cidr, 3, each.value)
+  availability_zone       = each.key
   map_public_ip_on_launch = true
 
   tags = local.tags

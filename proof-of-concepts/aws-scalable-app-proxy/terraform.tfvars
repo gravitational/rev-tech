@@ -1,6 +1,6 @@
 name = "teleport-demo-aws-proxy"
 
-cidr = "10.112.0.0/16"
+cidr = "10.112.113.0/24"
 
 instance_type = "t3a.micro"
 
