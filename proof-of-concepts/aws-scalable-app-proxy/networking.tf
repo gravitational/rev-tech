@@ -81,10 +81,3 @@ resource "aws_vpc_security_group_egress_rule" "this" {
 
   tags = local.tags
 }
-
-# resource "aws_network_interface" "this" {
-#   subnet_id       = aws_subnet.this.id
-#   security_groups = [aws_security_group.this.id]
-#
-#   tags = var.tags
-# }
