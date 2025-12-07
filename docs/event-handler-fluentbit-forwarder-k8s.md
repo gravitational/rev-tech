@@ -3,7 +3,7 @@
 > [!CAUTION]
 > Please note that this repository was developed for testing environments and should not be used as is in your production environment. It is intended to serve as a reference or example. Use at your own risk; no support or warranty provided.
 
-A production grade deployment of Teleport Event Handler and FluentBit Forwarder with Machine ID integration.
+A deployment guide for Teleport Event Handler with FluentBit Forwarder and MWI for cluster authentication.
 
 Goal is to have the following components work in unison to provide a secure integration with your SEIM solution:
 - Teleport Cluster
