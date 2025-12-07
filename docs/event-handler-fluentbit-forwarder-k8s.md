@@ -295,7 +295,7 @@ Now that we've authentication between Teleport Cluster and Kubernetes Cluster wo
 
 Teleport Event Handler enforces the mutual TLS pattern when communicating with the forwarder. We can generate the required TLS certificates from the `teleport-plugin-event-handler` image or OpenSSL tooling, both cases are documented below.
 
-> Assuming FluentBit forwarder runs as a sidecar of the Event Handler. Refer to the **TLS Subject Verification Issue** below otherwise.
+> Assuming FluentBit forwarder runs as a sidecar of the Event Handler. Refer to the **[TLS Subject Verification Issue](#tls-subject-verification-issue)** below otherwise.
 
 #### Using `teleport-plugin-event-handler` image
 
