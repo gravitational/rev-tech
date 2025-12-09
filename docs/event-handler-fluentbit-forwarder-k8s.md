@@ -23,7 +23,6 @@ sequenceDiagram
   participant siem as SIEM Solution
   
   loop Default every 20 minutes
-%%    destroy tc
     tbot ->> tc: Get identity
   
     destroy tbot
