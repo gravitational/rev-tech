@@ -182,3 +182,6 @@ Example              = server-access-ssh-getting-started
 terraform destroy
 ```
 
+## WARNING
+
+> ℹ️ **State management:** Terraform state is kept locally per user and ignored via `.gitignore`. Do not commit `.tfstate`, `.tfvars`, or `.terraform` directories—each practitioner should manage their own state/backend when running this template.
