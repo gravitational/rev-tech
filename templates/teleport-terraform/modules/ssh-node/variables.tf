@@ -42,3 +42,9 @@ variable "user" {
   description = "Creator tag"
   type        = string
 }
+
+variable "tags" {
+  description = "Additional tags to attach to each instance"
+  type        = map(string)
+  default     = {}
+}

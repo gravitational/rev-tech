@@ -60,7 +60,7 @@ resource "aws_instance" "ssh_node" {
     delete_on_termination = true
   }
 
-  tags = {
+  tags = merge(var.tags, {
     Name = "${local.user}-${var.env}-ssh-${count.index}"
-  }
+  })
 }

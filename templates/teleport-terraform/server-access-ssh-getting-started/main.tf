@@ -13,6 +13,15 @@ terraform {
   }
 }
 
+locals {
+  user_prefix = lower(split("@", var.user)[0])
+  resource_tags = {
+    "teleport.dev/creator" = var.user
+    "tier"                 = var.env
+    "Example"              = "server-access-ssh-getting-started"
+  }
+}
+
 provider "aws" {
   region = var.region # "us-east-2" default in variables.tf
 
@@ -55,6 +64,8 @@ module "network" {
   # Resolves to: templates/teleport-terraform/modules/network
   source = "../modules/network"
 
+  name_prefix        = "${local.user_prefix}-${var.env}"
+  tags               = local.resource_tags
   env                = var.env
   cidr_vpc           = "10.0.0.0/16"
   cidr_subnet        = "10.0.1.0/24" # private
@@ -79,6 +90,7 @@ module "ssh_nodes" {
   team             = var.team
   user             = var.user 
 
+  tags          = local.resource_tags
   agent_count   = var.agent_count # "3" default in variables.tf
   ami_id        = data.aws_ami.linux.id
   instance_type = var.instance_type # "t3.micro" default in variables.tf
