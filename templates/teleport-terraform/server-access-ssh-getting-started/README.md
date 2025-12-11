@@ -48,6 +48,20 @@ This template consumes the shared `network` and `ssh-node` modules
 
 ## Quick Start
 
+0. Confirm auth to AWS and Teleport (recommend using `eval` command)
+
+Running this can confirm aws auth (still need to confirm permissions to create resources)
+```bash
+aws sts get-caller-identity
+```
+
+The built-in `terraform-provider` role can be used with the `eval` command for a one-off auth to a Teleport cluster for a Terraform deployment.
+
+```bash
+tsh login --proxy=example.teleport.sh:443 --auth=sso
+eval $(tctl terraform env)
+```
+
 1. From the template directory 
 
 ```bash
@@ -61,6 +75,7 @@ terraform init
 terraform plan \ 
   -var "user=user@example.com" \
   -var "proxy_address=your-proxy.teleport.sh" \
+  -var "env=dev" \
   -var "team=platform"
 ```
 
