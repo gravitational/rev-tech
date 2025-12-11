@@ -42,6 +42,7 @@ This template consumes the shared `network` and `ssh-node` modules
 - A Teleport cluster (Cloud or Enterprise) with:
   - A valid proxy address (`example.teleport.sh`)
   - A user/role with permissions to see/join nodes matching the labels you deploy
+  - Authentication to the cluster with Terraform (i.e. `eval $(tctl terraform env)`)
 
 ---
 
@@ -60,7 +61,6 @@ terraform init
 terraform plan \ 
   -var "user=user@example.com" \
   -var "proxy_address=your-proxy.teleport.sh" \
-  -var "teleport_version=18.0.0" \
   -var "team=platform"
 ```
 
@@ -99,9 +99,8 @@ tsh ssh ec2-user@dev-ssh-0
 | ------------------ | ------------------------------------------------------------- | ------------ |
 | `user`             | Used for tagging & node name prefix                           | **required** |
 | `proxy_address`    | Teleport proxy hostname (no scheme, no port)                  | **required** |
-| `teleport_version` | Teleport version to install                                   | set by cluster     |
 | `env`              | Label determining access tier (`dev`, `stage`, `prod`)        | `"dev"`      |
-| `team`             | Label determining team ownership (`platform`, `sre`, `app`)   | `"platform"` |
+| `team`             | Label determining team ownership (`platform`, `sre`, `app`)   | **required** |
 | `agent_count`      | Number of SSH nodes to deploy                                 | `3`          |
 | `instance_type`    | EC2 type                                                      | `t3.micro`   |
 | `region`           | AWS region                                                    | `us-east-2`  |

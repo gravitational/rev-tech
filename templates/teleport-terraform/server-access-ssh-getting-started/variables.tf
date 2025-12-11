@@ -33,12 +33,6 @@ variable "team" {
   # default     = "platform"
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install on nodes"
-  type        = string
-  # default     = "18.0.0"
-}
-
 variable "user" {
   description = "Username or identifier for resource tagging"
   type        = string

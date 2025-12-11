@@ -77,7 +77,6 @@ module "ssh_nodes" {
   env              = var.env # "dev" default in variables.tf
   proxy_address    = var.proxy_address
   team             = var.team
-  teleport_version = var.teleport_version
   user             = var.user 
 
   agent_count   = var.agent_count # "3" default in variables.tf
