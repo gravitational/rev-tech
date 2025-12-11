@@ -154,6 +154,10 @@ allow:
   logins: ["ec2-user", "ubuntu"]
 ```
 
+#### Dynamic Labels
+
+[Dynamic labels](https://goteleport.com/docs/zero-trust-access/rbac-get-started/labels/#apply-dynamic-labels-using-commands) are also added to the nodes via commands arguements in `/etc/teleport.yaml`.
+
 ### What This Template Creates (AWS)
 - VPC (`10.0.0.0/16`)
 - Public subnet 
