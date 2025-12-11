@@ -1,6 +1,6 @@
 # Teleport Server Access - SSH Getting Started
 
-This template deploys a minimal AWS environment with Teleport registered SSH nodes. These are suitable for demos, workshops, and customer proof of value. It is based on the official [Teleport Server Access Getting Stated Guide](https://goteleport.com/docs/enroll-resources/server-access/getting-started/) but automates the provisioning end to end.
+This template deploys a minimal AWS environment with Teleport registered SSH nodes. These are suitable for demos, workshops, and customer proof of value. It is based on the official [Teleport Server Access Getting Started Guide](https://goteleport.com/docs/enroll-resources/server-access/getting-started/) but automates the provisioning end to end.
 
 ---
 
@@ -50,7 +50,7 @@ This template consumes the shared `network` and `ssh-node` modules
 
 0. Confirm auth to AWS and Teleport (recommend using `eval` command)
 
-Running this can confirm aws auth (still need to confirm permissions to create resources)
+Running this can confirm AWS auth (user needs to confirm permissions to create resources)
 ```bash
 aws sts get-caller-identity
 ```
@@ -72,7 +72,7 @@ terraform init
 2. Create a plan 
 
 ```bash
-terraform plan \ 
+terraform plan \
   -var "user=user@example.com" \
   -var "proxy_address=your-proxy.teleport.sh" \
   -var "env=dev" \
@@ -82,7 +82,11 @@ terraform plan \
 3. Apply
 
 ```bash
-terraform apply
+terraform apply \
+  -var "user=user@example.com" \
+  -var "proxy_address=your-proxy.teleport.sh" \
+  -var "env=dev" \
+  -var "team=platform"
 ```
 
 After 1-2 minutes nodes will appear
