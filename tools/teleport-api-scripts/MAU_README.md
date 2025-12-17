@@ -32,7 +32,7 @@ Users utilizing just-in-time access and governance features:
 
 ## Prerequisites
 
-- Go 1.19+ installed
+- Go 1.24+ installed
 - Access to a Teleport cluster
 - Valid Teleport credentials (see [Authentication](#authentication) section below)
 - Network connectivity to your Teleport proxy and to gthub.com/golang.org repositories
