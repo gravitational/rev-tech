@@ -119,8 +119,6 @@ fi
 
 echo "Installing Teleport API dependencies for version ${TELEPORT_VERSION} (hash: ${TELEPORT_SHA})"
 go get github.com/gravitational/teleport/api@"${TELEPORT_SHA}"
-go get github.com/gravitational/teleport/api/defaults@"${TELEPORT_SHA}"
-go get github.com/gravitational/teleport/api/types@"${TELEPORT_SHA}"
 go mod tidy
 
 # Run scripts based on flags
