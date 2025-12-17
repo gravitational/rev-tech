@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -17,7 +18,7 @@ import (
 // Configuration Variables - Modify these to customize the script behavior
 var (
 	// Teleport cluster configuration
-	teleportProxyURL = "proxy.example.com:443" // Change to your Teleport proxy URL
+	teleportProxyURL = "proxy.example.com:443" // Default proxy URL
 	useIdentityFile  = false                   // Set to true to use identity file authentication
 	identityFilePath = "/path/to/identity"     // Path to identity file (only used if useIdentityFile = true)
 
@@ -59,6 +60,20 @@ type UserIGUsage struct {
 }
 
 func main() {
+	// Command-line flags
+	proxyFlag := flag.String(
+		"proxy",
+		teleportProxyURL,
+		"Teleport proxy address (e.g. teleport.example.com:443)",
+	)
+
+	flag.Parse()
+
+	teleportProxyURL = *proxyFlag
+	if !strings.Contains(teleportProxyURL, ":") {
+		log.Fatalf("invalid proxy address %q (expected hostname:port)", teleportProxyURL)
+	}
+
 	ctx := context.Background()
 
 	// Build credentials based on configuration
@@ -291,6 +306,7 @@ func writeUserReport(ztaMAU map[string]*UserResourceUsage, igMAU map[string]*Use
 
 		// Generate report header
 		output := fmt.Sprintf("\n[%s] Teleport Active Users Report\n", timestamp)
+		output += fmt.Sprintf("Teleport Proxy URL: %s\n", teleportProxyURL)
 		output += "=================================================\n"
 		output += fmt.Sprintf("Total Zero Trust Access MAU (ZTAMAU): %d\n", len(ztaMAU))
 		output += fmt.Sprintf("Total Identity Governance MAU (IGMAU): %d\n", len(igMAU))
