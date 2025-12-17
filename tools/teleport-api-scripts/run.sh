@@ -2,7 +2,7 @@
 set -e
 
 check_exists() {
-    if ! type "$1" 2>&1 >/dev/null; then echo "Could not find $1, it will need to be available in your PATH"; exit 1; fi
+    if ! type "$1" >/dev/null 2>&1; then echo "Could not find $1, it will need to be available in your PATH"; exit 1; fi
 }
 to_epoch() {
   local iso="$1"
@@ -103,7 +103,7 @@ fi
 
 # check proxy reachability
 URL="https://${PROXY}/v1/webapi/find"
-STATUS=$(curl -o /dev/null -fsSL "${URL}" -w %{http_code})
+STATUS=$(curl -o /dev/null -fsSL "${URL}" -w %\{http_code\})
 if [[ "${STATUS}" != "200" ]]; then
   echo "Could not access proxy using ${URL}, got status ${STATUS}"
   exit 2
@@ -126,10 +126,10 @@ go mod tidy
 # Run scripts based on flags
 if [[ "${RUN_MAU}" -eq 1 ]]; then
   echo "Running MAU script"
-  go run mau.go -proxy "${PROXY}"${IDENTITY_FILE_STANZA}
+  go run mau.go -proxy "${PROXY}""${IDENTITY_FILE_STANZA}"
 fi
 
 if [[ "${RUN_TPR}" -eq 1 ]]; then
   echo "Running TPR script"
-  go run tpr.go -proxy "${PROXY}"${IDENTITY_FILE_STANZA}
+  go run tpr.go -proxy "${PROXY}""${IDENTITY_FILE_STANZA}"
 fi
