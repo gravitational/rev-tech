@@ -35,11 +35,13 @@ Users utilizing just-in-time access and governance features:
 - Go 1.19+ installed
 - Access to a Teleport cluster
 - Valid Teleport credentials (see [Authentication](#authentication) section below)
-- Network connectivity to your Teleport proxy and to gthub.com/Go repositories
+- Network connectivity to your Teleport proxy and to gthub.com/golang.org repositories
 
 ## Installation
 
 1. Clone or download the script
+2. Run `bash ./run.sh -p teleport.example.com:443` to download the correct API version for your cluster
+(replacing `teleport.example.com:443` with your Teleport cluster's proxy address)
 
 ## Customization
 
@@ -57,12 +59,6 @@ daysBack = 60  // Default is 30 days back
 batchSize = 10000  // Increase batch size for better performance. Default is 5000
 ```
 
-**Use identity file authentication:**
-```go
-useIdentityFile = true // Default is false
-identityFilePath = "/home/user/teleport-identity"
-```
-
 ## Authentication
 
 The script automatically handles authentication based on your configuration:
@@ -71,6 +67,10 @@ The script automatically handles authentication based on your configuration:
 Uses your current `tsh` login session - no additional setup required.
 
 **Note**: This method will eventually fail when your credentials expire unless refreshed.
+
+If you have multiple sets of `tsh` credentials locally, you must make sure that `tctl status` outputs
+the correct cluster name before running the script. You can use `tsh login --proxy teleport.example.com:443` to
+"switch" active credentials.
 
 ### Option 2: Identity File (Recommended for remote runs or automation)
 For continuous/automated jobs:
@@ -84,7 +84,7 @@ For continuous/automated jobs:
 
 2. Provide the identity file to the script:
    ```bash
-   ./mau.sh teleport.example.com:443 /path/to/your/identity-file
+   bash ./run.sh -p teleport.example.com:443 -i /path/to/your/identity-file -m
    ```
 
 (for Machine ID, you want the `identity` file in the bot's output directory)
@@ -96,7 +96,8 @@ The script will automatically use the appropriate authentication method based on
 ```bash
 # replace teleport.example.com:443 with your own Teleport proxy URL
 # port 443 will be assumed if you provide no port
-./mau.sh teleport.example.com:443
+# -m runs the MAU script
+bash ./run.sh -p teleport.example.com:443 -m
 ```
 
 The script will:
@@ -226,3 +227,19 @@ version: v7
 - Identity files contain sensitive credentials - store them securely
 - Limit script access to users who need audit log visibility
 - Consider using Teleport RBAC to restrict audit access if needed
+
+### Script arguments
+
+```bash
+Usage: run.sh -p <teleport proxy address> [-i <identity file path>] [-m] [-t]
+
+  -p  Teleport proxy address (required). If no port is specified, :443 is assumed.
+  -i  Optional identity file path.
+  -m  Run MAU script (mau.go)
+  -t  Run TPR script (tpr.gp)
+
+Examples:
+  run.sh -p example.teleport.sh -m
+  run.sh -p example.teleport.sh:443 -i /path/to/identity -t
+  run.sh -p example.teleport.sh -m -t
+```
