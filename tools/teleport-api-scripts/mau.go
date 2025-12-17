@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -30,15 +31,11 @@ var (
 
 	// Performance configuration
 	batchSize = 5000 // Number of events to fetch per batch
-)
 
-// The main function connects to a Teleport cluster and retrieves user activity events
-// within a specified time range. It processes events to track:
-// - Zero Trust Access MAU (ZTAMAU): Users accessing protected resources
-// - Identity Governance MAU (IGMAU): Users using access request/review features
-// - Detailed resource usage breakdown per user
-// Events are fetched in paginated batches to optimize retrieval.
-// All configuration options can be modified in the variables section above.
+	// Output filenames
+	outputFilenameText = "Teleport_Active_Users.txt"
+	outputFilenameJson = "Teleport_Active_Users.json"
+)
 
 // UserResourceUsage tracks Zero Trust Access usage for each user
 type UserResourceUsage struct {
@@ -59,6 +56,55 @@ type UserIGUsage struct {
 	SAMLIDPSessions        int `json:"saml_idp_sessions"`
 }
 
+// UserKindLabel is what we print in the table.
+type UserKindLabel string
+
+const (
+	UserKindHuman UserKindLabel = "Human"
+	UserKindBot   UserKindLabel = "Bot"
+)
+
+// classifyUserKind tries to determine whether an event user is human or bot.
+// It defaults to Human if the field is missing/unknown.
+func classifyUserKind(raw map[string]interface{}) UserKindLabel {
+	v, ok := raw["user_kind"]
+	if !ok || v == nil {
+		return UserKindHuman
+	}
+
+	switch t := v.(type) {
+	case string:
+		s := strings.ToLower(t)
+		// common possibilities: "bot", "human", "USER_KIND_BOT", "USER_KIND_HUMAN", etc.
+		if strings.Contains(s, "bot") {
+			return UserKindBot
+		}
+		if strings.Contains(s, "human") {
+			return UserKindHuman
+		}
+		return UserKindHuman
+	case float64:
+		// If user_kind is an enum encoded as a number, we can't be 100% sure here.
+		// Conventionally: 0=unspecified, 1=human, 2=bot (common pattern).
+		if int(t) == 2 {
+			return UserKindBot
+		}
+		return UserKindHuman
+	default:
+		return UserKindHuman
+	}
+}
+
+// sortedKeys returns the sorted keys of a string-keyed map.
+func sortedKeys[T any](m map[string]T) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 func main() {
 	// Command-line flags
 	proxyFlag := flag.String(
@@ -67,11 +113,38 @@ func main() {
 		"Teleport proxy address (e.g. teleport.example.com:443)",
 	)
 
+	identityFileFlag := flag.String(
+		"identity_file",
+		"",
+		"Path to Teleport identity file (optional - enables use of an identity file instead of ambient tsh credentials)",
+	)
+
+	formatFlag := flag.String(
+		"format",
+		"text",
+		"Output file type - text or json",
+	)
+
 	flag.Parse()
 
 	teleportProxyURL = *proxyFlag
 	if !strings.Contains(teleportProxyURL, ":") {
 		log.Fatalf("invalid proxy address %q (expected hostname:port)", teleportProxyURL)
+	}
+
+	// Output format handling
+	reportFormat = strings.ToLower(strings.TrimSpace(*formatFlag))
+	if reportFormat != "text" && reportFormat != "json" {
+		log.Fatalf("invalid -format %q (expected text or json)", reportFormat)
+	}
+
+	if *identityFileFlag != "" {
+		useIdentityFile = true
+		identityFilePath = *identityFileFlag
+		// Validation
+		if _, err := os.Stat(identityFilePath); err != nil {
+			log.Fatalf("identity file not accessible: %v", err)
+		}
 	}
 
 	ctx := context.Background()
@@ -103,19 +176,23 @@ func main() {
 
 	userResourceUsage := make(map[string]*UserResourceUsage)
 	userIGUsage := make(map[string]*UserIGUsage)
+
+	// Track per-user kind (Human/Bot) based on events
+	userKind := make(map[string]UserKindLabel)
+
 	totalLogins := 0
 	nextKey := ""
 
-	// Event types to track for both ZTAMAU and IGMAU
+	// Event types to track for both ZTA MAU and IG MAU
 	eventTypes := []string{
-		// ZTAMAU events (resource access)
+		// ZTA MAU events (resource access)
 		"user.login",
 		"session.start",
 		"db.session.start",
 		"app.session.start",
 		"windows.desktop.session.start",
 		"kube.request",
-		// IGMAU events (identity governance)
+		// IG MAU events (identity governance)
 		"access_request.create",
 		"access_request.review",
 		"access_list.member.create",
@@ -126,7 +203,16 @@ func main() {
 
 	for {
 		log.Println("Fetching batch of events...")
-		rawEvents, newNextKey, err := clt.SearchEvents(ctx, fromUTC, toUTC, defaults.Namespace, eventTypes, batchSize, types.EventOrderDescending, nextKey)
+		rawEvents, newNextKey, err := clt.SearchEvents(
+			ctx,
+			fromUTC,
+			toUTC,
+			defaults.Namespace,
+			eventTypes,
+			batchSize,
+			types.EventOrderDescending,
+			nextKey,
+		)
 		if err != nil {
 			log.Fatalf("Failed to fetch events: %v", err)
 		}
@@ -148,8 +234,16 @@ func main() {
 			}
 
 			user, ok := raw["user"].(string)
-			if !ok {
+			if !ok || user == "" {
 				continue
+			}
+
+			// Track kind (prefer Bot if we ever see Bot for that username)
+			kind := classifyUserKind(raw)
+			if existing, ok := userKind[user]; !ok {
+				userKind[user] = kind
+			} else if existing != UserKindBot && kind == UserKindBot {
+				userKind[user] = UserKindBot
 			}
 
 			eventType, ok := raw["event"].(string)
@@ -157,7 +251,7 @@ func main() {
 				continue
 			}
 
-			// Process ZTAMAU events (resource access)
+			// Process ZTA MAU events (resource access)
 			switch eventType {
 			case "user.login":
 				if userResourceUsage[user] == nil {
@@ -199,7 +293,7 @@ func main() {
 				userResourceUsage[user].Kubernetes++
 			}
 
-			// Process IGMAU events (identity governance)
+			// Process IG MAU events (identity governance)
 			switch eventType {
 			case "access_request.create":
 				if userIGUsage[user] == nil {
@@ -240,41 +334,76 @@ func main() {
 		nextKey = newNextKey
 	}
 
-	// Filter ZTAMAU users who have actually used resources (not just logged in)
-	ztaMAU := make(map[string]*UserResourceUsage)
+	// Filter ZTA MAU users who have actually used resources (not just logged in)
+	ztaMAUAll := make(map[string]*UserResourceUsage)
 	for user, usage := range userResourceUsage {
 		if usage.SSH > 0 || usage.Kubernetes > 0 || usage.Database > 0 || usage.Application > 0 || usage.Desktop > 0 {
-			ztaMAU[user] = usage
+			ztaMAUAll[user] = usage
 		}
 	}
 
-	// Filter IGMAU users who have used identity governance features
-	igMAU := make(map[string]*UserIGUsage)
+	// Filter IG MAU users who have used identity governance features
+	igMAUAll := make(map[string]*UserIGUsage)
 	for user, usage := range userIGUsage {
 		if usage.AccessRequestsCreated > 0 || usage.AccessRequestsReviewed > 0 ||
 			usage.AccessListsMemberships > 0 || usage.AccessListsReviewed > 0 ||
 			usage.SAMLIDPSessions > 0 {
-			igMAU[user] = usage
+			igMAUAll[user] = usage
 		}
 	}
 
+	// Compute totals:
+	// - ZTA MAU (humans only)
+	// - IG MAU (humans only)
+	// - MWI (bots only) = unique bot users across either ZTA/IG activity
+	ztaHumanCount := 0
+	igHumanCount := 0
+	botSet := make(map[string]struct{})
+
+	for user := range ztaMAUAll {
+		if userKind[user] == UserKindBot {
+			botSet[user] = struct{}{}
+		} else {
+			ztaHumanCount++
+		}
+	}
+	for user := range igMAUAll {
+		if userKind[user] == UserKindBot {
+			botSet[user] = struct{}{}
+		} else {
+			igHumanCount++
+		}
+	}
+	mwiBotCount := len(botSet)
+
 	// Write report to file based on selected format
-	writeUserReport(ztaMAU, igMAU, totalLogins)
+	writeUserReport(ztaMAUAll, igMAUAll, userKind, totalLogins, ztaHumanCount, igHumanCount, mwiBotCount)
 }
 
 // Writes the user activity report to a file in either JSON or text format
-func writeUserReport(ztaMAU map[string]*UserResourceUsage, igMAU map[string]*UserIGUsage, totalLogins int) {
+func writeUserReport(
+	ztaMAU map[string]*UserResourceUsage,
+	igMAU map[string]*UserIGUsage,
+	userKind map[string]UserKindLabel,
+	totalLogins int,
+	ztaHumanCount int,
+	igHumanCount int,
+	mwiBotCount int,
+) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 
 	if reportFormat == "json" {
 		// JSON Output
 		reportData := map[string]interface{}{
+			"teleport_proxy_url":      teleportProxyURL,
 			"timestamp":               timestamp,
-			"total_ztamau":            len(ztaMAU),
-			"total_igmau":             len(igMAU),
+			"total_ztamau_users":      ztaHumanCount,
+			"total_igmau_users":       igHumanCount,
+			"total_mwi_bots":          mwiBotCount,
 			"total_successful_logins": totalLogins,
-			"zta_resource_usage":      ztaMAU,
-			"ig_feature_usage":        igMAU,
+			"user_kind":               userKind,
+			"zta_resource_usage_all":  ztaMAU,
+			"ig_feature_usage_all":    igMAU,
 		}
 
 		jsonData, err := json.MarshalIndent(reportData, "", "  ")
@@ -283,7 +412,7 @@ func writeUserReport(ztaMAU map[string]*UserResourceUsage, igMAU map[string]*Use
 		}
 
 		// Write JSON report to file
-		jsonFile, err := os.OpenFile("Teleport_Active_Users.json", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		jsonFile, err := os.OpenFile(outputFilenameJson, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
 			log.Fatalf("Failed to open JSON report file: %v", err)
 		}
@@ -294,11 +423,11 @@ func writeUserReport(ztaMAU map[string]*UserResourceUsage, igMAU map[string]*Use
 			log.Fatalf("Failed to write JSON report: %v", err)
 		}
 
-		log.Printf("[INFO] JSON report successfully written at %s", timestamp)
+		log.Printf("[INFO] JSON report successfully written to %s at %s", outputFilenameJson, timestamp)
 
 	} else {
 		// Default Text Output
-		file, err := os.OpenFile("Teleport_Active_Users.txt", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		file, err := os.OpenFile(outputFilenameText, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			log.Fatalf("Failed to open report file: %v", err)
 		}
@@ -308,17 +437,18 @@ func writeUserReport(ztaMAU map[string]*UserResourceUsage, igMAU map[string]*Use
 		output := fmt.Sprintf("\n[%s] Teleport Active Users Report\n", timestamp)
 		output += fmt.Sprintf("Teleport Proxy URL: %s\n", teleportProxyURL)
 		output += "=================================================\n"
-		output += fmt.Sprintf("Total Zero Trust Access MAU (ZTAMAU): %d\n", len(ztaMAU))
-		output += fmt.Sprintf("Total Identity Governance MAU (IGMAU): %d\n", len(igMAU))
+		output += fmt.Sprintf("Total Zero Trust Access MAU (ZTA MAU): %d\n", ztaHumanCount)
+		output += fmt.Sprintf("Total Identity Governance MAU (IG MAU): %d\n", igHumanCount)
+		output += fmt.Sprintf("Total Machine and Workload Identity Bot users (MWI): %d\n", mwiBotCount)
 		output += fmt.Sprintf("Total Successful Logins: %d\n", totalLogins)
 		output += "=================================================\n\n"
 
-		// ZTAMAU Report Section
+		// ZTA MAU Report Section (includes both humans & bots)
 		if len(ztaMAU) > 0 {
-			output += "ZERO TRUST ACCESS (ZTAMAU) - Resource Usage\n"
+			output += "ZERO TRUST ACCESS (ZTA MAU) - Resource Usage\n"
 			output += "-------------------------------------------------\n"
 
-			// Calculate max username length for ZTAMAU
+			// Calculate max username length for ZTA MAU
 			maxUserLen := 4
 			for user := range ztaMAU {
 				if len(user) > maxUserLen {
@@ -327,26 +457,38 @@ func writeUserReport(ztaMAU map[string]*UserResourceUsage, igMAU map[string]*Use
 			}
 
 			userColWidth := maxUserLen + 2
-			output += fmt.Sprintf("%-*s  %-8s  %-8s  %-8s  %-8s  %-8s  %-8s\n",
-				userColWidth, "User", "Logins", "SSH", "Kube", "DB", "App", "Desktop")
+			kindColWidth := 6 // Needs to fit "Human" or "Bot"
 
-			separatorLen := userColWidth + 2 + 8*6 + 2*6
+			output += fmt.Sprintf("%-*s  %-*s  %-8s  %-8s  %-8s  %-8s  %-8s  %-8s\n",
+				userColWidth, "User",
+				kindColWidth, "Kind",
+				"Logins", "SSH", "Kube", "DB", "App", "Desktop")
+
+			separatorLen := userColWidth + 2 + kindColWidth + 2 + 8*6 + 2*6
 			output += fmt.Sprintf("%s\n", strings.Repeat("-", separatorLen))
 
-			for user, usage := range ztaMAU {
-				output += fmt.Sprintf("%-*s  %-8d  %-8d  %-8d  %-8d  %-8d  %-8d\n",
-					userColWidth, user, usage.LoginCount, usage.SSH, usage.Kubernetes,
+			for _, user := range sortedKeys(ztaMAU) {
+				usage := ztaMAU[user]
+				kind := userKind[user]
+				if kind == "" {
+					kind = UserKindHuman
+				}
+
+				output += fmt.Sprintf("%-*s  %-*s  %-8d  %-8d  %-8d  %-8d  %-8d  %-8d\n",
+					userColWidth, user,
+					kindColWidth, kind,
+					usage.LoginCount, usage.SSH, usage.Kubernetes,
 					usage.Database, usage.Application, usage.Desktop)
 			}
 			output += "\n"
 		}
 
-		// IGMAU Report Section
+		// IG MAU Report Section
 		if len(igMAU) > 0 {
-			output += "IDENTITY GOVERNANCE (IGMAU) - Feature Usage\n"
+			output += "IDENTITY GOVERNANCE (IG MAU) - Feature Usage\n"
 			output += "-------------------------------------------------\n"
 
-			// Calculate max username length for IGMAU
+			// Calculate max username length for IG MAU
 			maxUserLen := 4
 			for user := range igMAU {
 				if len(user) > maxUserLen {
@@ -361,7 +503,8 @@ func writeUserReport(ztaMAU map[string]*UserResourceUsage, igMAU map[string]*Use
 			separatorLen := userColWidth + 2 + 12*5 + 2*5
 			output += fmt.Sprintf("%s\n", strings.Repeat("-", separatorLen))
 
-			for user, usage := range igMAU {
+			for _, user := range sortedKeys(igMAU) {
+				usage := igMAU[user]
 				output += fmt.Sprintf("%-*s  %-12d  %-12d  %-12d  %-12d  %-12d\n",
 					userColWidth, user, usage.AccessRequestsCreated, usage.AccessRequestsReviewed,
 					usage.AccessListsMemberships, usage.AccessListsReviewed, usage.SAMLIDPSessions)
@@ -373,6 +516,6 @@ func writeUserReport(ztaMAU map[string]*UserResourceUsage, igMAU map[string]*Use
 			log.Fatalf("Failed to write to report file: %v", err)
 		}
 
-		log.Printf("[INFO] Text report successfully written at %s", timestamp)
+		log.Printf("[INFO] Text report successfully written to %s at %s", outputFilenameText, timestamp)
 	}
 }
