@@ -1,6 +1,6 @@
 module teleport-mau
 
-go 1.25.5
+go 1.24.11
 
 require (
 	github.com/gravitational/teleport/api v0.0.0-20251204191018-a7f136a5b728

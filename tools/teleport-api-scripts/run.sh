@@ -87,9 +87,9 @@ if [[ -n "${IDENTITY_FILE}" ]]; then
   fi
   IDENTITY_FILE_STANZA=" -identity_file ${IDENTITY_FILE}"
 else
-  VALID_UNTIL=$(tsh status --format json 2>/dev/null | jq -r --arg url "https://${PROXY}" '([.active] + .profiles | map(select(.profile_url == $url)) | first | .valid_until)')
+  VALID_UNTIL=$(tsh status --format json 2>/dev/null | jq -r --arg url "https://${PROXY}" '([.active] | map(select(.profile_url == $url)) | first | .valid_until)')
   if [[ "${VALID_UNTIL}" == "" ]] || [[ "${VALID_UNTIL}" == "null" ]]; then
-    echo "It doesn't look like you have an active tsh profile for ${PROXY}."
+    echo "It doesn't look like you have a currently active tsh profile for ${PROXY}."
     echo "You should login to Teleport with 'tsh login --proxy ${PROXY}' first and then re-run the script."
     echo "Alternatively, you can provide an identity file on the command line with -i /path/to/identity."
     exit 5

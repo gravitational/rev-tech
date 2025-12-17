@@ -195,7 +195,7 @@ user@goteleport.com      0             0             0             0            
 ### Common Issues
 
 1. **Connection Failed**: Verify your proxy URL and network connectivity
-2. **Authentication Failed**: Check your `tsh` login status or identity file path
+2. **Authentication Failed**: Check your `tsh` login status or identity file path, your credentials must be the currently active set
 3. **No Events Found**: Verify the time range and that users have been active
 4. **Permission Denied**: Ensure your Teleport user has audit log read permissions
 
