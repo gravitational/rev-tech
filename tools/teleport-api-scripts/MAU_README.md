@@ -231,12 +231,14 @@ version: v7
 ### Script arguments
 
 ```bash
-Usage: run.sh -p <teleport proxy address> [-i <identity file path>] [-m] [-t]
+Usage: run.sh -p <teleport proxy address> [-i <identity file path>] [-m] [-t] [-v] [-x]
 
   -p  Teleport proxy address (required). If no port is specified, :443 is assumed.
   -i  Optional identity file path.
   -m  Run MAU script (mau.go)
-  -t  Run TPR script (tpr.gp)
+  -t  Run TPR script (tpr.go)
+  -v  Output version and exit
+  -x  Enable debugging information for 'go get'
 
 Examples:
   run.sh -p example.teleport.sh -m

@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+version() {
+    echo "Teleport MAU/TPR scripts version 0.1"
+}
 check_exists() {
     if ! type "$1" >/dev/null 2>&1; then echo "Could not find $1, it will need to be available in your PATH"; exit 1; fi
 }
@@ -19,12 +22,14 @@ to_epoch() {
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") -p <teleport proxy address> [-i <identity file path>] [-m] [-t]
+Usage: $(basename "$0") -p <teleport proxy address> [-i <identity file path>] [-m] [-t] [-v] [-x]
 
   -p  Teleport proxy address (required). If no port is specified, :443 is assumed.
   -i  Optional identity file path.
   -m  Run MAU script (mau.go)
-  -t  Run TPR script (tpr.gp)
+  -t  Run TPR script (tpr.go)
+  -v  Output version and exit
+  -x  Enable debugging information for 'go get'
 
 Examples:
   $(basename "$0") -p example.teleport.sh -m
@@ -38,13 +43,17 @@ PROXY=""
 IDENTITY_FILE=""
 RUN_MAU=0
 RUN_TPR=0
+SHOW_VERSION=0
+GO_GET_DEBUG=0
 
-while getopts ":p:i:mt" opt; do
+while getopts ":p:i:mtvx" opt; do
   case "$opt" in
     p) PROXY="$OPTARG" ;;
     i) IDENTITY_FILE="$OPTARG" ;;
     m) RUN_MAU=1 ;;
     t) RUN_TPR=1 ;;
+    v) SHOW_VERSION=1 ;;
+    x) GO_GET_DEBUG=1 ;;
     \?)
       echo "Unknown option: -$OPTARG"
       usage
@@ -58,6 +67,11 @@ while getopts ":p:i:mt" opt; do
   esac
 done
 shift $((OPTIND - 1))
+
+if [[ "${SHOW_VERSION}" -eq 1 ]]; then
+  version
+  exit 0
+fi
 
 # dependencies
 check_exists curl
@@ -76,6 +90,14 @@ fi
 # add default port 443 if not specified
 if [[ "${PROXY}" != *":"* ]]; then
   PROXY="${PROXY}:443"
+fi
+
+# check proxy reachability
+URL="https://${PROXY}/v1/webapi/find"
+STATUS=$(curl -o /dev/null -fsSL "${URL}" -w %\{http_code\})
+if [[ "${STATUS}" != "200" ]]; then
+  echo "Could not access proxy using ${URL}, got status ${STATUS}"
+  exit 2
 fi
 
 # handle identity file
@@ -101,14 +123,6 @@ else
   fi
 fi
 
-# check proxy reachability
-URL="https://${PROXY}/v1/webapi/find"
-STATUS=$(curl -o /dev/null -fsSL "${URL}" -w %\{http_code\})
-if [[ "${STATUS}" != "200" ]]; then
-  echo "Could not access proxy using ${URL}, got status ${STATUS}"
-  exit 2
-fi
-
 # get API version matching server verson
 TELEPORT_VERSION=$(curl -fsSL "${URL}" | jq -r .server_version)
 TELEPORT_SHA=$(git ls-remote https://github.com/gravitational/teleport "refs/tags/v${TELEPORT_VERSION}" | awk '{print $1}')
@@ -118,7 +132,11 @@ if [[ "${TELEPORT_SHA}" == "" ]]; then
 fi
 
 echo "Installing Teleport API dependencies for version ${TELEPORT_VERSION} (hash: ${TELEPORT_SHA})"
-go get github.com/gravitational/teleport/api@"${TELEPORT_SHA}"
+GO_GET="go get"
+if [[ "${GO_GET_DEBUG}" -eq 1 ]]; then
+    GO_GET="go get -x"
+fi
+${GO_GET} github.com/gravitational/teleport/api@"${TELEPORT_SHA}"
 go mod tidy
 
 # Run scripts based on flags
