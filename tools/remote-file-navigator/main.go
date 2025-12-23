@@ -97,6 +97,7 @@ type FileBrowser struct {
 	clearSettingsBtn   *widget.Button
 	deleteSettingsBtn  *widget.Button
 	savedSettingsSelect *widget.Select
+	teleportHelpBtn     *widget.Button
 
 	mainWindow fyne.Window
 }
@@ -528,12 +529,118 @@ func (fb *FileBrowser) initializeSSHControls() {
 	fb.savedSettingsSelect.PlaceHolder = "Saved connections..."
 	fb.refreshSavedSettingsDropdown()
 
+	fb.teleportHelpBtn = widget.NewButtonWithIcon("Teleport Setup", theme.HelpIcon(), fb.showTeleportHelp)
+
 	fb.hostEntry.OnChanged = func(text string) {
 		if fb.useConfigCheck.Checked && text != "" {
 			fb.previewSSHConfig(text)
 		}
 	}
 }
+
+func (fb *FileBrowser) showTeleportHelp() {
+	helpText := `Connecting to Teleport Protected Servers
+
+To connect to servers protected by Teleport through this SSH client:
+
+1. Configure SSH for Teleport
+   Run this command to get the SSH configuration:
+   
+   tsh config
+   
+   Add the output to your SSH config file (~/.ssh/config).
+
+2. List Available Servers
+   Run this command to see your accessible servers:
+   
+   tsh ls
+
+3. Host Name Format
+   When connecting, use the full host name format:
+   
+   <nodename>.<cluster>
+   
+   Example:
+   If your node name is "myhost" and your cluster is 
+   "example.teleport.sh", enter:
+   
+   myhost.example.teleport.sh
+
+4. Login First
+   Make sure you're logged in to Teleport:
+   
+   tsh login --proxy=<your-proxy>
+
+Tips:
+- The "Use SSH config" checkbox should be enabled
+- Your Teleport proxy will handle authentication
+- Use tsh status to check your login status`
+
+	content := widget.NewRichTextFromMarkdown(`## Connecting to Teleport Protected Servers
+
+To connect to servers protected by Teleport through this SSH client:
+
+### 1. Configure SSH for Teleport
+
+Run this command to get the SSH configuration:
+
+` + "```" + `
+tsh config
+` + "```" + `
+
+Add the output to your SSH config file (~/.ssh/config).
+
+### 2. List Available Servers
+
+Run this command to see your accessible servers:
+
+` + "```" + `
+tsh ls
+` + "```" + `
+
+### 3. Host Name Format
+
+When connecting, use the full host name format:
+
+` + "```" + `
+<nodename>.<cluster>
+` + "```" + `
+
+**Example:**
+If your node name is ` + "`myhost`" + ` and your cluster is ` + "`example.teleport.sh`" + `, enter:
+
+` + "```" + `
+myhost.example.teleport.sh
+` + "```" + `
+
+### 4. Login First
+
+Make sure you're logged in to Teleport:
+
+` + "```" + `
+tsh login --proxy=<your-proxy>
+` + "```" + `
+
+### Tips
+- The "Use SSH config" checkbox should be enabled
+- Your Teleport proxy will handle authentication
+- Use ` + "`tsh status`" + ` to check your login status`)
+
+	scroll := container.NewVScroll(content)
+	scroll.SetMinSize(fyne.NewSize(500, 400))
+
+	copyBtn := widget.NewButtonWithIcon("Copy Instructions", theme.ContentCopyIcon(), func() {
+		fb.mainWindow.Clipboard().SetContent(helpText)
+		fb.remoteStatusLabel.SetText("✅ Teleport instructions copied to clipboard")
+	})
+
+	dialogContent := container.NewBorder(nil, copyBtn, nil, nil, scroll)
+
+	d := dialog.NewCustom("Teleport Setup Help", "Close", dialogContent, fb.mainWindow)
+	d.Resize(fyne.NewSize(550, 500))
+	d.Show()
+}
+
 
 func (fb *FileBrowser) getSettingsFilePath() string {
 	homeDir, err := os.UserHomeDir()
@@ -2670,6 +2777,8 @@ func (fb *FileBrowser) createRemotePanel() fyne.CanvasObject {
 			keyContainer,
 			fb.connectButton,
 			fb.terminalBtn,
+                	widget.NewSeparator(),
+                	fb.teleportHelpBtn,
 		),
 	)
 
