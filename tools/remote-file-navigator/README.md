@@ -18,9 +18,9 @@ It is compatible with Teleport with the `ssh_config` configuration.
 
 ## Supported Environments
 
-  This should fully run in Linux and MacOS environments. The Windows
-  execution does not yet support the `ssh_config` loading so Teleport connections
-  will not work yet.
+  This should fully run in Linux and MacOS environments. Windows
+  could have some compatiblity issues and there are tools such
+  as [WinSCP](https://goteleport.com/docs/connect-your-client/third-party/putty-winscp/) are probably better clients.
 
 ## Building
 
