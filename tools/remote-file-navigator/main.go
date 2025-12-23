@@ -56,6 +56,11 @@ type FileBrowser struct {
 	statusLabel    *widget.Label
 	treeData       map[string][]string
 	selectedFiles  []string
+	localSortColumn string
+	localSortAsc    bool
+	localNameBtn    *widget.Button
+	localSizeBtn    *widget.Button
+	localDateBtn    *widget.Button
 
 	// Remote SSH browser
 	sshConn             *SSHConnection
@@ -71,6 +76,11 @@ type FileBrowser struct {
 	selectedRemoteFiles []string
 	scpDownloadBtn      *widget.Button
 	deleteRemoteBtn     *widget.Button
+	remoteSortColumn    string
+	remoteSortAsc       bool
+	remoteNameBtn       *widget.Button
+	remoteSizeBtn       *widget.Button
+	remoteDateBtn       *widget.Button
 
 	// SSH connection controls
 	hostEntry     *widget.Entry
@@ -106,7 +116,7 @@ type SSHSettingsStore struct {
 
 func main() {
 	myApp := app.New()
-	myWindow := myApp.NewWindow("Remote System File Browser")
+	myWindow := myApp.NewWindow("Go File Browser with SSH")
 	myWindow.Resize(fyne.NewSize(1200, 900))
 
 	browser := NewFileBrowser(myWindow)
@@ -144,6 +154,10 @@ func NewFileBrowser(window fyne.Window) *FileBrowser {
 		mainWindow:          window,
 		selectedFiles:       make([]string, 0),
 		selectedRemoteFiles: make([]string, 0),
+		localSortColumn:     "name",
+		localSortAsc:        true,
+		remoteSortColumn:    "name",
+		remoteSortAsc:       true,
 	}
 	
 	browser.initializeLocalBrowser()
@@ -202,8 +216,16 @@ func (fb *FileBrowser) initializeLocalBrowser() {
 		func() int { return len(fb.files) },
 		func() fyne.CanvasObject { 
 			check := widget.NewCheck("", nil)
-			label := widget.NewLabel("Template File")
-			return container.NewHBox(check, label)
+			nameLabel := widget.NewLabel("Template File Name")
+			sizeLabel := widget.NewLabel("999.9 MB")
+			dateLabel := widget.NewLabel("2024-01-01 00:00")
+			sizeLabel.Alignment = fyne.TextAlignTrailing
+			return container.NewHBox(
+				check,
+				container.NewGridWrap(fyne.NewSize(250, 20), nameLabel),
+				container.NewGridWrap(fyne.NewSize(80, 20), sizeLabel),
+				container.NewGridWrap(fyne.NewSize(120, 20), dateLabel),
+			)
 		},
 		func(id widget.ListItemID, item fyne.CanvasObject) {
 			if id >= len(fb.files) {
@@ -213,24 +235,35 @@ func (fb *FileBrowser) initializeLocalBrowser() {
 			entry := fb.files[id]
 			box := item.(*fyne.Container)
 			check := box.Objects[0].(*widget.Check)
-			label := box.Objects[1].(*widget.Label)
+			nameContainer := box.Objects[1].(*fyne.Container)
+			sizeContainer := box.Objects[2].(*fyne.Container)
+			dateContainer := box.Objects[3].(*fyne.Container)
+			nameLabel := nameContainer.Objects[0].(*widget.Label)
+			sizeLabel := sizeContainer.Objects[0].(*widget.Label)
+			dateLabel := dateContainer.Objects[0].(*widget.Label)
 			
 			var icon string
 			if entry.IsDir() {
-				icon = "📁"
+				icon = "📁 "
 			} else {
-				icon = "📄"
+				icon = "📄 "
 			}
 			
 			info, _ := entry.Info()
 			var sizeStr string
-			if entry.IsDir() {
-				sizeStr = "<DIR>"
-			} else {
-				sizeStr = formatFileSize(info.Size())
+			var dateStr string
+			if info != nil {
+				if entry.IsDir() {
+					sizeStr = "<DIR>"
+				} else {
+					sizeStr = formatFileSize(info.Size())
+				}
+				dateStr = info.ModTime().Format("2006-01-02 15:04")
 			}
 			
-			label.SetText(fmt.Sprintf("%s %-45s %12s", icon, entry.Name(), sizeStr))
+			nameLabel.SetText(icon + entry.Name())
+			sizeLabel.SetText(sizeStr)
+			dateLabel.SetText(dateStr)
 			
 			// Handle checkbox for file selection
 			filePath := filepath.Join(fb.currentPath, entry.Name())
@@ -285,6 +318,11 @@ func (fb *FileBrowser) initializeLocalBrowser() {
 	// Delete Local button
 	fb.deleteLocalBtn = widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), fb.confirmDeleteLocalFiles)
 	fb.deleteLocalBtn.Disable() // Initially disabled
+
+	// Sort buttons for local files
+	fb.localNameBtn = widget.NewButton("Name ▲", func() { fb.sortLocalFiles("name") })
+	fb.localSizeBtn = widget.NewButton("Size", func() { fb.sortLocalFiles("size") })
+	fb.localDateBtn = widget.NewButton("Date", func() { fb.sortLocalFiles("date") })
 }
 
 func (fb *FileBrowser) initializeRemoteBrowser() {
@@ -334,8 +372,16 @@ func (fb *FileBrowser) initializeRemoteBrowser() {
 		func() int { return len(fb.remoteFiles) },
 		func() fyne.CanvasObject { 
 			check := widget.NewCheck("", nil)
-			label := widget.NewLabel("Template Remote File")
-			return container.NewHBox(check, label)
+			nameLabel := widget.NewLabel("Template Remote File Name")
+			sizeLabel := widget.NewLabel("999.9 MB")
+			dateLabel := widget.NewLabel("2024-01-01 00:00")
+			sizeLabel.Alignment = fyne.TextAlignTrailing
+			return container.NewHBox(
+				check,
+				container.NewGridWrap(fyne.NewSize(250, 20), nameLabel),
+				container.NewGridWrap(fyne.NewSize(80, 20), sizeLabel),
+				container.NewGridWrap(fyne.NewSize(120, 20), dateLabel),
+			)
 		},
 		func(id widget.ListItemID, item fyne.CanvasObject) {
 			if id >= len(fb.remoteFiles) {
@@ -345,21 +391,26 @@ func (fb *FileBrowser) initializeRemoteBrowser() {
 			file := fb.remoteFiles[id]
 			box := item.(*fyne.Container)
 			check := box.Objects[0].(*widget.Check)
-			label := box.Objects[1].(*widget.Label)
+			nameContainer := box.Objects[1].(*fyne.Container)
+			sizeContainer := box.Objects[2].(*fyne.Container)
+			dateContainer := box.Objects[3].(*fyne.Container)
+			nameLabel := nameContainer.Objects[0].(*widget.Label)
+			sizeLabel := sizeContainer.Objects[0].(*widget.Label)
+			dateLabel := dateContainer.Objects[0].(*widget.Label)
 			
 			var icon string
-			var typeInfo string
+			var sizeStr string
 			if file.IsDir {
-				icon = "📁"
-				typeInfo = "<DIR>"
+				icon = "📁 "
+				sizeStr = "<DIR>"
 			} else {
-				icon = "📄"
-				typeInfo = formatFileSize(file.Size)
+				icon = "📄 "
+				sizeStr = formatFileSize(file.Size)
 			}
 			
-			modTime := file.ModTime.Format("2006-01-02 15:04")
-			label.SetText(fmt.Sprintf("%s %-35s %10s %s", 
-				icon, file.Name, typeInfo, modTime))
+			nameLabel.SetText(icon + file.Name)
+			sizeLabel.SetText(sizeStr)
+			dateLabel.SetText(file.ModTime.Format("2006-01-02 15:04"))
 			
 			// Handle checkbox for remote file selection
 			var filePath string
@@ -431,6 +482,11 @@ func (fb *FileBrowser) initializeRemoteBrowser() {
 	// Delete Remote button
 	fb.deleteRemoteBtn = widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), fb.confirmDeleteRemoteFiles)
 	fb.deleteRemoteBtn.Disable() // Initially disabled
+
+	// Sort buttons for remote files
+	fb.remoteNameBtn = widget.NewButton("Name ▲", func() { fb.sortRemoteFiles("name") })
+	fb.remoteSizeBtn = widget.NewButton("Size", func() { fb.sortRemoteFiles("size") })
+	fb.remoteDateBtn = widget.NewButton("Date", func() { fb.sortRemoteFiles("date") })
 }
 
 func (fb *FileBrowser) initializeSSHControls() {
@@ -753,6 +809,145 @@ func (fb *FileBrowser) deleteSSHSettingsFile() {
 				fb.remoteStatusLabel.SetText("✅ Saved settings deleted")
 			}
 		}, fb.mainWindow)
+}
+
+func (fb *FileBrowser) updateLocalSortButtons() {
+	// Reset all buttons
+	fb.localNameBtn.SetText("Name")
+	fb.localSizeBtn.SetText("Size")
+	fb.localDateBtn.SetText("Date")
+	
+	// Set the active sort indicator
+	arrow := "▲"
+	if !fb.localSortAsc {
+		arrow = "▼"
+	}
+	
+	switch fb.localSortColumn {
+	case "name":
+		fb.localNameBtn.SetText("Name " + arrow)
+	case "size":
+		fb.localSizeBtn.SetText("Size " + arrow)
+	case "date":
+		fb.localDateBtn.SetText("Date " + arrow)
+	}
+}
+
+func (fb *FileBrowser) sortLocalFiles(column string) {
+	if fb.localSortColumn == column {
+		fb.localSortAsc = !fb.localSortAsc
+	} else {
+		fb.localSortColumn = column
+		fb.localSortAsc = true
+	}
+	
+	fb.updateLocalSortButtons()
+	fb.applySortToLocalFiles()
+	fb.fileList.Refresh()
+}
+
+func (fb *FileBrowser) applySortToLocalFiles() {
+	sort.Slice(fb.files, func(i, j int) bool {
+		iInfo, _ := fb.files[i].Info()
+		jInfo, _ := fb.files[j].Info()
+		
+		// Directories always come first
+		if fb.files[i].IsDir() && !fb.files[j].IsDir() {
+			return true
+		}
+		if !fb.files[i].IsDir() && fb.files[j].IsDir() {
+			return false
+		}
+		
+		var less bool
+		switch fb.localSortColumn {
+		case "name":
+			less = strings.ToLower(fb.files[i].Name()) < strings.ToLower(fb.files[j].Name())
+		case "size":
+			if iInfo != nil && jInfo != nil {
+				less = iInfo.Size() < jInfo.Size()
+			} else {
+				less = strings.ToLower(fb.files[i].Name()) < strings.ToLower(fb.files[j].Name())
+			}
+		case "date":
+			if iInfo != nil && jInfo != nil {
+				less = iInfo.ModTime().Before(jInfo.ModTime())
+			} else {
+				less = strings.ToLower(fb.files[i].Name()) < strings.ToLower(fb.files[j].Name())
+			}
+		default:
+			less = strings.ToLower(fb.files[i].Name()) < strings.ToLower(fb.files[j].Name())
+		}
+		
+		if fb.localSortAsc {
+			return less
+		}
+		return !less
+	})
+}
+
+func (fb *FileBrowser) updateRemoteSortButtons() {
+	// Reset all buttons
+	fb.remoteNameBtn.SetText("Name")
+	fb.remoteSizeBtn.SetText("Size")
+	fb.remoteDateBtn.SetText("Date")
+	
+	// Set the active sort indicator
+	arrow := "▲"
+	if !fb.remoteSortAsc {
+		arrow = "▼"
+	}
+	
+	switch fb.remoteSortColumn {
+	case "name":
+		fb.remoteNameBtn.SetText("Name " + arrow)
+	case "size":
+		fb.remoteSizeBtn.SetText("Size " + arrow)
+	case "date":
+		fb.remoteDateBtn.SetText("Date " + arrow)
+	}
+}
+
+func (fb *FileBrowser) sortRemoteFiles(column string) {
+	if fb.remoteSortColumn == column {
+		fb.remoteSortAsc = !fb.remoteSortAsc
+	} else {
+		fb.remoteSortColumn = column
+		fb.remoteSortAsc = true
+	}
+	
+	fb.updateRemoteSortButtons()
+	fb.applySortToRemoteFiles()
+	fb.remoteFileList.Refresh()
+}
+
+func (fb *FileBrowser) applySortToRemoteFiles() {
+	sort.Slice(fb.remoteFiles, func(i, j int) bool {
+		// Directories always come first
+		if fb.remoteFiles[i].IsDir && !fb.remoteFiles[j].IsDir {
+			return true
+		}
+		if !fb.remoteFiles[i].IsDir && fb.remoteFiles[j].IsDir {
+			return false
+		}
+		
+		var less bool
+		switch fb.remoteSortColumn {
+		case "name":
+			less = strings.ToLower(fb.remoteFiles[i].Name) < strings.ToLower(fb.remoteFiles[j].Name)
+		case "size":
+			less = fb.remoteFiles[i].Size < fb.remoteFiles[j].Size
+		case "date":
+			less = fb.remoteFiles[i].ModTime.Before(fb.remoteFiles[j].ModTime)
+		default:
+			less = strings.ToLower(fb.remoteFiles[i].Name) < strings.ToLower(fb.remoteFiles[j].Name)
+		}
+		
+		if fb.remoteSortAsc {
+			return less
+		}
+		return !less
+	})
 }
 
 // Helper methods for local file selection
@@ -2272,8 +2467,19 @@ func (fb *FileBrowser) createLocalPanel() fyne.CanvasObject {
 		fb.folderTree,
 	)
 	
+	// Sort header for local files
+	sortHeader := container.NewHBox(
+		widget.NewLabel("Sort:"),
+		fb.localNameBtn,
+		fb.localSizeBtn,
+		fb.localDateBtn,
+	)
+	
 	rightPanel := container.NewBorder(
-		widget.NewLabel("📋 Local Files (Check files to upload)"),
+		container.NewVBox(
+			widget.NewLabel("📋 Local Files (Check files to upload)"),
+			sortHeader,
+		),
 		nil, nil, nil,
 		fb.fileList,
 	)
@@ -2354,8 +2560,19 @@ func (fb *FileBrowser) createRemotePanel() fyne.CanvasObject {
 		fb.remoteFolderTree,
 	)
 	
+	// Sort header for remote files
+	remoteSortHeader := container.NewHBox(
+		widget.NewLabel("Sort:"),
+		fb.remoteNameBtn,
+		fb.remoteSizeBtn,
+		fb.remoteDateBtn,
+	)
+	
 	rightPanel := container.NewBorder(
-		widget.NewLabel("📋 Remote Files (Check files to download)"),
+		container.NewVBox(
+			widget.NewLabel("📋 Remote Files (Check files to download)"),
+			remoteSortHeader,
+		),
 		nil, nil, nil,
 		fb.remoteFileList,
 	)
@@ -2561,19 +2778,12 @@ func (fb *FileBrowser) RemoteNavigateTo(path string) {
 			})
 		}
 
-		sort.Slice(remoteFiles, func(i, j int) bool {
-			if remoteFiles[i].IsDir && !remoteFiles[j].IsDir {
-				return true
-			}
-			if !remoteFiles[i].IsDir && remoteFiles[j].IsDir {
-				return false
-			}
-			return strings.ToLower(remoteFiles[i].Name) < strings.ToLower(remoteFiles[j].Name)
-		})
-
 		fb.remoteCurrentPath = path
 		fb.remoteFiles = remoteFiles
 		fb.remotePathLabel.SetText(path)
+		
+		// Apply current sort
+		fb.applySortToRemoteFiles()
 		
 		// Clear selections when navigating
 		fb.selectedRemoteFiles = fb.selectedRemoteFiles[:0]
