@@ -1236,7 +1236,45 @@ func (fb *FileBrowser) scpUploadFiles() {
 		return
 	}
 
-	fb.statusLabel.SetText(fmt.Sprintf("Starting SCP upload of %d file(s)...", len(fb.selectedFiles)))
+	// Check if any directories are selected
+	var dirs []string
+	for _, filePath := range fb.selectedFiles {
+		info, err := os.Stat(filePath)
+		if err == nil && info.IsDir() {
+			dirs = append(dirs, filepath.Base(filePath))
+		}
+	}
+
+	if len(dirs) > 0 {
+		// Prompt user about directory upload
+		var msg string
+		if len(dirs) == 1 {
+			msg = fmt.Sprintf("You have selected a directory:\n• %s\n\nThis will recursively upload all contents. Continue?", dirs[0])
+		} else {
+			msg = fmt.Sprintf("You have selected %d directories:\n", len(dirs))
+			for i, d := range dirs {
+				if i < 5 {
+					msg += fmt.Sprintf("• %s\n", d)
+				} else {
+					msg += fmt.Sprintf("... and %d more\n", len(dirs)-5)
+					break
+				}
+			}
+			msg += "\nThis will recursively upload all contents. Continue?"
+		}
+
+		dialog.ShowConfirm("Recursive Upload", msg, func(confirmed bool) {
+			if confirmed {
+				fb.doSCPUpload()
+			}
+		}, fb.mainWindow)
+	} else {
+		fb.doSCPUpload()
+	}
+}
+
+func (fb *FileBrowser) doSCPUpload() {
+	fb.statusLabel.SetText(fmt.Sprintf("Starting SCP upload of %d item(s)...", len(fb.selectedFiles)))
 
 	go func() {
 		uploaded := 0
@@ -1256,9 +1294,9 @@ func (fb *FileBrowser) scpUploadFiles() {
 		}
 
 		if failed == 0 {
-			fb.statusLabel.SetText(fmt.Sprintf("✅ SCP uploaded %d file(s) successfully", uploaded))
+			fb.statusLabel.SetText(fmt.Sprintf("✅ SCP uploaded %d item(s) successfully", uploaded))
 		} else {
-			fb.statusLabel.SetText(fmt.Sprintf("⚠️ SCP uploaded %d file(s), %d failed", uploaded, failed))
+			fb.statusLabel.SetText(fmt.Sprintf("⚠️ SCP uploaded %d item(s), %d failed", uploaded, failed))
 		}
 
 		fb.selectedFiles = fb.selectedFiles[:0]
@@ -1282,32 +1320,55 @@ func (fb *FileBrowser) scpDownloadFiles() {
 		return
 	}
 
-	fb.remoteStatusLabel.SetText(fmt.Sprintf("Starting SCP download of %d file(s)...", len(fb.selectedRemoteFiles)))
+	// Check if any directories are selected
+	var dirs []string
+	for _, remotePath := range fb.selectedRemoteFiles {
+		info, err := fb.sshConn.sftpClient.Stat(remotePath)
+		if err == nil && info.IsDir() {
+			dirs = append(dirs, filepath.Base(remotePath))
+		}
+	}
+
+	if len(dirs) > 0 {
+		// Prompt user about directory download
+		var msg string
+		if len(dirs) == 1 {
+			msg = fmt.Sprintf("You have selected a directory:\n• %s\n\nThis will recursively download all contents. Continue?", dirs[0])
+		} else {
+			msg = fmt.Sprintf("You have selected %d directories:\n", len(dirs))
+			for i, d := range dirs {
+				if i < 5 {
+					msg += fmt.Sprintf("• %s\n", d)
+				} else {
+					msg += fmt.Sprintf("... and %d more\n", len(dirs)-5)
+					break
+				}
+			}
+			msg += "\nThis will recursively download all contents. Continue?"
+		}
+
+		dialog.ShowConfirm("Recursive Download", msg, func(confirmed bool) {
+			if confirmed {
+				fb.doSCPDownload()
+			}
+		}, fb.mainWindow)
+	} else {
+		fb.doSCPDownload()
+	}
+}
+
+func (fb *FileBrowser) doSCPDownload() {
+	fb.remoteStatusLabel.SetText(fmt.Sprintf("Starting SCP download of %d item(s)...", len(fb.selectedRemoteFiles)))
 
 	go func() {
 		downloaded := 0
 		failed := 0
-		skipped := 0
 
 		for i, remotePath := range fb.selectedRemoteFiles {
 			filename := filepath.Base(remotePath)
 			fb.remoteStatusLabel.SetText(fmt.Sprintf("SCP downloading %d/%d: %s", i+1, len(fb.selectedRemoteFiles), filename))
 
-			// Check if it's a directory
-			info, err := fb.sshConn.sftpClient.Stat(remotePath)
-			if err != nil {
-				fmt.Printf("SCP download failed for %s: %v\n", remotePath, err)
-				failed++
-				continue
-			}
-
-			if info.IsDir() {
-				fmt.Printf("Skipping directory: %s\n", remotePath)
-				skipped++
-				continue
-			}
-
-			err = fb.scpDownloadFile(remotePath)
+			err := fb.scpDownloadFile(remotePath)
 			if err != nil {
 				fmt.Printf("SCP download failed for %s: %v\n", remotePath, err)
 				failed++
@@ -1316,15 +1377,11 @@ func (fb *FileBrowser) scpDownloadFiles() {
 			}
 		}
 
-		var statusMsg string
-		if failed == 0 && skipped == 0 {
-			statusMsg = fmt.Sprintf("✅ SCP downloaded %d file(s) successfully to %s", downloaded, fb.currentPath)
-		} else if skipped > 0 {
-			statusMsg = fmt.Sprintf("✅ Downloaded %d, ⏭️ skipped %d dirs, ❌ %d failed", downloaded, skipped, failed)
+		if failed == 0 {
+			fb.remoteStatusLabel.SetText(fmt.Sprintf("✅ SCP downloaded %d item(s) to %s", downloaded, fb.currentPath))
 		} else {
-			statusMsg = fmt.Sprintf("⚠️ SCP downloaded %d file(s), %d failed", downloaded, failed)
+			fb.remoteStatusLabel.SetText(fmt.Sprintf("⚠️ Downloaded %d, ❌ %d failed", downloaded, failed))
 		}
-		fb.remoteStatusLabel.SetText(statusMsg)
 
 		fb.selectedRemoteFiles = fb.selectedRemoteFiles[:0]
 		fb.updateDownloadButtonState()
@@ -1368,8 +1425,20 @@ func (fb *FileBrowser) scpDownloadFile(remotePath string) error {
 	filename := filepath.Base(remotePath)
 	localPath := filepath.Join(fb.currentPath, filename)
 
+	// Check if it's a directory
+	info, err := fb.sshConn.sftpClient.Stat(remotePath)
+	if err != nil {
+		return fmt.Errorf("failed to stat remote path: %v", err)
+	}
+	isDir := info.IsDir()
+
 	// Build SCP command arguments
 	var scpArgs []string
+
+	// Add recursive flag for directories
+	if isDir {
+		scpArgs = append(scpArgs, "-r")
+	}
 
 	if port != "22" {
 		scpArgs = append(scpArgs, "-P", port)
@@ -1424,9 +1493,7 @@ func (fb *FileBrowser) scpUploadFile(localPath string) error {
 		return fmt.Errorf("failed to stat file: %v", err)
 	}
 
-	if stat.IsDir() {
-		return fmt.Errorf("directory upload not supported via SCP")
-	}
+	isDir := stat.IsDir()
 
 	filename := filepath.Base(localPath)
 	var remoteFilePath string
@@ -1464,6 +1531,11 @@ func (fb *FileBrowser) scpUploadFile(localPath string) error {
 	}
 
 	var scpArgs []string
+
+	// Add recursive flag for directories
+	if isDir {
+		scpArgs = append(scpArgs, "-r")
+	}
 
 	if port != "22" {
 		scpArgs = append(scpArgs, "-P", port)
