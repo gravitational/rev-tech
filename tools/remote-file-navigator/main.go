@@ -19,6 +19,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 	"fyne.io/fyne/v2/theme"
 
@@ -90,6 +91,7 @@ type FileBrowser struct {
 	connectButton *widget.Button
 	terminalBtn   *widget.Button
 	useConfigCheck *widget.Check
+	keyBrowseBtn   *widget.Button
 	saveSettingsBtn *widget.Button
 	loadSettingsBtn *widget.Button
 	clearSettingsBtn *widget.Button
@@ -509,6 +511,8 @@ func (fb *FileBrowser) initializeSSHControls() {
 	fb.keyEntry.SetPlaceHolder("SSH key path")
 	fb.keyEntry.SetMinRowsVisible(1)
 	fb.keyEntry.OnSubmitted = func(_ string) { fb.connectToSSH() }
+	
+	fb.keyBrowseBtn = widget.NewButtonWithIcon("", theme.FolderOpenIcon(), fb.browseForKeyFile)
 	
 	fb.useConfigCheck = widget.NewCheck("Use SSH config", nil)
 	fb.useConfigCheck.SetChecked(true)
@@ -1571,6 +1575,41 @@ func (fb *FileBrowser) connectToSSH() {
 	}()
 }
 
+func (fb *FileBrowser) browseForKeyFile() {
+	fileDialog := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+		if err != nil {
+			dialog.ShowError(err, fb.mainWindow)
+			return
+		}
+		if reader == nil {
+			return // User cancelled
+		}
+		defer reader.Close()
+		
+		// Get the file path
+		filePath := reader.URI().Path()
+		fb.keyEntry.SetText(filePath)
+	}, fb.mainWindow)
+	
+	// Set starting directory to ~/.ssh if it exists
+	homeDir, err := os.UserHomeDir()
+	if err == nil {
+		sshDir := filepath.Join(homeDir, ".ssh")
+		if _, statErr := os.Stat(sshDir); statErr == nil {
+			sshURI := storage.NewFileURI(sshDir)
+			listable, listErr := storage.ListerForURI(sshURI)
+			if listErr == nil {
+				fileDialog.SetLocation(listable)
+			}
+		}
+	}
+	
+	// Filter for common key file extensions
+	fileDialog.SetFilter(storage.NewExtensionFileFilter([]string{".pem", ".key", ".pub", ""}))
+	
+	fileDialog.Show()
+}
+
 func (fb *FileBrowser) openSSHTerminal() {
 	if fb.hostEntry.Text == "" {
 		dialog.ShowError(fmt.Errorf("no host specified"), fb.mainWindow)
@@ -2526,7 +2565,8 @@ func (fb *FileBrowser) createRemotePanel() fyne.CanvasObject {
 	
 	keyContainer := container.NewHBox(
 		widget.NewLabel("Key:"),
-		container.NewGridWrap(fyne.NewSize(entryWidth, 36), fb.keyEntry),
+		container.NewGridWrap(fyne.NewSize(entryWidth*0.8, 36), fb.keyEntry),
+		fb.keyBrowseBtn,
 	)
 	
 	settingsBox := container.NewHBox(
