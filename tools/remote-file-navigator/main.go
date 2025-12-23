@@ -332,7 +332,7 @@ func (fb *FileBrowser) initializeLocalBrowser() {
 		})
 
 	// SCP Upload button
-	fb.scpUploadBtn = widget.NewButtonWithIcon("SCP Upload ⬆", theme.UploadIcon(), fb.scpUploadFiles)
+	fb.scpUploadBtn = widget.NewButtonWithIcon("Upload ⬆", theme.UploadIcon(), fb.scpUploadFiles)
 	fb.scpUploadBtn.Disable() // Initially disabled
 
 	// Delete Local button
@@ -478,7 +478,7 @@ func (fb *FileBrowser) initializeRemoteBrowser() {
 		})
 
 	// SCP Download button
-	fb.scpDownloadBtn = widget.NewButtonWithIcon("SCP Download ⬇", theme.DownloadIcon(), fb.scpDownloadFiles)
+	fb.scpDownloadBtn = widget.NewButtonWithIcon("Download ⬇", theme.DownloadIcon(), fb.scpDownloadFiles)
 	fb.scpDownloadBtn.Disable() // Initially disabled
 
 	// Delete Remote button
@@ -1142,10 +1142,10 @@ func (fb *FileBrowser) removeSelectedRemoteFile(filePath string) {
 func (fb *FileBrowser) updateSCPButtonState() {
 	if len(fb.selectedFiles) > 0 && fb.sshConn.connected {
 		fb.scpUploadBtn.Enable()
-		fb.scpUploadBtn.SetText(fmt.Sprintf("SCP Upload ⬆ (%d)", len(fb.selectedFiles)))
+		fb.scpUploadBtn.SetText(fmt.Sprintf("Upload ⬆ (%d)", len(fb.selectedFiles)))
 	} else {
 		fb.scpUploadBtn.Disable()
-		fb.scpUploadBtn.SetText("SCP Upload ⬆")
+		fb.scpUploadBtn.SetText("Upload ⬆")
 	}
 
 	// Update delete button state
@@ -1161,12 +1161,12 @@ func (fb *FileBrowser) updateSCPButtonState() {
 func (fb *FileBrowser) updateDownloadButtonState() {
 	if len(fb.selectedRemoteFiles) > 0 && fb.sshConn.connected {
 		fb.scpDownloadBtn.Enable()
-		fb.scpDownloadBtn.SetText(fmt.Sprintf("SCP Download ⬇ (%d)", len(fb.selectedRemoteFiles)))
+		fb.scpDownloadBtn.SetText(fmt.Sprintf("Download ⬇ (%d)", len(fb.selectedRemoteFiles)))
 		fb.deleteRemoteBtn.Enable()
 		fb.deleteRemoteBtn.SetText(fmt.Sprintf("Delete (%d)", len(fb.selectedRemoteFiles)))
 	} else {
 		fb.scpDownloadBtn.Disable()
-		fb.scpDownloadBtn.SetText("SCP Download ⬇")
+		fb.scpDownloadBtn.SetText("Download ⬇")
 		fb.deleteRemoteBtn.Disable()
 		fb.deleteRemoteBtn.SetText("Delete")
 	}
@@ -1381,7 +1381,7 @@ func (fb *FileBrowser) scpUploadFiles() {
 }
 
 func (fb *FileBrowser) doSCPUpload() {
-	fb.statusLabel.SetText(fmt.Sprintf("Starting SCP upload of %d item(s)...", len(fb.selectedFiles)))
+	fb.statusLabel.SetText(fmt.Sprintf("Starting upload of %d item(s)...", len(fb.selectedFiles)))
 
 	go func() {
 		uploaded := 0
@@ -1389,11 +1389,11 @@ func (fb *FileBrowser) doSCPUpload() {
 
 		for i, filePath := range fb.selectedFiles {
 			filename := filepath.Base(filePath)
-			fb.statusLabel.SetText(fmt.Sprintf("SCP uploading %d/%d: %s", i+1, len(fb.selectedFiles), filename))
+			fb.statusLabel.SetText(fmt.Sprintf("Uploading %d/%d: %s", i+1, len(fb.selectedFiles), filename))
 
 			err := fb.scpUploadFile(filePath)
 			if err != nil {
-				fmt.Printf("SCP upload failed for %s: %v\n", filePath, err)
+				fmt.Printf("Upload failed for %s: %v\n", filePath, err)
 				failed++
 			} else {
 				uploaded++
@@ -1401,9 +1401,9 @@ func (fb *FileBrowser) doSCPUpload() {
 		}
 
 		if failed == 0 {
-			fb.statusLabel.SetText(fmt.Sprintf("✅ SCP uploaded %d item(s) successfully", uploaded))
+			fb.statusLabel.SetText(fmt.Sprintf("✅ Uploaded %d item(s) successfully", uploaded))
 		} else {
-			fb.statusLabel.SetText(fmt.Sprintf("⚠️ SCP uploaded %d item(s), %d failed", uploaded, failed))
+			fb.statusLabel.SetText(fmt.Sprintf("⚠️  Uploaded %d item(s), %d failed", uploaded, failed))
 		}
 
 		fb.selectedFiles = fb.selectedFiles[:0]
@@ -1465,7 +1465,7 @@ func (fb *FileBrowser) scpDownloadFiles() {
 }
 
 func (fb *FileBrowser) doSCPDownload() {
-	fb.remoteStatusLabel.SetText(fmt.Sprintf("Starting SCP download of %d item(s)...", len(fb.selectedRemoteFiles)))
+	fb.remoteStatusLabel.SetText(fmt.Sprintf("Starting download of %d item(s)...", len(fb.selectedRemoteFiles)))
 
 	go func() {
 		downloaded := 0
@@ -1473,11 +1473,11 @@ func (fb *FileBrowser) doSCPDownload() {
 
 		for i, remotePath := range fb.selectedRemoteFiles {
 			filename := filepath.Base(remotePath)
-			fb.remoteStatusLabel.SetText(fmt.Sprintf("SCP downloading %d/%d: %s", i+1, len(fb.selectedRemoteFiles), filename))
+			fb.remoteStatusLabel.SetText(fmt.Sprintf("Downloading %d/%d: %s", i+1, len(fb.selectedRemoteFiles), filename))
 
 			err := fb.scpDownloadFile(remotePath)
 			if err != nil {
-				fmt.Printf("SCP download failed for %s: %v\n", remotePath, err)
+				fmt.Printf("Download failed for %s: %v\n", remotePath, err)
 				failed++
 			} else {
 				downloaded++
@@ -1485,7 +1485,7 @@ func (fb *FileBrowser) doSCPDownload() {
 		}
 
 		if failed == 0 {
-			fb.remoteStatusLabel.SetText(fmt.Sprintf("✅ SCP downloaded %d item(s) to %s", downloaded, fb.currentPath))
+			fb.remoteStatusLabel.SetText(fmt.Sprintf("✅ Downloaded %d item(s) to %s", downloaded, fb.currentPath))
 		} else {
 			fb.remoteStatusLabel.SetText(fmt.Sprintf("⚠️ Downloaded %d, ❌ %d failed", downloaded, failed))
 		}
