@@ -20,13 +20,13 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/storage"
-	"fyne.io/fyne/v2/widget"
 	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 
+	"github.com/kevinburke/ssh_config"
+	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
-	"github.com/pkg/sftp"
-	"github.com/kevinburke/ssh_config"
 )
 
 type RemoteFile struct {
@@ -45,35 +45,34 @@ type SSHConnection struct {
 
 type FileBrowser struct {
 	// Local browser
-	currentPath    string
-	fileList       *widget.List
-	folderTree     *widget.Tree
-	pathLabel      *widget.Label
-	upButton       *widget.Button
-	homeButton     *widget.Button
-	scpUploadBtn   *widget.Button
-	deleteLocalBtn *widget.Button
-	files          []fs.DirEntry
-	statusLabel    *widget.Label
-	treeData       map[string][]string
-	selectedFiles  []string
+	currentPath     string
+	fileList        *widget.List
+	folderTree      *widget.Tree
+	pathLabel       *widget.Label
+	upButton        *widget.Button
+	homeButton      *widget.Button
+	scpUploadBtn    *widget.Button
+	deleteLocalBtn  *widget.Button
+	files           []fs.DirEntry
+	statusLabel     *widget.Label
+	treeData        map[string][]string
+	selectedFiles   []string
 	localSortColumn string
 	localSortAsc    bool
 	localNameBtn    *widget.Button
 	localSizeBtn    *widget.Button
 	localDateBtn    *widget.Button
+	showLocalHidden *widget.Check
 
 	// Remote SSH browser
 	sshConn             *SSHConnection
 	remoteCurrentPath   string
 	remoteFileList      *widget.List
-	remoteFolderTree    *widget.Tree
-	remotePathLabel     *widget.Label
+	remotePathEntry     *widget.Entry
 	remoteUpButton      *widget.Button
 	remoteHomeButton    *widget.Button
 	remoteFiles         []RemoteFile
 	remoteStatusLabel   *widget.Label
-	remoteTreeData      map[string][]string
 	selectedRemoteFiles []string
 	scpDownloadBtn      *widget.Button
 	deleteRemoteBtn     *widget.Button
@@ -82,22 +81,23 @@ type FileBrowser struct {
 	remoteNameBtn       *widget.Button
 	remoteSizeBtn       *widget.Button
 	remoteDateBtn       *widget.Button
+	showRemoteHidden    *widget.Check
 
 	// SSH connection controls
-	hostEntry     *widget.Entry
-	userEntry     *widget.Entry
-	passEntry     *widget.Entry
-	keyEntry      *widget.Entry
-	connectButton *widget.Button
-	terminalBtn   *widget.Button
-	useConfigCheck *widget.Check
-	keyBrowseBtn   *widget.Button
-	saveSettingsBtn *widget.Button
-	loadSettingsBtn *widget.Button
-	clearSettingsBtn *widget.Button
-	deleteSettingsBtn *widget.Button
+	hostEntry          *widget.Entry
+	userEntry          *widget.Entry
+	passEntry          *widget.Entry
+	keyEntry           *widget.Entry
+	connectButton      *widget.Button
+	terminalBtn        *widget.Button
+	useConfigCheck     *widget.Check
+	keyBrowseBtn       *widget.Button
+	saveSettingsBtn    *widget.Button
+	loadSettingsBtn    *widget.Button
+	clearSettingsBtn   *widget.Button
+	deleteSettingsBtn  *widget.Button
 	savedSettingsSelect *widget.Select
-	
+
 	mainWindow fyne.Window
 }
 
@@ -118,19 +118,15 @@ type SSHSettingsStore struct {
 
 func main() {
 	myApp := app.New()
-	myWindow := myApp.NewWindow("Go File Browser with SSH")
+	myWindow := myApp.NewWindow("Remote Server File Navigator")
 	myWindow.Resize(fyne.NewSize(1200, 900))
 
 	browser := NewFileBrowser(myWindow)
-	
-	// Start in the current directory for local browser
-	currentDir, _ := os.Getwd()
-	browser.NavigateTo(currentDir)
 
 	// Create main layout with local and remote panels
 	localPanel := browser.createLocalPanel()
 	remotePanel := browser.createRemotePanel()
-	
+
 	// Create horizontal split: local on left, remote on right
 	mainSplit := container.NewHSplit(localPanel, remotePanel)
 	mainSplit.SetOffset(0.5) // 50% for local, 50% for remote
@@ -138,20 +134,27 @@ func main() {
 	// Create the main layout
 	content := container.NewBorder(
 		widget.NewLabel("🔗 Local & Remote File Browser"), // top
-		widget.NewLabel("Ready"), // bottom
-		nil,                       // left
-		nil,                       // right
-		mainSplit,                 // center
+		widget.NewLabel("Ready"),                          // bottom
+		nil,                                               // left
+		nil,                                               // right
+		mainSplit,                                         // center
 	)
 
 	myWindow.SetContent(content)
+
+	// Navigate to current directory AFTER window is shown using a goroutine
+	go func() {
+		time.Sleep(100 * time.Millisecond) // Small delay to ensure UI is ready
+		currentDir, _ := os.Getwd()
+		browser.NavigateTo(currentDir)
+	}()
+
 	myWindow.ShowAndRun()
 }
 
 func NewFileBrowser(window fyne.Window) *FileBrowser {
 	browser := &FileBrowser{
 		treeData:            make(map[string][]string),
-		remoteTreeData:      make(map[string][]string),
 		sshConn:             &SSHConnection{},
 		mainWindow:          window,
 		selectedFiles:       make([]string, 0),
@@ -161,7 +164,7 @@ func NewFileBrowser(window fyne.Window) *FileBrowser {
 		remoteSortColumn:    "name",
 		remoteSortAsc:       true,
 	}
-	
+
 	browser.initializeLocalBrowser()
 	browser.initializeRemoteBrowser()
 	browser.initializeSSHControls()
@@ -172,7 +175,17 @@ func NewFileBrowser(window fyne.Window) *FileBrowser {
 func (fb *FileBrowser) initializeLocalBrowser() {
 	fb.pathLabel = widget.NewLabel("")
 	fb.statusLabel = widget.NewLabel("Local: Ready")
-	
+
+	// Show hidden files checkbox - initialize early
+	fb.showLocalHidden = widget.NewCheck("Show Hidden", func(checked bool) {
+		fb.fileList.Refresh()
+	})
+
+	// Sort buttons for local files
+	fb.localNameBtn = widget.NewButton("Name ▲", func() { fb.sortLocalFiles("name") })
+	fb.localSizeBtn = widget.NewButton("Size", func() { fb.sortLocalFiles("size") })
+	fb.localDateBtn = widget.NewButton("Date", func() { fb.sortLocalFiles("date") })
+
 	// Create folder tree
 	fb.folderTree = widget.NewTree(
 		func(uid widget.TreeNodeID) []widget.TreeNodeID {
@@ -200,12 +213,12 @@ func (fb *FileBrowser) initializeLocalBrowser() {
 					name = path
 				}
 			}
-			
+
 			label := item.(*widget.Label)
 			label.SetText("📁 " + name)
 		},
 	)
-	
+
 	fb.folderTree.OnSelected = func(uid widget.TreeNodeID) {
 		path := string(uid)
 		if path != "" {
@@ -215,8 +228,10 @@ func (fb *FileBrowser) initializeLocalBrowser() {
 
 	// Create file list with selection support
 	fb.fileList = widget.NewList(
-		func() int { return len(fb.files) },
-		func() fyne.CanvasObject { 
+		func() int {
+			return len(fb.getVisibleLocalFiles())
+		},
+		func() fyne.CanvasObject {
 			check := widget.NewCheck("", nil)
 			nameLabel := widget.NewLabel("Template File Name")
 			sizeLabel := widget.NewLabel("999.9 MB")
@@ -230,11 +245,12 @@ func (fb *FileBrowser) initializeLocalBrowser() {
 			)
 		},
 		func(id widget.ListItemID, item fyne.CanvasObject) {
-			if id >= len(fb.files) {
+			files := fb.getVisibleLocalFiles()
+			if id >= len(files) {
 				return
 			}
-			
-			entry := fb.files[id]
+
+			entry := files[id]
 			box := item.(*fyne.Container)
 			check := box.Objects[0].(*widget.Check)
 			nameContainer := box.Objects[1].(*fyne.Container)
@@ -243,14 +259,14 @@ func (fb *FileBrowser) initializeLocalBrowser() {
 			nameLabel := nameContainer.Objects[0].(*widget.Label)
 			sizeLabel := sizeContainer.Objects[0].(*widget.Label)
 			dateLabel := dateContainer.Objects[0].(*widget.Label)
-			
+
 			var icon string
 			if entry.IsDir() {
 				icon = "📁 "
 			} else {
 				icon = "📄 "
 			}
-			
+
 			info, _ := entry.Info()
 			var sizeStr string
 			var dateStr string
@@ -262,11 +278,11 @@ func (fb *FileBrowser) initializeLocalBrowser() {
 				}
 				dateStr = info.ModTime().Format("2006-01-02 15:04")
 			}
-			
+
 			nameLabel.SetText(icon + entry.Name())
 			sizeLabel.SetText(sizeStr)
 			dateLabel.SetText(dateStr)
-			
+
 			// Handle checkbox for file selection
 			filePath := filepath.Join(fb.currentPath, entry.Name())
 			check.SetChecked(fb.isFileSelected(filePath))
@@ -282,11 +298,12 @@ func (fb *FileBrowser) initializeLocalBrowser() {
 	)
 
 	fb.fileList.OnSelected = func(id widget.ListItemID) {
-		if id >= len(fb.files) {
+		files := fb.getVisibleLocalFiles()
+		if id >= len(files) {
 			return
 		}
-		
-		entry := fb.files[id]
+
+		entry := files[id]
 		if entry.IsDir() {
 			newPath := filepath.Join(fb.currentPath, entry.Name())
 			fb.NavigateTo(newPath)
@@ -295,7 +312,7 @@ func (fb *FileBrowser) initializeLocalBrowser() {
 	}
 
 	// Navigation buttons
-	fb.upButton = widget.NewButtonWithIcon("Up", theme.NavigateBackIcon(), 
+	fb.upButton = widget.NewButtonWithIcon("Up", theme.NavigateBackIcon(),
 		func() {
 			parentDir := filepath.Dir(fb.currentPath)
 			if parentDir != fb.currentPath {
@@ -320,59 +337,38 @@ func (fb *FileBrowser) initializeLocalBrowser() {
 	// Delete Local button
 	fb.deleteLocalBtn = widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), fb.confirmDeleteLocalFiles)
 	fb.deleteLocalBtn.Disable() // Initially disabled
-
-	// Sort buttons for local files
-	fb.localNameBtn = widget.NewButton("Name ▲", func() { fb.sortLocalFiles("name") })
-	fb.localSizeBtn = widget.NewButton("Size", func() { fb.sortLocalFiles("size") })
-	fb.localDateBtn = widget.NewButton("Date", func() { fb.sortLocalFiles("date") })
 }
 
 func (fb *FileBrowser) initializeRemoteBrowser() {
-	fb.remotePathLabel = widget.NewLabel("")
 	fb.remoteStatusLabel = widget.NewLabel("Remote: Not connected")
 	fb.remoteCurrentPath = "/"
-	
-	// Create remote folder tree
-	fb.remoteFolderTree = widget.NewTree(
-		func(uid widget.TreeNodeID) []widget.TreeNodeID {
-			return fb.getRemoteTreeChildren(uid)
-		},
-		func(uid widget.TreeNodeID) bool {
-			path := string(uid)
-			if path == "" || !fb.sshConn.connected {
-				return false
-			}
-			children := fb.getRemoteDirectories(path)
-			return len(children) > 0
-		},
-		func(branch bool) fyne.CanvasObject {
-			return widget.NewLabel("🌐 Remote Folder")
-		},
-		func(uid widget.TreeNodeID, branch bool, item fyne.CanvasObject) {
-			path := string(uid)
-			var name string
-			if path == "" || path == "/" {
-				name = "🖥️ " + fb.sshConn.host
-			} else {
-				name = filepath.Base(path)
-			}
-			
-			label := item.(*widget.Label)
-			label.SetText("🌐 " + name)
-		},
-	)
-	
-	fb.remoteFolderTree.OnSelected = func(uid widget.TreeNodeID) {
-		path := string(uid)
-		if path != "" && fb.sshConn.connected {
+
+	// Editable path entry
+	fb.remotePathEntry = widget.NewEntry()
+	fb.remotePathEntry.SetPlaceHolder("/path/to/directory")
+	fb.remotePathEntry.SetText("/")
+	fb.remotePathEntry.OnSubmitted = func(path string) {
+		if fb.sshConn.connected && path != "" {
 			fb.RemoteNavigateTo(path)
 		}
 	}
 
+	// Show hidden files checkbox
+	fb.showRemoteHidden = widget.NewCheck("Show Hidden", func(checked bool) {
+		fb.remoteFileList.Refresh()
+	})
+
+	// Sort buttons for remote files
+	fb.remoteNameBtn = widget.NewButton("Name ▲", func() { fb.sortRemoteFiles("name") })
+	fb.remoteSizeBtn = widget.NewButton("Size", func() { fb.sortRemoteFiles("size") })
+	fb.remoteDateBtn = widget.NewButton("Date", func() { fb.sortRemoteFiles("date") })
+
 	// Create remote file list with selection support
 	fb.remoteFileList = widget.NewList(
-		func() int { return len(fb.remoteFiles) },
-		func() fyne.CanvasObject { 
+		func() int {
+			return len(fb.getVisibleRemoteFiles())
+		},
+		func() fyne.CanvasObject {
 			check := widget.NewCheck("", nil)
 			nameLabel := widget.NewLabel("Template Remote File Name")
 			sizeLabel := widget.NewLabel("999.9 MB")
@@ -386,11 +382,12 @@ func (fb *FileBrowser) initializeRemoteBrowser() {
 			)
 		},
 		func(id widget.ListItemID, item fyne.CanvasObject) {
-			if id >= len(fb.remoteFiles) {
+			files := fb.getVisibleRemoteFiles()
+			if id >= len(files) {
 				return
 			}
-			
-			file := fb.remoteFiles[id]
+
+			file := files[id]
 			box := item.(*fyne.Container)
 			check := box.Objects[0].(*widget.Check)
 			nameContainer := box.Objects[1].(*fyne.Container)
@@ -399,7 +396,7 @@ func (fb *FileBrowser) initializeRemoteBrowser() {
 			nameLabel := nameContainer.Objects[0].(*widget.Label)
 			sizeLabel := sizeContainer.Objects[0].(*widget.Label)
 			dateLabel := dateContainer.Objects[0].(*widget.Label)
-			
+
 			var icon string
 			var sizeStr string
 			if file.IsDir {
@@ -409,11 +406,11 @@ func (fb *FileBrowser) initializeRemoteBrowser() {
 				icon = "📄 "
 				sizeStr = formatFileSize(file.Size)
 			}
-			
+
 			nameLabel.SetText(icon + file.Name)
 			sizeLabel.SetText(sizeStr)
 			dateLabel.SetText(file.ModTime.Format("2006-01-02 15:04"))
-			
+
 			// Handle checkbox for remote file selection
 			var filePath string
 			if fb.remoteCurrentPath == "/" {
@@ -421,7 +418,7 @@ func (fb *FileBrowser) initializeRemoteBrowser() {
 			} else {
 				filePath = fb.remoteCurrentPath + "/" + file.Name
 			}
-			
+
 			check.SetChecked(fb.isRemoteFileSelected(filePath))
 			check.OnChanged = func(checked bool) {
 				if checked {
@@ -435,11 +432,12 @@ func (fb *FileBrowser) initializeRemoteBrowser() {
 	)
 
 	fb.remoteFileList.OnSelected = func(id widget.ListItemID) {
-		if id >= len(fb.remoteFiles) || !fb.sshConn.connected {
+		files := fb.getVisibleRemoteFiles()
+		if id >= len(files) || !fb.sshConn.connected {
 			return
 		}
-		
-		file := fb.remoteFiles[id]
+
+		file := files[id]
 		if file.IsDir {
 			var newPath string
 			if fb.remoteCurrentPath == "/" {
@@ -447,17 +445,16 @@ func (fb *FileBrowser) initializeRemoteBrowser() {
 			} else {
 				newPath = fb.remoteCurrentPath + "/" + file.Name
 			}
-			
+
 			fb.RemoteNavigateTo(newPath)
-			fb.remoteFolderTree.Select(widget.TreeNodeID(newPath))
 		} else {
-			fb.remoteStatusLabel.SetText(fmt.Sprintf("Selected: %s (%s)", 
+			fb.remoteStatusLabel.SetText(fmt.Sprintf("Selected: %s (%s)",
 				file.Name, formatFileSize(file.Size)))
 		}
 	}
 
 	// Remote navigation buttons
-	fb.remoteUpButton = widget.NewButtonWithIcon("Up", theme.NavigateBackIcon(), 
+	fb.remoteUpButton = widget.NewButtonWithIcon("Up", theme.NavigateBackIcon(),
 		func() {
 			if !fb.sshConn.connected {
 				return
@@ -465,15 +462,17 @@ func (fb *FileBrowser) initializeRemoteBrowser() {
 			parentDir := filepath.Dir(fb.remoteCurrentPath)
 			if parentDir != fb.remoteCurrentPath && parentDir != "." {
 				fb.RemoteNavigateTo(parentDir)
-				fb.remoteFolderTree.Select(widget.TreeNodeID(parentDir))
 			}
 		})
 
 	fb.remoteHomeButton = widget.NewButtonWithIcon("Home", theme.HomeIcon(),
 		func() {
 			if fb.sshConn.connected {
-				fb.RemoteNavigateTo("/")
-				fb.remoteFolderTree.Select(widget.TreeNodeID("/"))
+				homeDir, err := fb.getRemoteHomeDir()
+				if err != nil || homeDir == "" {
+					homeDir = "/"
+				}
+				fb.RemoteNavigateTo(homeDir)
 			}
 		})
 
@@ -484,11 +483,6 @@ func (fb *FileBrowser) initializeRemoteBrowser() {
 	// Delete Remote button
 	fb.deleteRemoteBtn = widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), fb.confirmDeleteRemoteFiles)
 	fb.deleteRemoteBtn.Disable() // Initially disabled
-
-	// Sort buttons for remote files
-	fb.remoteNameBtn = widget.NewButton("Name ▲", func() { fb.sortRemoteFiles("name") })
-	fb.remoteSizeBtn = widget.NewButton("Size", func() { fb.sortRemoteFiles("size") })
-	fb.remoteDateBtn = widget.NewButton("Date", func() { fb.sortRemoteFiles("date") })
 }
 
 func (fb *FileBrowser) initializeSSHControls() {
@@ -496,44 +490,44 @@ func (fb *FileBrowser) initializeSSHControls() {
 	fb.hostEntry.SetPlaceHolder("hostname/alias (e.g., server1)")
 	fb.hostEntry.SetMinRowsVisible(1)
 	fb.hostEntry.OnSubmitted = func(_ string) { fb.connectToSSH() }
-	
+
 	fb.userEntry = widget.NewEntry()
 	fb.userEntry.SetPlaceHolder("username")
 	fb.userEntry.SetMinRowsVisible(1)
 	fb.userEntry.OnSubmitted = func(_ string) { fb.connectToSSH() }
-	
+
 	fb.passEntry = widget.NewPasswordEntry()
 	fb.passEntry.SetPlaceHolder("password/passphrase")
 	fb.passEntry.SetMinRowsVisible(1)
 	fb.passEntry.OnSubmitted = func(_ string) { fb.connectToSSH() }
-	
+
 	fb.keyEntry = widget.NewEntry()
 	fb.keyEntry.SetPlaceHolder("SSH key path")
 	fb.keyEntry.SetMinRowsVisible(1)
 	fb.keyEntry.OnSubmitted = func(_ string) { fb.connectToSSH() }
-	
+
 	fb.keyBrowseBtn = widget.NewButtonWithIcon("", theme.FolderOpenIcon(), fb.browseForKeyFile)
-	
+
 	fb.useConfigCheck = widget.NewCheck("Use SSH config", nil)
 	fb.useConfigCheck.SetChecked(true)
-	
+
 	fb.connectButton = widget.NewButton("Connect", fb.connectToSSH)
 	fb.connectButton.Resize(fyne.NewSize(120, 40))
-	
+
 	fb.terminalBtn = widget.NewButtonWithIcon("Terminal", theme.ComputerIcon(), fb.openSSHTerminal)
 	fb.terminalBtn.Disable() // Initially disabled until connected
-	
+
 	// Settings buttons
 	fb.saveSettingsBtn = widget.NewButtonWithIcon("Save", theme.DocumentSaveIcon(), fb.saveSSHSettings)
 	fb.loadSettingsBtn = widget.NewButtonWithIcon("Load", theme.FolderOpenIcon(), fb.loadSSHSettings)
 	fb.clearSettingsBtn = widget.NewButtonWithIcon("Clear", theme.ContentClearIcon(), fb.clearSSHSettings)
 	fb.deleteSettingsBtn = widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), fb.deleteCurrentSavedSettings)
-	
+
 	// Saved settings dropdown
 	fb.savedSettingsSelect = widget.NewSelect([]string{}, fb.onSavedSettingSelected)
 	fb.savedSettingsSelect.PlaceHolder = "Saved connections..."
 	fb.refreshSavedSettingsDropdown()
-	
+
 	fb.hostEntry.OnChanged = func(text string) {
 		if fb.useConfigCheck.Checked && text != "" {
 			fb.previewSSHConfig(text)
@@ -553,7 +547,7 @@ func (fb *FileBrowser) getSettingsFilePath() string {
 
 func (fb *FileBrowser) loadSettingsStore() (*SSHSettingsStore, error) {
 	settingsPath := fb.getSettingsFilePath()
-	
+
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -561,13 +555,13 @@ func (fb *FileBrowser) loadSettingsStore() (*SSHSettingsStore, error) {
 		}
 		return nil, err
 	}
-	
+
 	var store SSHSettingsStore
 	err = json.Unmarshal(data, &store)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &store, nil
 }
 
@@ -576,7 +570,7 @@ func (fb *FileBrowser) saveSettingsStore(store *SSHSettingsStore) error {
 	if err != nil {
 		return err
 	}
-	
+
 	settingsPath := fb.getSettingsFilePath()
 	return os.WriteFile(settingsPath, data, 0600)
 }
@@ -586,15 +580,15 @@ func (fb *FileBrowser) refreshSavedSettingsDropdown() {
 	if err != nil {
 		return
 	}
-	
+
 	var options []string
 	for _, s := range store.Settings {
 		options = append(options, s.Name)
 	}
-	
+
 	fb.savedSettingsSelect.Options = options
 	fb.savedSettingsSelect.Refresh()
-	
+
 	// Select last used if available
 	if store.LastUsed != "" {
 		for _, opt := range options {
@@ -610,12 +604,12 @@ func (fb *FileBrowser) onSavedSettingSelected(name string) {
 	if name == "" {
 		return
 	}
-	
+
 	store, err := fb.loadSettingsStore()
 	if err != nil {
 		return
 	}
-	
+
 	for _, s := range store.Settings {
 		if s.Name == name {
 			fb.hostEntry.SetText(s.Host)
@@ -623,13 +617,13 @@ func (fb *FileBrowser) onSavedSettingSelected(name string) {
 			fb.keyEntry.SetText(s.KeyPath)
 			fb.useConfigCheck.SetChecked(s.UseConfig)
 			fb.passEntry.SetText("")
-			
+
 			// Update last used
 			store.LastUsed = name
 			fb.saveSettingsStore(store)
-			
+
 			fb.remoteStatusLabel.SetText(fmt.Sprintf("Loaded: %s (enter password if needed)", name))
-			
+
 			if s.UseConfig && s.Host != "" {
 				fb.previewSSHConfig(s.Host)
 			}
@@ -643,12 +637,12 @@ func (fb *FileBrowser) saveSSHSettings() {
 		dialog.ShowError(fmt.Errorf("no host specified to save"), fb.mainWindow)
 		return
 	}
-	
+
 	// Prompt for a name
 	nameEntry := widget.NewEntry()
 	nameEntry.SetPlaceHolder("Connection name")
 	nameEntry.SetText(fb.hostEntry.Text) // Default to host name
-	
+
 	dialog.ShowForm("Save SSH Settings", "Save", "Cancel",
 		[]*widget.FormItem{
 			widget.NewFormItem("Name", nameEntry),
@@ -667,7 +661,7 @@ func (fb *FileBrowser) doSaveSSHSettings(name string) {
 		dialog.ShowError(fmt.Errorf("failed to load settings: %v", err), fb.mainWindow)
 		return
 	}
-	
+
 	newSettings := SSHSettings{
 		Name:      name,
 		Host:      fb.hostEntry.Text,
@@ -675,7 +669,7 @@ func (fb *FileBrowser) doSaveSSHSettings(name string) {
 		KeyPath:   fb.keyEntry.Text,
 		UseConfig: fb.useConfigCheck.Checked,
 	}
-	
+
 	// Check if name already exists and update, or append
 	found := false
 	for i, s := range store.Settings {
@@ -685,19 +679,19 @@ func (fb *FileBrowser) doSaveSSHSettings(name string) {
 			break
 		}
 	}
-	
+
 	if !found {
 		store.Settings = append(store.Settings, newSettings)
 	}
-	
+
 	store.LastUsed = name
-	
+
 	err = fb.saveSettingsStore(store)
 	if err != nil {
 		dialog.ShowError(fmt.Errorf("failed to save settings: %v", err), fb.mainWindow)
 		return
 	}
-	
+
 	fb.refreshSavedSettingsDropdown()
 	fb.savedSettingsSelect.SetSelected(name)
 	fb.remoteStatusLabel.SetText(fmt.Sprintf("✅ Settings saved as '%s'", name))
@@ -709,24 +703,24 @@ func (fb *FileBrowser) loadSSHSettings() {
 		dialog.ShowError(fmt.Errorf("failed to load settings: %v", err), fb.mainWindow)
 		return
 	}
-	
+
 	if len(store.Settings) == 0 {
 		dialog.ShowInformation("Load Settings", "No saved settings found.", fb.mainWindow)
 		return
 	}
-	
+
 	// If there's a last used, load it
 	if store.LastUsed != "" {
 		fb.onSavedSettingSelected(store.LastUsed)
 		return
 	}
-	
+
 	// Otherwise load the first one
 	fb.onSavedSettingSelected(store.Settings[0].Name)
 }
 
 func (fb *FileBrowser) clearSSHSettings() {
-	dialog.ShowConfirm("Clear Settings", 
+	dialog.ShowConfirm("Clear Settings",
 		"Do you want to clear the current SSH settings from the form?\n\nThis will not delete saved settings from disk.",
 		func(confirmed bool) {
 			if confirmed {
@@ -747,7 +741,7 @@ func (fb *FileBrowser) deleteCurrentSavedSettings() {
 		dialog.ShowError(fmt.Errorf("no saved connection selected to delete"), fb.mainWindow)
 		return
 	}
-	
+
 	dialog.ShowConfirm("Delete Saved Connection",
 		fmt.Sprintf("Are you sure you want to delete the saved connection '%s'?\n\nThis cannot be undone.", selected),
 		func(confirmed bool) {
@@ -763,7 +757,7 @@ func (fb *FileBrowser) doDeleteSavedSettings(name string) {
 		dialog.ShowError(fmt.Errorf("failed to load settings: %v", err), fb.mainWindow)
 		return
 	}
-	
+
 	// Remove the setting
 	var newSettings []SSHSettings
 	for _, s := range store.Settings {
@@ -772,7 +766,7 @@ func (fb *FileBrowser) doDeleteSavedSettings(name string) {
 		}
 	}
 	store.Settings = newSettings
-	
+
 	// Clear last used if it was the deleted one
 	if store.LastUsed == name {
 		store.LastUsed = ""
@@ -780,13 +774,13 @@ func (fb *FileBrowser) doDeleteSavedSettings(name string) {
 			store.LastUsed = store.Settings[0].Name
 		}
 	}
-	
+
 	err = fb.saveSettingsStore(store)
 	if err != nil {
 		dialog.ShowError(fmt.Errorf("failed to save settings: %v", err), fb.mainWindow)
 		return
 	}
-	
+
 	fb.refreshSavedSettingsDropdown()
 	fb.savedSettingsSelect.ClearSelected()
 	fb.remoteStatusLabel.SetText(fmt.Sprintf("✅ Deleted saved connection '%s'", name))
@@ -794,13 +788,13 @@ func (fb *FileBrowser) doDeleteSavedSettings(name string) {
 
 func (fb *FileBrowser) deleteSSHSettingsFile() {
 	settingsPath := fb.getSettingsFilePath()
-	
+
 	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
 		dialog.ShowInformation("Delete Settings", "No saved settings file found.", fb.mainWindow)
 		return
 	}
-	
-	dialog.ShowConfirm("Delete Saved Settings", 
+
+	dialog.ShowConfirm("Delete Saved Settings",
 		"Are you sure you want to delete the saved settings file?\n\nThis cannot be undone.",
 		func(confirmed bool) {
 			if confirmed {
@@ -815,18 +809,52 @@ func (fb *FileBrowser) deleteSSHSettingsFile() {
 		}, fb.mainWindow)
 }
 
+func (fb *FileBrowser) getVisibleLocalFiles() []fs.DirEntry {
+	if fb.showLocalHidden != nil && fb.showLocalHidden.Checked {
+		return fb.files
+	}
+	var visible []fs.DirEntry
+	for _, f := range fb.files {
+		if !strings.HasPrefix(f.Name(), ".") {
+			visible = append(visible, f)
+		}
+	}
+	return visible
+}
+
+func (fb *FileBrowser) getVisibleRemoteFiles() []RemoteFile {
+	if fb.showRemoteHidden != nil && fb.showRemoteHidden.Checked {
+		return fb.remoteFiles
+	}
+	var visible []RemoteFile
+	for _, f := range fb.remoteFiles {
+		if !strings.HasPrefix(f.Name, ".") {
+			visible = append(visible, f)
+		}
+	}
+	return visible
+}
+
+func (fb *FileBrowser) applyLocalFilter() {
+	fb.applySortToLocalFiles()
+}
+
+func (fb *FileBrowser) applyRemoteFilter() {
+	fb.applySortToRemoteFiles()
+}
+
 func (fb *FileBrowser) updateLocalSortButtons() {
 	// Reset all buttons
 	fb.localNameBtn.SetText("Name")
 	fb.localSizeBtn.SetText("Size")
 	fb.localDateBtn.SetText("Date")
-	
+
 	// Set the active sort indicator
 	arrow := "▲"
 	if !fb.localSortAsc {
 		arrow = "▼"
 	}
-	
+
 	switch fb.localSortColumn {
 	case "name":
 		fb.localNameBtn.SetText("Name " + arrow)
@@ -844,9 +872,9 @@ func (fb *FileBrowser) sortLocalFiles(column string) {
 		fb.localSortColumn = column
 		fb.localSortAsc = true
 	}
-	
+
 	fb.updateLocalSortButtons()
-	fb.applySortToLocalFiles()
+	fb.applyLocalFilter()
 	fb.fileList.Refresh()
 }
 
@@ -854,7 +882,7 @@ func (fb *FileBrowser) applySortToLocalFiles() {
 	sort.Slice(fb.files, func(i, j int) bool {
 		iInfo, _ := fb.files[i].Info()
 		jInfo, _ := fb.files[j].Info()
-		
+
 		// Directories always come first
 		if fb.files[i].IsDir() && !fb.files[j].IsDir() {
 			return true
@@ -862,7 +890,7 @@ func (fb *FileBrowser) applySortToLocalFiles() {
 		if !fb.files[i].IsDir() && fb.files[j].IsDir() {
 			return false
 		}
-		
+
 		var less bool
 		switch fb.localSortColumn {
 		case "name":
@@ -882,7 +910,7 @@ func (fb *FileBrowser) applySortToLocalFiles() {
 		default:
 			less = strings.ToLower(fb.files[i].Name()) < strings.ToLower(fb.files[j].Name())
 		}
-		
+
 		if fb.localSortAsc {
 			return less
 		}
@@ -895,13 +923,13 @@ func (fb *FileBrowser) updateRemoteSortButtons() {
 	fb.remoteNameBtn.SetText("Name")
 	fb.remoteSizeBtn.SetText("Size")
 	fb.remoteDateBtn.SetText("Date")
-	
+
 	// Set the active sort indicator
 	arrow := "▲"
 	if !fb.remoteSortAsc {
 		arrow = "▼"
 	}
-	
+
 	switch fb.remoteSortColumn {
 	case "name":
 		fb.remoteNameBtn.SetText("Name " + arrow)
@@ -919,9 +947,9 @@ func (fb *FileBrowser) sortRemoteFiles(column string) {
 		fb.remoteSortColumn = column
 		fb.remoteSortAsc = true
 	}
-	
+
 	fb.updateRemoteSortButtons()
-	fb.applySortToRemoteFiles()
+	fb.applyRemoteFilter()
 	fb.remoteFileList.Refresh()
 }
 
@@ -934,7 +962,7 @@ func (fb *FileBrowser) applySortToRemoteFiles() {
 		if !fb.remoteFiles[i].IsDir && fb.remoteFiles[j].IsDir {
 			return false
 		}
-		
+
 		var less bool
 		switch fb.remoteSortColumn {
 		case "name":
@@ -946,7 +974,7 @@ func (fb *FileBrowser) applySortToRemoteFiles() {
 		default:
 			less = strings.ToLower(fb.remoteFiles[i].Name) < strings.ToLower(fb.remoteFiles[j].Name)
 		}
-		
+
 		if fb.remoteSortAsc {
 			return less
 		}
@@ -1012,7 +1040,7 @@ func (fb *FileBrowser) updateSCPButtonState() {
 		fb.scpUploadBtn.Disable()
 		fb.scpUploadBtn.SetText("SCP Upload ⬆")
 	}
-	
+
 	// Update delete button state
 	if len(fb.selectedFiles) > 0 {
 		fb.deleteLocalBtn.Enable()
@@ -1041,7 +1069,7 @@ func (fb *FileBrowser) confirmDeleteLocalFiles() {
 	if len(fb.selectedFiles) == 0 {
 		return
 	}
-	
+
 	// Build confirmation message
 	var msg string
 	if len(fb.selectedFiles) == 1 {
@@ -1057,7 +1085,7 @@ func (fb *FileBrowser) confirmDeleteLocalFiles() {
 			}
 		}
 	}
-	
+
 	dialog.ShowConfirm("Confirm Delete", msg, func(confirmed bool) {
 		if confirmed {
 			fb.deleteLocalFiles()
@@ -1068,20 +1096,20 @@ func (fb *FileBrowser) confirmDeleteLocalFiles() {
 func (fb *FileBrowser) deleteLocalFiles() {
 	deleted := 0
 	failed := 0
-	
+
 	for _, filePath := range fb.selectedFiles {
 		info, err := os.Stat(filePath)
 		if err != nil {
 			failed++
 			continue
 		}
-		
+
 		if info.IsDir() {
 			err = os.RemoveAll(filePath)
 		} else {
 			err = os.Remove(filePath)
 		}
-		
+
 		if err != nil {
 			fmt.Printf("Failed to delete %s: %v\n", filePath, err)
 			failed++
@@ -1089,13 +1117,13 @@ func (fb *FileBrowser) deleteLocalFiles() {
 			deleted++
 		}
 	}
-	
+
 	if failed == 0 {
 		fb.statusLabel.SetText(fmt.Sprintf("✅ Deleted %d item(s)", deleted))
 	} else {
 		fb.statusLabel.SetText(fmt.Sprintf("⚠️ Deleted %d, failed %d", deleted, failed))
 	}
-	
+
 	fb.selectedFiles = fb.selectedFiles[:0]
 	fb.updateSCPButtonState()
 	fb.NavigateTo(fb.currentPath)
@@ -1105,7 +1133,7 @@ func (fb *FileBrowser) confirmDeleteRemoteFiles() {
 	if len(fb.selectedRemoteFiles) == 0 || !fb.sshConn.connected {
 		return
 	}
-	
+
 	// Build confirmation message
 	var msg string
 	if len(fb.selectedRemoteFiles) == 1 {
@@ -1121,7 +1149,7 @@ func (fb *FileBrowser) confirmDeleteRemoteFiles() {
 			}
 		}
 	}
-	
+
 	dialog.ShowConfirm("Confirm Remote Delete", msg, func(confirmed bool) {
 		if confirmed {
 			fb.deleteRemoteFiles()
@@ -1133,26 +1161,26 @@ func (fb *FileBrowser) deleteRemoteFiles() {
 	if !fb.sshConn.connected {
 		return
 	}
-	
+
 	fb.remoteStatusLabel.SetText("Deleting files...")
-	
+
 	go func() {
 		deleted := 0
 		failed := 0
-		
+
 		for _, remotePath := range fb.selectedRemoteFiles {
 			info, err := fb.sshConn.sftpClient.Stat(remotePath)
 			if err != nil {
 				failed++
 				continue
 			}
-			
+
 			if info.IsDir() {
 				err = fb.deleteRemoteDirectory(remotePath)
 			} else {
 				err = fb.sshConn.sftpClient.Remove(remotePath)
 			}
-			
+
 			if err != nil {
 				fmt.Printf("Failed to delete %s: %v\n", remotePath, err)
 				failed++
@@ -1160,13 +1188,13 @@ func (fb *FileBrowser) deleteRemoteFiles() {
 				deleted++
 			}
 		}
-		
+
 		if failed == 0 {
 			fb.remoteStatusLabel.SetText(fmt.Sprintf("✅ Deleted %d item(s)", deleted))
 		} else {
 			fb.remoteStatusLabel.SetText(fmt.Sprintf("⚠️ Deleted %d, failed %d", deleted, failed))
 		}
-		
+
 		fb.selectedRemoteFiles = fb.selectedRemoteFiles[:0]
 		fb.updateDownloadButtonState()
 		fb.RemoteNavigateTo(fb.remoteCurrentPath)
@@ -1179,7 +1207,7 @@ func (fb *FileBrowser) deleteRemoteDirectory(path string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Delete contents first
 	for _, file := range files {
 		fullPath := path + "/" + file.Name()
@@ -1192,7 +1220,7 @@ func (fb *FileBrowser) deleteRemoteDirectory(path string) error {
 			return err
 		}
 	}
-	
+
 	// Delete the directory itself
 	return fb.sshConn.sftpClient.RemoveDirectory(path)
 }
@@ -1202,22 +1230,22 @@ func (fb *FileBrowser) scpUploadFiles() {
 		fb.statusLabel.SetText("No files selected for upload")
 		return
 	}
-	
+
 	if !fb.sshConn.connected {
 		fb.statusLabel.SetText("Not connected to remote server")
 		return
 	}
-	
+
 	fb.statusLabel.SetText(fmt.Sprintf("Starting SCP upload of %d file(s)...", len(fb.selectedFiles)))
-	
+
 	go func() {
 		uploaded := 0
 		failed := 0
-		
+
 		for i, filePath := range fb.selectedFiles {
 			filename := filepath.Base(filePath)
 			fb.statusLabel.SetText(fmt.Sprintf("SCP uploading %d/%d: %s", i+1, len(fb.selectedFiles), filename))
-			
+
 			err := fb.scpUploadFile(filePath)
 			if err != nil {
 				fmt.Printf("SCP upload failed for %s: %v\n", filePath, err)
@@ -1226,17 +1254,17 @@ func (fb *FileBrowser) scpUploadFiles() {
 				uploaded++
 			}
 		}
-		
+
 		if failed == 0 {
 			fb.statusLabel.SetText(fmt.Sprintf("✅ SCP uploaded %d file(s) successfully", uploaded))
 		} else {
 			fb.statusLabel.SetText(fmt.Sprintf("⚠️ SCP uploaded %d file(s), %d failed", uploaded, failed))
 		}
-		
+
 		fb.selectedFiles = fb.selectedFiles[:0]
 		fb.updateSCPButtonState()
 		fb.fileList.Refresh()
-		
+
 		if fb.sshConn.connected {
 			fb.RemoteNavigateTo(fb.remoteCurrentPath)
 		}
@@ -1248,23 +1276,23 @@ func (fb *FileBrowser) scpDownloadFiles() {
 		fb.remoteStatusLabel.SetText("No files selected for download")
 		return
 	}
-	
+
 	if !fb.sshConn.connected {
 		fb.remoteStatusLabel.SetText("Not connected to remote server")
 		return
 	}
-	
+
 	fb.remoteStatusLabel.SetText(fmt.Sprintf("Starting SCP download of %d file(s)...", len(fb.selectedRemoteFiles)))
-	
+
 	go func() {
 		downloaded := 0
 		failed := 0
 		skipped := 0
-		
+
 		for i, remotePath := range fb.selectedRemoteFiles {
 			filename := filepath.Base(remotePath)
 			fb.remoteStatusLabel.SetText(fmt.Sprintf("SCP downloading %d/%d: %s", i+1, len(fb.selectedRemoteFiles), filename))
-			
+
 			// Check if it's a directory
 			info, err := fb.sshConn.sftpClient.Stat(remotePath)
 			if err != nil {
@@ -1272,13 +1300,13 @@ func (fb *FileBrowser) scpDownloadFiles() {
 				failed++
 				continue
 			}
-			
+
 			if info.IsDir() {
 				fmt.Printf("Skipping directory: %s\n", remotePath)
 				skipped++
 				continue
 			}
-			
+
 			err = fb.scpDownloadFile(remotePath)
 			if err != nil {
 				fmt.Printf("SCP download failed for %s: %v\n", remotePath, err)
@@ -1287,7 +1315,7 @@ func (fb *FileBrowser) scpDownloadFiles() {
 				downloaded++
 			}
 		}
-		
+
 		var statusMsg string
 		if failed == 0 && skipped == 0 {
 			statusMsg = fmt.Sprintf("✅ SCP downloaded %d file(s) successfully to %s", downloaded, fb.currentPath)
@@ -1297,11 +1325,11 @@ func (fb *FileBrowser) scpDownloadFiles() {
 			statusMsg = fmt.Sprintf("⚠️ SCP downloaded %d file(s), %d failed", downloaded, failed)
 		}
 		fb.remoteStatusLabel.SetText(statusMsg)
-		
+
 		fb.selectedRemoteFiles = fb.selectedRemoteFiles[:0]
 		fb.updateDownloadButtonState()
 		fb.remoteFileList.Refresh()
-		
+
 		// Refresh local directory to show downloaded files
 		fb.NavigateTo(fb.currentPath)
 	}()
@@ -1311,7 +1339,7 @@ func (fb *FileBrowser) scpDownloadFile(remotePath string) error {
 	// Get SSH connection details
 	host := fb.hostEntry.Text
 	user := fb.userEntry.Text
-	
+
 	if user == "" {
 		user = ssh_config.Get(host, "User")
 		if user == "" {
@@ -1325,28 +1353,28 @@ func (fb *FileBrowser) scpDownloadFile(remotePath string) error {
 			}
 		}
 	}
-	
+
 	hostname := ssh_config.Get(host, "HostName")
 	if hostname == "" {
 		hostname = host
 	}
-	
+
 	port := ssh_config.Get(host, "Port")
 	if port == "" {
 		port = "22"
 	}
-	
+
 	// Build local destination path
 	filename := filepath.Base(remotePath)
 	localPath := filepath.Join(fb.currentPath, filename)
-	
+
 	// Build SCP command arguments
 	var scpArgs []string
-	
+
 	if port != "22" {
 		scpArgs = append(scpArgs, "-P", port)
 	}
-	
+
 	if fb.keyEntry.Text != "" {
 		scpArgs = append(scpArgs, "-i", fb.keyEntry.Text)
 	} else {
@@ -1362,31 +1390,31 @@ func (fb *FileBrowser) scpDownloadFile(remotePath string) error {
 			}
 		}
 	}
-	
+
 	proxyCommand := ssh_config.Get(host, "ProxyCommand")
 	if proxyCommand != "" && proxyCommand != "none" {
 		scpArgs = append(scpArgs, "-o", fmt.Sprintf("ProxyCommand=%s", proxyCommand))
 	}
-	
-	scpArgs = append(scpArgs, 
+
+	scpArgs = append(scpArgs,
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "UserKnownHostsFile=/dev/null",
 	)
-	
+
 	// For download: source is remote, destination is local
 	scpArgs = append(scpArgs, fmt.Sprintf("%s@%s:%s", user, hostname, remotePath), localPath)
-	
+
 	cmd := exec.Command("scp", scpArgs...)
-	
+
 	if fb.passEntry.Text != "" {
 		cmd.Env = append(os.Environ(), "SSH_ASKPASS_REQUIRE=never")
 	}
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("scp failed: %v, output: %s", err, string(output))
 	}
-	
+
 	return nil
 }
 
@@ -1395,11 +1423,11 @@ func (fb *FileBrowser) scpUploadFile(localPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to stat file: %v", err)
 	}
-	
+
 	if stat.IsDir() {
 		return fmt.Errorf("directory upload not supported via SCP")
 	}
-	
+
 	filename := filepath.Base(localPath)
 	var remoteFilePath string
 	if fb.remoteCurrentPath == "/" {
@@ -1407,10 +1435,10 @@ func (fb *FileBrowser) scpUploadFile(localPath string) error {
 	} else {
 		remoteFilePath = fb.remoteCurrentPath + "/" + filename
 	}
-	
+
 	host := fb.hostEntry.Text
 	user := fb.userEntry.Text
-	
+
 	if user == "" {
 		user = ssh_config.Get(host, "User")
 		if user == "" {
@@ -1424,23 +1452,23 @@ func (fb *FileBrowser) scpUploadFile(localPath string) error {
 			}
 		}
 	}
-	
+
 	hostname := ssh_config.Get(host, "HostName")
 	if hostname == "" {
 		hostname = host
 	}
-	
+
 	port := ssh_config.Get(host, "Port")
 	if port == "" {
 		port = "22"
 	}
-	
+
 	var scpArgs []string
-	
+
 	if port != "22" {
 		scpArgs = append(scpArgs, "-P", port)
 	}
-	
+
 	if fb.keyEntry.Text != "" {
 		scpArgs = append(scpArgs, "-i", fb.keyEntry.Text)
 	} else {
@@ -1456,30 +1484,30 @@ func (fb *FileBrowser) scpUploadFile(localPath string) error {
 			}
 		}
 	}
-	
+
 	proxyCommand := ssh_config.Get(host, "ProxyCommand")
 	if proxyCommand != "" && proxyCommand != "none" {
 		scpArgs = append(scpArgs, "-o", fmt.Sprintf("ProxyCommand=%s", proxyCommand))
 	}
-	
-	scpArgs = append(scpArgs, 
+
+	scpArgs = append(scpArgs,
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "UserKnownHostsFile=/dev/null",
 	)
-	
+
 	scpArgs = append(scpArgs, localPath, fmt.Sprintf("%s@%s:%s", user, hostname, remoteFilePath))
-	
+
 	cmd := exec.Command("scp", scpArgs...)
-	
+
 	if fb.passEntry.Text != "" {
 		cmd.Env = append(os.Environ(), "SSH_ASKPASS_REQUIRE=never")
 	}
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("scp failed: %v, output: %s", err, string(output))
 	}
-	
+
 	return nil
 }
 
@@ -1497,7 +1525,7 @@ func (fb *FileBrowser) connectToSSH() {
 
 	fb.remoteStatusLabel.SetText("Connecting...")
 	fb.connectButton.SetText("Connecting...")
-	
+
 	go func() {
 		var sshConfig *ssh.ClientConfig
 		var proxyConn net.Conn
@@ -1534,7 +1562,7 @@ func (fb *FileBrowser) connectToSSH() {
 			if port == "" {
 				port = "22"
 			}
-			
+
 			hostAddr := hostname + ":" + port
 			client, err = ssh.Dial("tcp", hostAddr, sshConfig)
 			if err != nil {
@@ -1560,18 +1588,17 @@ func (fb *FileBrowser) connectToSSH() {
 		fb.remoteStatusLabel.SetText("Connected to " + host)
 		fb.connectButton.SetText("Disconnect")
 		fb.terminalBtn.Enable()
-		
+
 		fb.updateSCPButtonState()
 		fb.updateDownloadButtonState()
-		
+
 		// Get remote user's home directory
 		homeDir, err := fb.getRemoteHomeDir()
 		if err != nil || homeDir == "" {
 			homeDir = "/"
 		}
-		
+
 		fb.RemoteNavigateTo(homeDir)
-		fb.remoteFolderTree.Refresh()
 	}()
 }
 
@@ -1585,12 +1612,12 @@ func (fb *FileBrowser) browseForKeyFile() {
 			return // User cancelled
 		}
 		defer reader.Close()
-		
+
 		// Get the file path
 		filePath := reader.URI().Path()
 		fb.keyEntry.SetText(filePath)
 	}, fb.mainWindow)
-	
+
 	// Set starting directory to ~/.ssh if it exists
 	homeDir, err := os.UserHomeDir()
 	if err == nil {
@@ -1603,10 +1630,10 @@ func (fb *FileBrowser) browseForKeyFile() {
 			}
 		}
 	}
-	
+
 	// Filter for common key file extensions
 	fileDialog.SetFilter(storage.NewExtensionFileFilter([]string{".pem", ".key", ".pub", ""}))
-	
+
 	fileDialog.Show()
 }
 
@@ -1615,19 +1642,19 @@ func (fb *FileBrowser) openSSHTerminal() {
 		dialog.ShowError(fmt.Errorf("no host specified"), fb.mainWindow)
 		return
 	}
-	
+
 	host := fb.hostEntry.Text
 	user := fb.userEntry.Text
 	keyPath := fb.keyEntry.Text
-	
+
 	// Build SSH command arguments
 	var sshArgs []string
-	
+
 	// Add user if specified
 	if user != "" {
 		sshArgs = append(sshArgs, "-l", user)
 	}
-	
+
 	// Add key if specified
 	if keyPath != "" {
 		sshArgs = append(sshArgs, "-i", keyPath)
@@ -1645,15 +1672,15 @@ func (fb *FileBrowser) openSSHTerminal() {
 			}
 		}
 	}
-	
+
 	// Add host
 	sshArgs = append(sshArgs, host)
-	
+
 	fb.remoteStatusLabel.SetText("Opening terminal session...")
-	
+
 	go func() {
 		var cmd *exec.Cmd
-		
+
 		// Detect the operating system and use appropriate terminal
 		switch runtime.GOOS {
 		case "darwin":
@@ -1663,7 +1690,7 @@ func (fb *FileBrowser) openSSHTerminal() {
 				do script "ssh %s"
 			end tell`, strings.Join(sshArgs, " "))
 			cmd = exec.Command("osascript", "-e", script)
-			
+
 		case "linux":
 			// Linux - try common terminal emulators
 			terminals := []struct {
@@ -1678,7 +1705,7 @@ func (fb *FileBrowser) openSSHTerminal() {
 				{"alacritty", []string{"-e", "ssh"}},
 				{"kitty", []string{"ssh"}},
 			}
-			
+
 			for _, term := range terminals {
 				if _, err := exec.LookPath(term.name); err == nil {
 					args := append(term.args, sshArgs...)
@@ -1686,28 +1713,28 @@ func (fb *FileBrowser) openSSHTerminal() {
 					break
 				}
 			}
-			
+
 			if cmd == nil {
 				fb.remoteStatusLabel.SetText("❌ No terminal emulator found")
 				return
 			}
-			
+
 		case "windows":
 			// Windows - use cmd to start ssh
 			allArgs := append([]string{"/c", "start", "ssh"}, sshArgs...)
 			cmd = exec.Command("cmd", allArgs...)
-			
+
 		default:
 			fb.remoteStatusLabel.SetText("❌ Unsupported operating system")
 			return
 		}
-		
+
 		err := cmd.Start()
 		if err != nil {
 			fb.remoteStatusLabel.SetText(fmt.Sprintf("❌ Failed to open terminal: %v", err))
 			return
 		}
-		
+
 		fb.remoteStatusLabel.SetText("✅ Terminal session opened")
 	}()
 }
@@ -1716,23 +1743,23 @@ func (fb *FileBrowser) getRemoteHomeDir() (string, error) {
 	if fb.sshConn.client == nil {
 		return "", fmt.Errorf("not connected")
 	}
-	
+
 	session, err := fb.sshConn.client.NewSession()
 	if err != nil {
 		return "", err
 	}
 	defer session.Close()
-	
+
 	output, err := session.Output("echo $HOME")
 	if err != nil {
 		return "", err
 	}
-	
+
 	homeDir := strings.TrimSpace(string(output))
 	if homeDir == "" {
 		return "/", nil
 	}
-	
+
 	return homeDir, nil
 }
 
@@ -1741,21 +1768,21 @@ func (fb *FileBrowser) getKnownHostsCallback(configHost string, targetHost strin
 	if err != nil {
 		return nil, fmt.Errorf("failed to get home directory: %v", err)
 	}
-	
+
 	// Get known hosts files from SSH config or use defaults
 	knownHostsFiles := []string{}
-	
+
 	// Check for UserKnownHostsFile in SSH config
 	userKnownHosts := ssh_config.Get(configHost, "UserKnownHostsFile")
 	fmt.Printf("DEBUG: configHost='%s', UserKnownHostsFile from config='%s'\n", configHost, userKnownHosts)
-	
+
 	if userKnownHosts != "" {
 		// Handle multiple files separated by spaces (but respect quotes)
 		files := parseQuotedPaths(userKnownHosts)
 		for _, f := range files {
 			// Strip surrounding quotes if present
 			f = strings.Trim(f, "\"'")
-			
+
 			// Expand ~
 			if strings.HasPrefix(f, "~/") {
 				f = filepath.Join(homeDir, f[2:])
@@ -1765,19 +1792,19 @@ func (fb *FileBrowser) getKnownHostsCallback(configHost string, targetHost strin
 			knownHostsFiles = append(knownHostsFiles, f)
 		}
 	}
-	
+
 	// Add default known_hosts file
 	defaultKnownHosts := filepath.Join(homeDir, ".ssh", "known_hosts")
 	knownHostsFiles = append(knownHostsFiles, defaultKnownHosts)
-	
+
 	// Also check global known_hosts
 	globalKnownHosts := "/etc/ssh/ssh_known_hosts"
 	if _, statErr := os.Stat(globalKnownHosts); statErr == nil {
 		knownHostsFiles = append(knownHostsFiles, globalKnownHosts)
 	}
-	
+
 	fmt.Printf("DEBUG: Will check known_hosts files: %v\n", knownHostsFiles)
-	
+
 	// Ensure default known_hosts exists
 	if _, statErr := os.Stat(defaultKnownHosts); os.IsNotExist(statErr) {
 		sshDir := filepath.Join(homeDir, ".ssh")
@@ -1788,7 +1815,7 @@ func (fb *FileBrowser) getKnownHostsCallback(configHost string, targetHost strin
 			return nil, fmt.Errorf("failed to create known_hosts file: %v", writeErr)
 		}
 	}
-	
+
 	// Read and parse all known_hosts files
 	type knownKey struct {
 		pattern  string
@@ -1796,7 +1823,7 @@ func (fb *FileBrowser) getKnownHostsCallback(configHost string, targetHost strin
 		filePath string
 	}
 	knownKeys := []knownKey{}
-	
+
 	for _, knownHostsPath := range knownHostsFiles {
 		fmt.Printf("DEBUG: Trying to read known_hosts file: %s\n", knownHostsPath)
 		data, readErr := os.ReadFile(knownHostsPath)
@@ -1804,37 +1831,34 @@ func (fb *FileBrowser) getKnownHostsCallback(configHost string, targetHost strin
 			fmt.Printf("DEBUG: Failed to read %s: %v\n", knownHostsPath, readErr)
 			continue
 		}
-		
+
 		fmt.Printf("DEBUG: Successfully read %s (%d bytes)\n", knownHostsPath, len(data))
-		
+
 		lines := strings.Split(string(data), "\n")
 		for lineNum, line := range lines {
 			line = strings.TrimSpace(line)
 			if line == "" || strings.HasPrefix(line, "#") {
 				continue
 			}
-			
+
 			fmt.Printf("DEBUG: Processing line %d: %.80s...\n", lineNum+1, line)
-			
+
 			// Handle @cert-authority and @revoked markers
-			// Format: @cert-authority hostname keytype base64key
-			isCertAuthority := false
 			if strings.HasPrefix(line, "@cert-authority ") {
-				isCertAuthority = true
 				line = strings.TrimPrefix(line, "@cert-authority ")
 				fmt.Printf("DEBUG: Found @cert-authority line\n")
 			} else if strings.HasPrefix(line, "@revoked ") {
 				fmt.Printf("DEBUG: Skipping @revoked line\n")
 				continue
 			}
-			
+
 			// Parse known_hosts line: hostname[,hostname2,...] keytype base64key [comment]
 			fields := strings.Fields(line)
 			if len(fields) < 3 {
 				fmt.Printf("DEBUG: Line has fewer than 3 fields (%d), skipping\n", len(fields))
 				continue
 			}
-			
+
 			hosts := strings.Split(fields[0], ",")
 			keyBytes := []byte(fields[1] + " " + fields[2])
 			pubKey, _, _, _, parseErr := ssh.ParseAuthorizedKey(keyBytes)
@@ -1842,14 +1866,14 @@ func (fb *FileBrowser) getKnownHostsCallback(configHost string, targetHost strin
 				fmt.Printf("DEBUG: Failed to parse key for hosts %v: %v\n", hosts, parseErr)
 				continue
 			}
-			
+
 			for _, h := range hosts {
 				// Handle hashed hostnames (start with |1|)
 				if strings.HasPrefix(h, "|1|") {
 					fmt.Printf("DEBUG: Skipping hashed hostname\n")
 					continue
 				}
-				
+
 				// Normalize the host - remove brackets but preserve port
 				origHost := h
 				h = strings.TrimPrefix(h, "[")
@@ -1859,9 +1883,9 @@ func (fb *FileBrowser) getKnownHostsCallback(configHost string, targetHost strin
 				} else {
 					h = strings.TrimSuffix(h, "]")
 				}
-				
-				fmt.Printf("DEBUG: Loaded known host pattern: '%s' (cert-authority: %v) from %s\n", h, isCertAuthority, knownHostsPath)
-				
+
+				fmt.Printf("DEBUG: Loaded known host pattern: '%s' from %s\n", h, knownHostsPath)
+
 				knownKeys = append(knownKeys, knownKey{pattern: h, key: pubKey, filePath: knownHostsPath})
 				// Also keep original format for matching
 				if origHost != h {
@@ -1870,31 +1894,30 @@ func (fb *FileBrowser) getKnownHostsCallback(configHost string, targetHost strin
 			}
 		}
 	}
-	
+
 	// Function to check if a hostname matches a pattern (supports * and ? wildcards)
 	matchHost := func(pattern, hostname string) bool {
 		// Handle negation patterns
 		if strings.HasPrefix(pattern, "!") {
 			return false
 		}
-		
+
 		// Exact match first
 		if pattern == hostname {
 			return true
 		}
-		
+
 		// No wildcards, no match
 		if !strings.Contains(pattern, "*") && !strings.Contains(pattern, "?") {
 			return false
 		}
-		
+
 		// Convert glob pattern to regex-like matching
-		// Handle * (matches any characters) and ? (matches single character)
 		patternIdx := 0
 		hostnameIdx := 0
 		starIdx := -1
 		matchIdx := 0
-		
+
 		for hostnameIdx < len(hostname) {
 			if patternIdx < len(pattern) && (pattern[patternIdx] == '?' || pattern[patternIdx] == hostname[hostnameIdx]) {
 				patternIdx++
@@ -1911,31 +1934,31 @@ func (fb *FileBrowser) getKnownHostsCallback(configHost string, targetHost strin
 				return false
 			}
 		}
-		
+
 		for patternIdx < len(pattern) && pattern[patternIdx] == '*' {
 			patternIdx++
 		}
-		
+
 		return patternIdx == len(pattern)
 	}
-	
+
 	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 		keyFingerprint := ssh.FingerprintSHA256(key)
-		
+
 		// Build list of hostnames to check - use the actual resolved hostname
 		hostsToCheck := []string{targetHost}
-		
+
 		// Add with port variations
 		if targetPort != "" && targetPort != "22" {
 			hostsToCheck = append(hostsToCheck, fmt.Sprintf("%s:%s", targetHost, targetPort))
 			hostsToCheck = append(hostsToCheck, fmt.Sprintf("[%s]:%s", targetHost, targetPort))
 		}
-		
+
 		// Also check the config alias if different
 		if configHost != targetHost {
 			hostsToCheck = append(hostsToCheck, configHost)
 		}
-		
+
 		// Also check the hostname passed by SSH library
 		if hostname != targetHost && hostname != configHost {
 			hostsToCheck = append(hostsToCheck, hostname)
@@ -1944,58 +1967,42 @@ func (fb *FileBrowser) getKnownHostsCallback(configHost string, targetHost strin
 				hostsToCheck = append(hostsToCheck, h)
 			}
 		}
-		
+
 		// Debug: print what we're checking
 		fmt.Printf("DEBUG: Checking host keys for hosts: %v\n", hostsToCheck)
-		fmt.Printf("DEBUG: Known keys patterns: ")
-		for _, kk := range knownKeys {
-			fmt.Printf("'%s' ", kk.pattern)
-		}
-		fmt.Printf("\n")
-		
+
 		// Check if we have this host in our known keys
 		for _, kk := range knownKeys {
 			for _, hostCheck := range hostsToCheck {
 				matched := matchHost(kk.pattern, hostCheck)
 				if matched {
 					fmt.Printf("DEBUG: Pattern '%s' matched host '%s'\n", kk.pattern, hostCheck)
-					fmt.Printf("DEBUG: Known key fingerprint: %s (type: %s)\n", ssh.FingerprintSHA256(kk.key), kk.key.Type())
-					fmt.Printf("DEBUG: Server key fingerprint: %s (type: %s)\n", keyFingerprint, key.Type())
-					
+
 					// Found a matching pattern, compare keys
 					if ssh.FingerprintSHA256(kk.key) == keyFingerprint {
 						fmt.Printf("DEBUG: Key matched!\n")
 						return nil
 					}
 					fmt.Printf("DEBUG: Key fingerprints don't match, checking next key...\n")
-					// Don't immediately fail - there might be multiple keys for this pattern
-					// Continue checking other keys
 				}
 			}
 		}
-		
-		// Check if any pattern matched but keys didn't match (potential MITM or cert-authority)
-		// Only fail if we found a matching pattern with a non-cert-authority key
+
+		// Check if any pattern matched but keys didn't match
 		for _, kk := range knownKeys {
 			for _, hostCheck := range hostsToCheck {
 				if matchHost(kk.pattern, hostCheck) {
-					// A pattern matched but key didn't - however for cert-authority entries,
-					// the key in known_hosts is the CA key, not the host key
-					// The host presents a certificate signed by the CA, not the CA key itself
-					// So we need to verify the certificate, not do direct key comparison
-					
-					// For now, if we have a matching pattern, trust it (similar to how ssh works with certs)
 					fmt.Printf("DEBUG: Found matching pattern '%s', accepting (may be cert-authority)\n", kk.pattern)
 					return nil
 				}
 			}
 		}
-		
+
 		fmt.Printf("DEBUG: No matching host key found\n")
-		
+
 		// Unknown host - prompt user to accept
 		keyType := key.Type()
-		
+
 		accepted := fb.promptHostKeyAcceptance(targetHost, keyType, keyFingerprint, defaultKnownHosts)
 		if accepted {
 			// Add the key to known_hosts
@@ -2011,36 +2018,35 @@ func (fb *FileBrowser) getKnownHostsCallback(configHost string, targetHost strin
 
 func (fb *FileBrowser) promptHostKeyAcceptance(hostname, keyType, fingerprint, knownHostsPath string) bool {
 	resultChan := make(chan bool)
-	
+
 	message := fmt.Sprintf("The authenticity of host '%s' can't be established.\n\n"+
 		"Host key type: %s\n"+
 		"Host key fingerprint:\n%s\n\n"+
 		"Are you sure you want to continue connecting?\n"+
-		"The key will be added to:\n%s", 
+		"The key will be added to:\n%s",
 		hostname, keyType, fingerprint, knownHostsPath)
-	
+
 	// Run dialog on main thread
 	dialog.ShowConfirm("Unknown Host Key", message, func(accepted bool) {
 		resultChan <- accepted
 	}, fb.mainWindow)
-	
+
 	return <-resultChan
 }
 
 func (fb *FileBrowser) addHostKey(knownHostsPath string, hostname string, key ssh.PublicKey) error {
 	// Create the known_hosts line manually
-	// Format: hostname keytype base64key
 	keyBytes := key.Marshal()
 	keyBase64 := base64.StdEncoding.EncodeToString(keyBytes)
 	line := fmt.Sprintf("%s %s %s", hostname, key.Type(), keyBase64)
-	
+
 	// Append to known_hosts file
 	f, err := os.OpenFile(knownHostsPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	
+
 	_, err = f.WriteString(line + "\n")
 	return err
 }
@@ -2050,12 +2056,12 @@ func (fb *FileBrowser) buildSSHConfigFromFile(host string) (*ssh.ClientConfig, n
 	if hostname == "" {
 		hostname = host
 	}
-	
+
 	port := ssh_config.Get(host, "Port")
 	if port == "" {
 		port = "22"
 	}
-	
+
 	user := ssh_config.Get(host, "User")
 	if user == "" {
 		user = fb.userEntry.Text
@@ -2073,7 +2079,7 @@ func (fb *FileBrowser) buildSSHConfigFromFile(host string) (*ssh.ClientConfig, n
 
 	proxyJump := ssh_config.Get(host, "ProxyJump")
 	proxyCommand := ssh_config.Get(host, "ProxyCommand")
-	
+
 	var authMethods []ssh.AuthMethod
 
 	if sshAuthSock := os.Getenv("SSH_AUTH_SOCK"); sshAuthSock != "" {
@@ -2089,11 +2095,11 @@ func (fb *FileBrowser) buildSSHConfigFromFile(host string) (*ssh.ClientConfig, n
 			homeDir, _ := os.UserHomeDir()
 			keyPath = filepath.Join(homeDir, keyPath[2:])
 		}
-		
+
 		if _, err := os.Stat(keyPath); os.IsNotExist(err) {
 			continue
 		}
-		
+
 		if key, err := fb.loadPrivateKey(keyPath); err == nil {
 			authMethods = append(authMethods, ssh.PublicKeys(key))
 		}
@@ -2107,7 +2113,7 @@ func (fb *FileBrowser) buildSSHConfigFromFile(host string) (*ssh.ClientConfig, n
 			filepath.Join(homeDir, ".ssh", "id_ed25519"),
 			filepath.Join(homeDir, ".ssh", "id_dsa"),
 		}
-		
+
 		for _, keyPath := range defaultKeys {
 			if key, err := fb.loadPrivateKey(keyPath); err == nil {
 				authMethods = append(authMethods, ssh.PublicKeys(key))
@@ -2150,7 +2156,7 @@ func (fb *FileBrowser) buildSSHConfigFromFile(host string) (*ssh.ClientConfig, n
 
 	var conn net.Conn
 	var connErr error
-	
+
 	if proxyJump != "" {
 		conn, connErr = fb.connectViaProxyJump(proxyJump, hostname, port, config)
 		if connErr != nil {
@@ -2164,19 +2170,19 @@ func (fb *FileBrowser) buildSSHConfigFromFile(host string) (*ssh.ClientConfig, n
 		}
 		return config, conn, nil
 	}
-	
+
 	return config, nil, nil
 }
 
 func (fb *FileBrowser) connectViaProxyJump(proxyJump, targetHost, targetPort string, config *ssh.ClientConfig) (net.Conn, error) {
 	proxies := strings.Split(proxyJump, ",")
-	
+
 	if len(proxies) > 1 {
 		return nil, fmt.Errorf("multiple ProxyJump hops not yet supported")
 	}
-	
+
 	proxyHost := proxies[0]
-	
+
 	var proxyUser, proxyHostname, proxyPort string
 	if strings.Contains(proxyHost, "@") {
 		parts := strings.Split(proxyHost, "@")
@@ -2185,7 +2191,7 @@ func (fb *FileBrowser) connectViaProxyJump(proxyJump, targetHost, targetPort str
 	} else {
 		proxyHostname = proxyHost
 	}
-	
+
 	if strings.Contains(proxyHostname, ":") {
 		parts := strings.Split(proxyHostname, ":")
 		proxyHostname = parts[0]
@@ -2193,40 +2199,40 @@ func (fb *FileBrowser) connectViaProxyJump(proxyJump, targetHost, targetPort str
 	} else {
 		proxyPort = "22"
 	}
-	
+
 	if proxyUser == "" {
 		proxyUser = ssh_config.Get(proxyHost, "User")
 		if proxyUser == "" {
 			proxyUser = config.User
 		}
 	}
-	
+
 	proxyConfig := &ssh.ClientConfig{
 		User:            proxyUser,
 		Auth:            config.Auth,
 		HostKeyCallback: config.HostKeyCallback,
 		Timeout:         config.Timeout,
 	}
-	
+
 	proxyClient, proxyErr := ssh.Dial("tcp", proxyHostname+":"+proxyPort, proxyConfig)
 	if proxyErr != nil {
 		return nil, fmt.Errorf("failed to connect to proxy %s: %v", proxyHost, proxyErr)
 	}
-	
+
 	targetAddr := targetHost + ":" + targetPort
 	conn, dialErr := proxyClient.Dial("tcp", targetAddr)
 	if dialErr != nil {
 		proxyClient.Close()
 		return nil, fmt.Errorf("failed to connect through proxy to %s: %v", targetAddr, dialErr)
 	}
-	
+
 	return conn, nil
 }
 
 func (fb *FileBrowser) connectViaProxyCommand(proxyCommand, targetHost, targetPort string) (net.Conn, error) {
 	command := strings.ReplaceAll(proxyCommand, "%h", targetHost)
 	command = strings.ReplaceAll(command, "%p", targetPort)
-	
+
 	user := fb.userEntry.Text
 	if user == "" {
 		if homeDir, hdErr := os.UserHomeDir(); hdErr == nil {
@@ -2239,46 +2245,46 @@ func (fb *FileBrowser) connectViaProxyCommand(proxyCommand, targetHost, targetPo
 		}
 	}
 	command = strings.ReplaceAll(command, "%r", user)
-	
+
 	var parts []string
 	if strings.Contains(command, `"`) {
 		parts = parseQuotedCommand(command)
 	} else {
 		parts = strings.Fields(command)
 	}
-	
+
 	if len(parts) == 0 {
 		return nil, fmt.Errorf("empty proxy command")
 	}
-	
+
 	cmd := exec.Command(parts[0], parts[1:]...)
 	cmd.Env = os.Environ()
-	
+
 	stdin, stdinErr := cmd.StdinPipe()
 	if stdinErr != nil {
 		return nil, fmt.Errorf("failed to create stdin pipe: %v", stdinErr)
 	}
-	
+
 	stdout, stdoutErr := cmd.StdoutPipe()
 	if stdoutErr != nil {
 		stdin.Close()
 		return nil, fmt.Errorf("failed to create stdout pipe: %v", stdoutErr)
 	}
-	
+
 	stderr, stderrErr := cmd.StderrPipe()
 	if stderrErr != nil {
 		stdin.Close()
 		stdout.Close()
 		return nil, fmt.Errorf("failed to create stderr pipe: %v", stderrErr)
 	}
-	
+
 	if startErr := cmd.Start(); startErr != nil {
 		stdin.Close()
 		stdout.Close()
 		stderr.Close()
 		return nil, fmt.Errorf("failed to start proxy command '%s': %v", parts[0], startErr)
 	}
-	
+
 	go func() {
 		buf := make([]byte, 1024)
 		for {
@@ -2289,14 +2295,14 @@ func (fb *FileBrowser) connectViaProxyCommand(proxyCommand, targetHost, targetPo
 		}
 		stderr.Close()
 	}()
-	
+
 	conn := &proxyConn{
 		stdin:  stdin,
 		stdout: stdout,
 		stderr: stderr,
 		cmd:    cmd,
 	}
-	
+
 	return conn, nil
 }
 
@@ -2305,7 +2311,7 @@ func parseQuotedPaths(input string) []string {
 	var current strings.Builder
 	inQuotes := false
 	quoteChar := rune(0)
-	
+
 	for _, char := range input {
 		switch {
 		case (char == '"' || char == '\'') && !inQuotes:
@@ -2327,11 +2333,11 @@ func parseQuotedPaths(input string) []string {
 			current.WriteRune(char)
 		}
 	}
-	
+
 	if current.Len() > 0 {
 		paths = append(paths, current.String())
 	}
-	
+
 	return paths
 }
 
@@ -2340,14 +2346,14 @@ func parseQuotedCommand(command string) []string {
 	var current strings.Builder
 	inQuotes := false
 	escaped := false
-	
+
 	for _, char := range command {
 		if escaped {
 			current.WriteRune(char)
 			escaped = false
 			continue
 		}
-		
+
 		switch char {
 		case '\\':
 			escaped = true
@@ -2366,11 +2372,11 @@ func parseQuotedCommand(command string) []string {
 			current.WriteRune(char)
 		}
 	}
-	
+
 	if current.Len() > 0 {
 		parts = append(parts, current.String())
 	}
-	
+
 	return parts
 }
 
@@ -2393,13 +2399,13 @@ func (c *proxyConn) Close() error {
 	c.stdin.Close()
 	c.stdout.Close()
 	c.stderr.Close()
-	
+
 	if c.cmd.Process != nil {
 		c.cmd.Process.Kill()
 	}
-	
+
 	c.cmd.Wait()
-	
+
 	return nil
 }
 
@@ -2484,15 +2490,14 @@ func (fb *FileBrowser) disconnectSSH() {
 	if fb.sshConn.client != nil {
 		fb.sshConn.client.Close()
 	}
-	
+
 	fb.sshConn.connected = false
 	fb.remoteStatusLabel.SetText("Remote: Disconnected")
 	fb.connectButton.SetText("Connect")
 	fb.terminalBtn.Disable()
 	fb.remoteFiles = []RemoteFile{}
 	fb.remoteFileList.Refresh()
-	fb.remoteFolderTree.Refresh()
-	
+
 	// Clear remote selections
 	fb.selectedRemoteFiles = fb.selectedRemoteFiles[:0]
 	fb.updateSCPButtonState()
@@ -2505,15 +2510,17 @@ func (fb *FileBrowser) createLocalPanel() fyne.CanvasObject {
 		nil, nil, nil,
 		fb.folderTree,
 	)
-	
+
 	// Sort header for local files
 	sortHeader := container.NewHBox(
 		widget.NewLabel("Sort:"),
 		fb.localNameBtn,
 		fb.localSizeBtn,
 		fb.localDateBtn,
+		widget.NewSeparator(),
+		fb.showLocalHidden,
 	)
-	
+
 	rightPanel := container.NewBorder(
 		container.NewVBox(
 			widget.NewLabel("📋 Local Files (Check files to upload)"),
@@ -2522,14 +2529,14 @@ func (fb *FileBrowser) createLocalPanel() fyne.CanvasObject {
 		nil, nil, nil,
 		fb.fileList,
 	)
-	
+
 	localSplit := container.NewHSplit(leftPanel, rightPanel)
 	localSplit.SetOffset(0.3)
-	
+
 	return container.NewBorder(
 		container.NewHBox(
-			fb.upButton, fb.homeButton, 
-			widget.NewSeparator(), 
+			fb.upButton, fb.homeButton,
+			widget.NewSeparator(),
 			widget.NewLabel("Local Path:"), fb.pathLabel,
 			widget.NewSeparator(),
 			fb.scpUploadBtn,
@@ -2543,32 +2550,32 @@ func (fb *FileBrowser) createLocalPanel() fyne.CanvasObject {
 
 func (fb *FileBrowser) createRemotePanel() fyne.CanvasObject {
 	showHostsBtn := widget.NewButton("Show Hosts", fb.showAvailableHosts)
-	
-	// Create fixed-width entry containers (40 chars ≈ 280 pixels with default font)
-	charWidth := float32(7.0) // approximate width per character
+
+	// Create fixed-width entry containers
+	charWidth := float32(7.0)
 	entryWidth := charWidth * 40
-	
+
 	hostContainer := container.NewHBox(
 		widget.NewLabel("Host:"),
 		container.NewGridWrap(fyne.NewSize(entryWidth, 36), fb.hostEntry),
 	)
-	
+
 	userContainer := container.NewHBox(
 		widget.NewLabel("User:"),
 		container.NewGridWrap(fyne.NewSize(entryWidth*0.5, 36), fb.userEntry),
 	)
-	
+
 	passContainer := container.NewHBox(
 		widget.NewLabel("Pass:"),
 		container.NewGridWrap(fyne.NewSize(entryWidth*0.5, 36), fb.passEntry),
 	)
-	
+
 	keyContainer := container.NewHBox(
 		widget.NewLabel("Key:"),
 		container.NewGridWrap(fyne.NewSize(entryWidth*0.8, 36), fb.keyEntry),
 		fb.keyBrowseBtn,
 	)
-	
+
 	settingsBox := container.NewHBox(
 		container.NewGridWrap(fyne.NewSize(180, 36), fb.savedSettingsSelect),
 		fb.saveSettingsBtn,
@@ -2576,7 +2583,7 @@ func (fb *FileBrowser) createRemotePanel() fyne.CanvasObject {
 		fb.clearSettingsBtn,
 		fb.deleteSettingsBtn,
 	)
-	
+
 	connectionBox := container.NewVBox(
 		container.NewHBox(
 			fb.useConfigCheck,
@@ -2593,22 +2600,37 @@ func (fb *FileBrowser) createRemotePanel() fyne.CanvasObject {
 			fb.terminalBtn,
 		),
 	)
-	
-	leftPanel := container.NewBorder(
-		widget.NewLabel("🌐 Remote Folders"),
-		nil, nil, nil,
-		fb.remoteFolderTree,
-	)
-	
+
 	// Sort header for remote files
 	remoteSortHeader := container.NewHBox(
 		widget.NewLabel("Sort:"),
 		fb.remoteNameBtn,
 		fb.remoteSizeBtn,
 		fb.remoteDateBtn,
+		widget.NewSeparator(),
+		fb.showRemoteHidden,
 	)
-	
-	rightPanel := container.NewBorder(
+
+	// Navigation bar with editable path
+	navBar := container.NewBorder(
+		nil, nil,
+		container.NewHBox(
+			fb.remoteUpButton,
+			fb.remoteHomeButton,
+			widget.NewSeparator(),
+			widget.NewLabel("Path:"),
+		),
+		container.NewHBox(
+			widget.NewButtonWithIcon("Go", theme.NavigateNextIcon(), func() {
+				if fb.sshConn.connected && fb.remotePathEntry.Text != "" {
+					fb.RemoteNavigateTo(fb.remotePathEntry.Text)
+				}
+			}),
+		),
+		fb.remotePathEntry,
+	)
+
+	filePanel := container.NewBorder(
 		container.NewVBox(
 			widget.NewLabel("📋 Remote Files (Check files to download)"),
 			remoteSortHeader,
@@ -2616,33 +2638,28 @@ func (fb *FileBrowser) createRemotePanel() fyne.CanvasObject {
 		nil, nil, nil,
 		fb.remoteFileList,
 	)
-	
-	remoteSplit := container.NewHSplit(leftPanel, rightPanel)
-	remoteSplit.SetOffset(0.3)
-	
+
 	return container.NewBorder(
 		connectionBox,
 		container.NewHBox(
-			fb.remoteUpButton, fb.remoteHomeButton, 
-			widget.NewSeparator(), 
-			widget.NewLabel("Remote Path:"), fb.remotePathLabel,
-			widget.NewSeparator(),
 			fb.scpDownloadBtn,
 			fb.deleteRemoteBtn,
+			widget.NewSeparator(),
+			fb.remoteStatusLabel,
 		),
 		nil, nil,
 		container.NewBorder(
+			navBar,
 			nil,
-			fb.remoteStatusLabel,
 			nil, nil,
-			remoteSplit,
+			filePanel,
 		),
 	)
 }
 
 func (fb *FileBrowser) getTreeChildren(uid widget.TreeNodeID) []widget.TreeNodeID {
 	path := string(uid)
-	
+
 	if path == "" {
 		var roots []widget.TreeNodeID
 		if homeDir, err := os.UserHomeDir(); err == nil {
@@ -2657,13 +2674,13 @@ func (fb *FileBrowser) getTreeChildren(uid widget.TreeNodeID) []widget.TreeNodeI
 		}
 		return roots
 	}
-	
+
 	dirs := fb.getDirectories(path)
 	var children []widget.TreeNodeID
 	for _, dir := range dirs {
 		children = append(children, widget.TreeNodeID(filepath.Join(path, dir)))
 	}
-	
+
 	return children
 }
 
@@ -2671,19 +2688,19 @@ func (fb *FileBrowser) getDirectories(path string) []string {
 	if cached, exists := fb.treeData[path]; exists {
 		return cached
 	}
-	
+
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return []string{}
 	}
-	
+
 	var dirs []string
 	for _, entry := range entries {
 		if entry.IsDir() {
 			dirs = append(dirs, entry.Name())
 		}
 	}
-	
+
 	sort.Strings(dirs)
 	fb.treeData[path] = dirs
 	return dirs
@@ -2691,13 +2708,13 @@ func (fb *FileBrowser) getDirectories(path string) []string {
 
 func (fb *FileBrowser) NavigateTo(path string) {
 	cleanPath := filepath.Clean(path)
-	
+
 	info, err := os.Stat(cleanPath)
 	if err != nil {
 		fb.statusLabel.SetText(fmt.Sprintf("Local Error: %v", err))
 		return
 	}
-	
+
 	if !info.IsDir() {
 		fb.statusLabel.SetText("Local Error: Not a directory")
 		return
@@ -2722,12 +2739,12 @@ func (fb *FileBrowser) NavigateTo(path string) {
 	fb.currentPath = cleanPath
 	fb.files = entries
 	fb.pathLabel.SetText(cleanPath)
-	
+
 	fb.selectedFiles = fb.selectedFiles[:0]
 	fb.updateSCPButtonState()
-	
+
 	delete(fb.treeData, cleanPath)
-	
+
 	fileCount := 0
 	dirCount := 0
 	for _, entry := range entries {
@@ -2738,69 +2755,18 @@ func (fb *FileBrowser) NavigateTo(path string) {
 		}
 	}
 	fb.statusLabel.SetText(fmt.Sprintf("Local: %d directories, %d files", dirCount, fileCount))
-	
+
 	fb.fileList.Refresh()
 	fb.folderTree.Refresh()
-}
-
-func (fb *FileBrowser) getRemoteTreeChildren(uid widget.TreeNodeID) []widget.TreeNodeID {
-	if !fb.sshConn.connected {
-		return []widget.TreeNodeID{}
-	}
-	
-	path := string(uid)
-	if path == "" {
-		return []widget.TreeNodeID{widget.TreeNodeID("/")}
-	}
-	
-	dirs := fb.getRemoteDirectories(path)
-	var children []widget.TreeNodeID
-	for _, dir := range dirs {
-		var childPath string
-		if path == "/" {
-			childPath = "/" + dir
-		} else {
-			childPath = path + "/" + dir
-		}
-		children = append(children, widget.TreeNodeID(childPath))
-	}
-	
-	return children
-}
-
-func (fb *FileBrowser) getRemoteDirectories(path string) []string {
-	if !fb.sshConn.connected {
-		return []string{}
-	}
-	
-	if cached, exists := fb.remoteTreeData[path]; exists {
-		return cached
-	}
-	
-	files, err := fb.sshConn.sftpClient.ReadDir(path)
-	if err != nil {
-		return []string{}
-	}
-	
-	var dirs []string
-	for _, file := range files {
-		if file.IsDir() {
-			dirs = append(dirs, file.Name())
-		}
-	}
-	
-	sort.Strings(dirs)
-	fb.remoteTreeData[path] = dirs
-	return dirs
 }
 
 func (fb *FileBrowser) RemoteNavigateTo(path string) {
 	if !fb.sshConn.connected {
 		return
 	}
-	
+
 	fb.remoteStatusLabel.SetText("Loading directory...")
-	
+
 	go func() {
 		files, err := fb.sshConn.sftpClient.ReadDir(path)
 		if err != nil {
@@ -2820,32 +2786,29 @@ func (fb *FileBrowser) RemoteNavigateTo(path string) {
 
 		fb.remoteCurrentPath = path
 		fb.remoteFiles = remoteFiles
-		fb.remotePathLabel.SetText(path)
-		
-		// Apply current sort
+		fb.remotePathEntry.SetText(path)
+
+		// Apply sort
 		fb.applySortToRemoteFiles()
-		
+
 		// Clear selections when navigating
 		fb.selectedRemoteFiles = fb.selectedRemoteFiles[:0]
 		fb.updateDownloadButtonState()
-		
-		delete(fb.remoteTreeData, path)
-		
+
+		visibleFiles := fb.getVisibleRemoteFiles()
 		fileCount := 0
 		dirCount := 0
-		for _, file := range remoteFiles {
+		for _, file := range visibleFiles {
 			if file.IsDir {
 				dirCount++
 			} else {
 				fileCount++
 			}
 		}
-		
+
 		fb.remoteStatusLabel.SetText(fmt.Sprintf("Remote: %d directories, %d files", dirCount, fileCount))
-		
+
 		fb.remoteFileList.Refresh()
-		fb.remoteFolderTree.Refresh()
-		
 		fb.remoteFileList.UnselectAll()
 	}()
 }
@@ -2872,22 +2835,22 @@ func (fb *FileBrowser) showAvailableHosts() {
 		dialog.ShowError(fmt.Errorf("could not find home directory: %v", err), fb.mainWindow)
 		return
 	}
-	
+
 	configPath := filepath.Join(homeDir, ".ssh", "config")
-	
+
 	content, err := os.ReadFile(configPath)
 	if err != nil {
 		dialog.ShowError(fmt.Errorf("could not read SSH config: %v", err), fb.mainWindow)
 		return
 	}
-	
+
 	hosts := extractHostsFromConfig(string(content))
-	
+
 	if len(hosts) == 0 {
 		dialog.ShowInformation("SSH Hosts", "No host definitions found in ~/.ssh/config", fb.mainWindow)
 		return
 	}
-	
+
 	hostList := widget.NewList(
 		func() int { return len(hosts) },
 		func() fyne.CanvasObject { return widget.NewLabel("Host") },
@@ -2897,15 +2860,15 @@ func (fb *FileBrowser) showAvailableHosts() {
 			}
 		},
 	)
-	
+
 	hostList.OnSelected = func(id widget.ListItemID) {
 		if id < len(hosts) {
 			fb.hostEntry.SetText(hosts[id])
 			fb.previewSSHConfig(hosts[id])
 		}
 	}
-	
-	hostDialog := dialog.NewCustom("Available SSH Hosts", "Close", 
+
+	hostDialog := dialog.NewCustom("Available SSH Hosts", "Close",
 		container.NewBorder(
 			widget.NewLabel("Select a host from your SSH config:"),
 			nil, nil, nil,
@@ -2918,26 +2881,26 @@ func (fb *FileBrowser) showAvailableHosts() {
 func extractHostsFromConfig(content string) []string {
 	var hosts []string
 	lines := strings.Split(content, "\n")
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		
+
 		if strings.HasPrefix(strings.ToLower(line), "host ") {
 			hostLine := strings.TrimPrefix(line, "host ")
 			hostLine = strings.TrimPrefix(hostLine, "Host ")
-			
+
 			hostPatterns := strings.Fields(hostLine)
-			
+
 			for _, pattern := range hostPatterns {
 				pattern = strings.TrimSpace(pattern)
-				
+
 				if pattern == "" || strings.HasPrefix(pattern, "!") {
 					continue
 				}
-				
+
 				if strings.Contains(pattern, "*") || strings.Contains(pattern, "?") {
 					hosts = append(hosts, pattern+" (pattern)")
 				} else {
@@ -2946,19 +2909,19 @@ func extractHostsFromConfig(content string) []string {
 			}
 		}
 	}
-	
+
 	return hosts
 }
 
 func (fb *FileBrowser) previewSSHConfig(host string) {
 	cleanHost := strings.TrimSuffix(host, " (pattern)")
-	
+
 	hostname := ssh_config.Get(cleanHost, "HostName")
 	port := ssh_config.Get(cleanHost, "Port")
 	user := ssh_config.Get(cleanHost, "User")
 	proxyCommand := ssh_config.Get(cleanHost, "ProxyCommand")
 	proxyJump := ssh_config.Get(cleanHost, "ProxyJump")
-	
+
 	if hostname == "" {
 		hostname = cleanHost
 	}
@@ -2968,15 +2931,15 @@ func (fb *FileBrowser) previewSSHConfig(host string) {
 	if user == "" {
 		user = "(current user)"
 	}
-	
+
 	preview := fmt.Sprintf("Config: %s@%s:%s", user, hostname, port)
-	
+
 	if proxyCommand != "" {
 		preview += " via ProxyCommand"
 	} else if proxyJump != "" {
 		preview += fmt.Sprintf(" via ProxyJump: %s", proxyJump)
 	}
-	
+
 	fb.remoteStatusLabel.SetText(preview)
 }
 
