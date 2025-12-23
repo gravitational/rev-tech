@@ -16,6 +16,12 @@ It is compatible with Teleport with the `ssh_config` configuration.
 - **Save connections**: Store frequently used connection settings
 - **Terminal launch**: Open SSH terminal sessions directly
 
+## Supported Environments
+
+  This should fully run in Linux and MacOS environments. The Windows
+  execution does not yet support the `ssh_config` loading so Teleport connections
+  will not work yet.
+
 ## Building
 
 This was built and test with `go 1.25.5`
