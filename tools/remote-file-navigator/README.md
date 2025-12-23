@@ -54,6 +54,7 @@ git clone https://github.com/gravitational/rev-tech
 cd rev-tech/tools/remote-file-navigator/
 go mod init remote-file-nav
 go mod tidy
+#Adjust arch to amd64 if on that platform
 CGO_ENABLED=1 GOARCH=arm64 go build
 ```
 
