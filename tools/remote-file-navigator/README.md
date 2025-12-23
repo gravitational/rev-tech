@@ -32,6 +32,31 @@ This was built and test with `go 1.25.5`
  go build
 ```
 
+Building in Ubuntu 24.04 docker example:
+
+```bash
+apt update && apt install curl wget git gcc -y
+wget -c https://go.dev/dl/go1.25.0.linux-amd64.tar.gz
+tar -C /usr/local/ -xzf go1.25.0.linux-amd64.tar.gz
+cat >> .bashrc < EOF
+export PATH=$PATH:/usr/local/go/bin
+EOF
+source .bashrc
+apt install libx11-dev  libxrandr-dev \
+    libxcursor-dev \
+    libgl1-mesa-dev \
+    libxinerama-dev \
+    libxi-dev \
+    pkg-config \
+    xorg-dev -y
+# adjust to include a branch if required
+git clone https://github.com/gravitational/rev-tech 
+cd rev-tech/tools/remote-file-navigator/
+go mod init remote-file-nav
+go mod tidy
+CGO_ENABLED=1 GOARCH=arm64 go build
+```
+
 ## Running:
 
 ```bash
