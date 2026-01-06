@@ -5,7 +5,7 @@ This Go script connects to a Teleport cluster to analyze user activity and resou
 ## Disclaimer
 
 This is not an official method to obtain licensing counts for Teleport clusters, it is provided for investigative
-purposes only. The only official method to get accurate MAU counts is to view reported usage via Teleport Cloud
+purposes only. The only official method to get accurate MAU and TPR counts is to view reported usage via Teleport Cloud
 cluster or license portal.
 
 ## What It Does
@@ -33,7 +33,7 @@ Users utilizing just-in-time access and governance features:
 ## Prerequisites
 
 - Go 1.24+ installed
-- Access to a Teleport cluster
+- Access to a Teleport cluster with audit log read permissions
 - Valid Teleport credentials (see [Authentication](#authentication) section below)
 - Network connectivity to your Teleport proxy and to gthub.com/golang.org repositories
 
@@ -77,7 +77,7 @@ For continuous/automated jobs:
 
 1. Generate an identity file:
    ```bash
-   tsh login --auth=your_auth_method --out=identity-file --proxy your_proxy.teleport.sh
+  tsh login --proxy=teleport.example.com:443 --auth=your_auth_method --out=identity-file
    ```
 
 (for an alternative, use [Machine ID](https://goteleport.com/docs/machine-workload-identity/access-guides/tctl/))
@@ -102,14 +102,32 @@ bash ./run.sh -p teleport.example.com:443 -m
 
 The script will:
 1. Connect to your Teleport cluster
-2. Download the correct Teleport Go API version for your cluster (this can take a few minutes)
+2. Download the correct Teleport Go API version for your cluster (this can take a few minutes on initial runs)
 3. Fetch events in batches (you'll see progress messages)
 4. Process and analyze the data
 5. Generate a report file
 
+## Building
+
+### Building a Binary
+
+To create a standalone binary for deployment:
+
+```bash
+# Build for current platform
+go build -o teleport-mau-tracker mau.go
+
+# Build for Linux (common for containers/servers)
+GOOS=linux GOARCH=amd64 go build -o teleport-mau-tracker mau.go
+
+# Run the binary
+# Update to use your own proxy address
+./teleport-mau-tracker -proxy teleport.example.com:443
+```
+
 ## Output
 
-### JSON Format (`reportFormat = "json"`)
+### JSON Format (`-format json`)
 Creates `Teleport_Active_Users.json` with:
 ```json
 {
@@ -140,7 +158,7 @@ Creates `Teleport_Active_Users.json` with:
 }
 ```
 
-### Text Format (`reportFormat = "text"`)
+### Text Format (`-format text`)
 Creates `Teleport_Active_Users.txt` with formatted tables:
 ```
 [2025-12-17 16:52:15] Teleport Active Users Report

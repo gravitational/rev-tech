@@ -2,11 +2,17 @@
 
 This Go script continuously monitors and tracks Teleport Protected Resources (TPRs) in your cluster. It provides real-time visibility into resource counts across all Teleport service types and maintains historical data for billing and capacity planning purposes.
 
+## Disclaimer
+
+This is not an official method to obtain licensing counts for Teleport clusters, it is provided for investigative
+purposes only. The only official method to get accurate MAU and TPR counts is to view reported usage via Teleport Cloud
+cluster or license portal.
+
 ## What It Does
 
 The script tracks the following types of Teleport Protected Resources:
 - **Applications** - Application servers registered with Teleport
-- **Kubernetes Clusters** - Kubernetes clusters accessible through Teleport  
+- **Kubernetes Clusters** - Kubernetes clusters accessible through Teleport
 - **Databases** - Database servers registered with Teleport
 - **Windows Desktops** - Windows desktop resources
 - **SSH Nodes** - SSH-accessible servers and instances
@@ -21,27 +27,19 @@ The script tracks the following types of Teleport Protected Resources:
 
 ## Prerequisites
 
-- Go 1.19+ installed
+- Go 1.24+ installed
 - Access to a Teleport cluster with audit log read permissions
 - Valid Teleport credentials (see [Authentication](#authentication) section below)
-- Network connectivity to your Teleport proxy
+- Network connectivity to your Teleport proxy and to github.com/golang.org repositories
 
 ## Installation
 
 1. Clone or download the script
-2. Install dependencies:
-   ```bash
-   go mod init teleport-tpr
-   go get github.com/gravitational/teleport/api/client
-   go get github.com/gravitational/teleport/api/types
-   go get github.com/mattn/go-sqlite3
-   ```
+2. Run `bash ./run.sh -p teleport.example.com:443` to download the correct API version for your cluster
+   and install dependencies
+(replacing `teleport.example.com:443` with your Teleport cluster's proxy address)
 
 ## Customization
-
-### Required Setup
-
-**You must update `teleportProxyURL`** to point to your Teleport cluster.
 
 ### Common Customizations
 
@@ -50,11 +48,6 @@ All customizations are made by modifying the configuration variables at the top 
 **Change update frequency:**
 ```go
 updateInterval = 30 * time.Minute  // Update every 30 minutes instead of 1 hour (default: 1hr)
-```
-
-**Switch to JSON output:**
-```go
-reportFormat = "json" // Generate report in JSON format (default: txt)
 ```
 
 **Adjust data retention:**
@@ -67,12 +60,6 @@ dataRetentionDays = 90  // Keep 90 days of historical data instead of 30 (defaul
 eventBatchSize = 10000  // Increase batch size for better performance (default: 5000)
 ```
 
-**Use identity file authentication:**
-```go
-useIdentityFile = true // Use static identity file instead of tsh user credentials (default: false)
-identityFilePath = "/home/user/teleport-identity" // Path to identity file must be set if `useIdentityFile` is set to `true` above
-```
-
 ## Authentication
 
 The script automatically handles authentication based on your configuration:
@@ -82,34 +69,45 @@ Uses your current `tsh` login session - no additional setup required.
 
 **Note**: This method will eventually fail when your credentials expire unless refreshed.
 
-### Option 2: Identity File (Recommended for automation)
+If you have multiple sets of `tsh` credentials locally, you must make sure that `tctl status` outputs
+the correct cluster name before running the script. You can use `tsh login --proxy teleport.example.com:443` to
+"switch" active credentials.
+
+### Option 2: Identity File (Recommended for remote runs or automation)
 For continuous/automated jobs:
 
 1. Generate an identity file:
    ```bash
-   tsh login --auth=your_auth_method --out=identity-file --proxy your_proxy.teleport.sh
+   tsh login --proxy=teleport.example.com:443 --auth=your_auth_method --out=identity-file
    ```
 
-2. Update the configuration variables:
-   ```go
-   useIdentityFile = true
-   identityFilePath = "/path/to/your/identity-file"
+(for an alternative, use [Machine ID](https://goteleport.com/docs/machine-workload-identity/access-guides/tctl/))
+
+2. Provide the identity file to the script:
+   ```bash
+   bash ./run.sh -p teleport.example.com:443 -i /path/to/your/identity-file -t
    ```
+
+(for Machine ID, you want the `identity` file in the bot's output directory)
 
 The script will automatically use the appropriate authentication method based on your settings.
 
 ## Running the Script
 
 ```bash
-go run tpr.go
+# replace teleport.example.com:443 with your own Teleport proxy URL
+# port 443 will be assumed if you provide no port
+# -t runs the TPR script
+bash ./run.sh -p teleport.example.com:443 -t
 ```
 
 The script will:
 1. Connect to your Teleport cluster
-2. Perform initial resource discovery
-3. Start continuous monitoring with periodic updates
-4. Generate reports at each update interval
-5. Run indefinitely until manually stopped
+2. Download the correct Teleport Go API version for your cluster (this can take a few minutes on initial runs)
+3. Perform initial resource discovery
+4. Start continuous monitoring with periodic updates
+5. Generate reports at each update interval
+6. Run indefinitely until manually stopped
 
 **Note**: This is designed to run as a long-lived service. Use process management tools like systemd, supervisor, or Docker for production deployments.
 
@@ -127,7 +125,8 @@ go build -o teleport-tpr-tracker tpr.go
 GOOS=linux GOARCH=amd64 go build -o teleport-tpr-tracker tpr.go
 
 # Run the binary
-./teleport-tpr-tracker
+# Update to use your own proxy address
+./teleport-tpr-tracker -proxy teleport.example.com:443
 ```
 
 ### Container Deployment
@@ -135,7 +134,7 @@ GOOS=linux GOARCH=amd64 go build -o teleport-tpr-tracker tpr.go
 Create a `Dockerfile` for containerized deployment:
 
 ```dockerfile
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -156,7 +155,8 @@ COPY --from=builder /app/teleport-tpr-tracker .
 # Volume for persistent data (database, logs, reports)
 VOLUME ["/app/data"]
 
-CMD ["./teleport-tpr-tracker"]
+# Update to use your own proxy address
+CMD ["./teleport-tpr-tracker", "-proxy", "teleport.example.com:443"]
 ```
 
 ### Docker Compose Example
@@ -254,8 +254,8 @@ spec:
 ## Output Files
 
 ### Reports
-- **`Teleport_Usage_Report.json`** (if `reportFormat = "json"`)
-- **`Teleport_Usage_Report.txt`** (if `reportFormat = "text"`)
+- **`Teleport_Usage_Report.json`** (`-format json`)
+- **`Teleport_Usage_Report.txt`** (`-format text`)
 
 ### Data Storage
 - **`teleport_usage_data.db`** - SQLite database with historical TPR and MWI counts
@@ -263,7 +263,7 @@ spec:
 
 ## Report Formats
 
-### JSON Format (`reportFormat = "json"`)
+### JSON Format (`-format json`)
 ```json
 {
   "timestamp": "2025-09-05 14:30:15",
@@ -283,7 +283,7 @@ spec:
 }
 ```
 
-### Text Format (`reportFormat = "text"`)
+### Text Format (`-format text`)
 ```
 [2025-09-05 14:30:15] Teleport Usage Report
 =================================================
@@ -331,6 +331,33 @@ SPIFFE IDs Issued (this period): 245
 4. **Missing Resources**: Verify your user has permissions to list all resource types
 5. **High Memory Usage**: Adjust `updateInterval` or `dataRetentionDays` for large clusters
 
+Here is a basic example of a role which has the minimum needed permissions to read audit events and resources:
+
+```yaml
+kind: role
+metadata:
+  name: resource-read-role
+spec:
+  allow:
+    app_labels:
+      '*': '*'
+    db_labels:
+      '*': '*'
+    kube_labels:
+      '*': '*'
+    node_labels:
+      '*': '*'
+    windows_desktop_labels:
+      '*': '*'
+    rules:
+    - resources:
+      - event
+      verbs:
+      - list
+      - read
+version: v7
+```
+
 ### Performance Considerations
 
 - Script memory usage scales with cluster size
@@ -344,3 +371,21 @@ SPIFFE IDs Issued (this period): 245
 - Limit script access to users who need usage visibility
 - Consider using Teleport RBAC to restrict resource listing permissions if needed
 - Log files may contain sensitive cluster information - protect accordingly
+
+### Script arguments
+
+```bash
+Usage: run.sh -p <teleport proxy address> [-i <identity file path>] [-m] [-t] [-v] [-x]
+
+  -p  Teleport proxy address (required). If no port is specified, :443 is assumed.
+  -i  Optional identity file path.
+  -m  Run MAU script (mau.go)
+  -t  Run TPR script (tpr.go)
+  -v  Output version and exit
+  -x  Enable debugging information for 'go get'
+
+Examples:
+  run.sh -p example.teleport.sh -m
+  run.sh -p example.teleport.sh:443 -i /path/to/identity -t
+  run.sh -p example.teleport.sh -m -t
+```
