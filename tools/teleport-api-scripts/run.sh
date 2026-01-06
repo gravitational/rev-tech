@@ -142,10 +142,12 @@ go mod tidy
 # Run scripts based on flags
 if [[ "${RUN_MAU}" -eq 1 ]]; then
   echo "Running MAU script"
-  go run mau.go -proxy "${PROXY}""${IDENTITY_FILE_STANZA}"
+  #shellcheck disable=SC2086
+  go run mau.go -proxy ${PROXY}${IDENTITY_FILE_STANZA}
 fi
 
 if [[ "${RUN_TPR}" -eq 1 ]]; then
   echo "Running TPR script"
-  go run tpr.go -proxy "${PROXY}""${IDENTITY_FILE_STANZA}"
+  #shellcheck disable=SC2086
+  go run tpr.go -proxy ${PROXY}${IDENTITY_FILE_STANZA}
 fi
