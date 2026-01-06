@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -68,8 +70,47 @@ var (
 // 4. Writes Reports: Aggregates resource and MWI metrics and writes reports to files.
 // 5. Runs Periodic Updates: Refreshes data, logs changes, and cleans up stale records based on configured interval.
 func main() {
-	initLogging()
-	defer logFile.Close()
+	// Command-line flags
+	proxyFlag := flag.String(
+		"proxy",
+		teleportProxyURL,
+		"Teleport proxy address (e.g. teleport.example.com:443)",
+	)
+
+	formatFlag := flag.String(
+		"format",
+		"text",
+		"Output file type - text or json",
+	)
+
+	identityFileFlag := flag.String(
+		"identity_file",
+		"",
+		"Path to Teleport identity file (optional - enables use of an identity file instead of ambient tsh credentials)",
+	)
+
+	flag.Parse()
+
+	teleportProxyURL = *proxyFlag
+	if !strings.Contains(teleportProxyURL, ":") {
+		log.Fatalf("invalid proxy address %q (expected hostname:port)", teleportProxyURL)
+	}
+
+	// Output format handling
+	reportFormat = strings.ToLower(strings.TrimSpace(*formatFlag))
+	if reportFormat != "text" && reportFormat != "json" {
+		log.Fatalf("invalid -format %q (expected text or json)", reportFormat)
+	}
+
+	if *identityFileFlag != "" {
+		useIdentityFile = true
+		identityFilePath = *identityFileFlag
+		// Validation
+		if _, err := os.Stat(identityFilePath); err != nil {
+			log.Fatalf("identity file not accessible: %v", err)
+		}
+	}
+
 	initDatabase()
 	defer db.Close()
 
@@ -119,16 +160,6 @@ func main() {
 	}()
 
 	select {} // Keeps the program running indefinitely until process is killed
-}
-
-// Redirects all logs to teleport_tracker.log
-func initLogging() {
-	var err error
-	logFile, err = os.OpenFile("teleport_tracker.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		log.Fatalf("Failed to open log file: %v", err)
-	}
-	log.SetOutput(logFile)
 }
 
 // Creates an SQLite database file for storing TPR and MWI data.
@@ -386,7 +417,7 @@ func updateMetrics() {
 
 	// Insert TPR data
 	_, err := db.Exec(`
-	INSERT INTO tpr_data (timestamp, total_tpr, app_tpr, kube_tpr, db_tpr, windows_tpr, node_tpr) 
+	INSERT INTO tpr_data (timestamp, total_tpr, app_tpr, kube_tpr, db_tpr, windows_tpr, node_tpr)
 	VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		timestamp, len(resources), tprCounts["App"], tprCounts["Kube"], tprCounts["Db"], tprCounts["WindowsDesktop"], tprCounts["Node"])
 	if err != nil {
@@ -395,7 +426,7 @@ func updateMetrics() {
 
 	// Insert MWI data
 	_, err = db.Exec(`
-	INSERT INTO mwi_data (timestamp, bots, bot_instances, spiffe_ids_issued) 
+	INSERT INTO mwi_data (timestamp, bots, bot_instances, spiffe_ids_issued)
 	VALUES (?, ?, ?, ?)`,
 		timestamp, mwiMetrics.Bots, mwiMetrics.BotInstances, mwiMetrics.SpiffeIDsIssued)
 	if err != nil {
