@@ -472,7 +472,8 @@ func writeReportsToFile() {
 	if reportFormat == "json" {
 		// JSON output format
 		reportData := map[string]interface{}{
-			"timestamp": timestamp,
+			"timestamp":          timestamp,
+			"teleport_proxy_url": teleportProxyURL,
 			"tpr": map[string]interface{}{
 				"total":            totalTPR,
 				"applications":     appTPR,
@@ -520,6 +521,7 @@ func writeReportsToFile() {
 
 		// Generate report output
 		output := fmt.Sprintf("\n[%s] Teleport Usage Report\n", timestamp)
+		output += fmt.Sprintf("Teleport Proxy URL: %s\n", teleportProxyURL)
 		output += "=================================================\n"
 		output += "TELEPORT PROTECTED RESOURCES (TPR)\n"
 		output += "-------------------------------------------------\n"
