@@ -1,21 +1,20 @@
-# SSH Node Module
+# Windows (Local) Node Module
 
-Creates one or more EC2 instances that automatically install the Teleport SSH service, apply useful demo labels, and register through a short-lived provisioning token.
+Creates a Windows EC2 instance that is configured for use with the Teleport Desktop Service. The TDS is running on an adjancent Linux EC2 instance as configured in the desktop-service module. 
 
 ## Usage
 
 ```hcl
-module "ssh_nodes" {
-  source = "../modules/ssh-node"
+module "windows-instance" {
+    source = "../modules/windows-instance"
 
-  env           = "dev"
-  user          = "user@example.com"
-  proxy_address = "teleport.example.com"
-  team          = "platform"
+    env           = "dev"
+    user          = "user@example.com"
+    proxy_address = "teleport.example.com"
+    team          = "platform"
 
-  agent_count   = 3
-  ami_id        = data.aws_ami.linux.id
-  instance_type = "t3.micro"
+    ami_id        = data.aws_ami.windows.id
+    instance_type = "t3.medium"
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -30,8 +29,7 @@ module "ssh_nodes" {
 
 | Name | Description | Type | Default |
 | --- | --- | --- | --- |
-| `agent_count` | Number of Teleport SSH nodes to deploy. | `number` | n/a |
-| `ami_id` | AMI used for each instance (Amazon Linux 2023 recommended). | `string` | n/a |
+| `ami_id` | AMI ID for Windows Server. | `string` | n/a |
 | `env` | Environment label added to Teleport labels and Name tag. | `string` | n/a |
 | `instance_type` | EC2 instance size. | `string` | n/a |
 | `proxy_address` | Teleport proxy host (no scheme, no port). | `string` | n/a |
@@ -42,8 +40,8 @@ module "ssh_nodes" {
 | `tags` | Extra AWS tags merged into every instance. | `map(string)` | `{}` |
 
 ## Outputs
-
 | Name | Description |
 | --- | --- |
-| `provision_token` | The Teleport provisioning token used by the nodes. |
-| `private_ips` | Private IP addresses of the created EC2 instances. |
+| `hostname` | Name of instance. |
+| `private_dns` | Private DNS name of Windows instance. |
+| `private_ip` | Private IP address of Windows instance. |
