@@ -21,7 +21,6 @@ Each service has:
 - Istio sidecar proxy
 - SPIFFE ID from Teleport
 - mTLS certificates
-```
 
 ## Prerequisites
 
@@ -29,33 +28,6 @@ Complete the main installation:
 - Istio installed with SPIFFE integration
 - tbot DaemonSet running on all nodes
 - Teleport workload identity configured
-
-## Quick Reference: Verification Commands
-
-Here are the key commands for verifying the integration (use after deployment).
-
-```bash
-# Set pod name variable
-export POD_NAME=$(kubectl get pod -n sock-shop -l app=catalogue -o jsonpath='{.items[0].metadata.name}')
-
-# 1. Verify SPIFFE socket exists
-kubectl exec -n sock-shop $POD_NAME -c istio-proxy -- ls -la /var/run/secrets/workload-spiffe-uds/
-
-# 2. Check Istio proxy detected SPIFFE socket
-kubectl logs -n sock-shop $POD_NAME -c istio-proxy | grep -i "spiffe\|workload"
-
-# 3. Verify mTLS is active (check for connection_security_policy.mutual_tls)
-kubectl exec -n sock-shop $POD_NAME -c istio-proxy -- \
-  curl -s localhost:15000/stats | grep "connection_security_policy.mutual_tls" | head -1
-
-# 4. View SPIFFE IDs in use
-kubectl exec -n sock-shop $POD_NAME -c istio-proxy -- \
-  curl -s localhost:15000/stats | grep -o "spiffe://[^.]*\.[^.]*\.[^.]*\.[^.]*\.[^.]*\.[^.]*" | sort -u
-
-# 5. View certificate details
-kubectl exec -n sock-shop $POD_NAME -c istio-proxy -- \
-  curl -s localhost:15000/certs
-```
 
 ## Step 1: Deploy Sock Shop Application
 
@@ -270,15 +242,20 @@ Try to access catalogue directly from a different pod that shouldn't have access
 
 ```bash
 # Create a test pod without proper identity
-kubectl run test-curl -n sock-shop --image=curlimages/curl:latest --rm -it --restart=Never -- \
-  curl http://catalogue/catalogue
+kubectl run test-curl -n sock-shop --image=curlimages/curl:latest --restart=Never -- \
+  sh -c "curl -v http://catalogue/catalogue 2>&1; exit 0"
 
-# This should be DENIED with "RBAC: access denied"
+# Check the logs to see the error
+kubectl logs test-curl -n sock-shop -c test-curl
+
+# Clean up the test pod
+kubectl delete pod test-curl -n sock-shop
 ```
 
 Expected output:
 ```
-RBAC: access denied
+* Failed to connect to catalogue port 80 after 3 ms: Could not connect to server
+curl: (7) Failed to connect to catalogue port 80 after 3 ms: Could not connect to server
 ```
 
 This proves that:
@@ -294,39 +271,23 @@ Check that certificates are issued by Teleport (not Istio's CA):
 ```bash
 # Get certificate info from Envoy
 kubectl exec -n sock-shop $POD_NAME -c istio-proxy -- \
-  curl -s localhost:15000/certs | grep -A 10 "Certificate Chain"
+    curl -s localhost:15000/certs | jq '.certificates[].cert_chain[]'
 ```
 
 Look for certificate details. The certificate should have:
 - Subject Alternative Name (SAN) with SPIFFE ID: `spiffe://ellinj.teleport.sh/ns/sock-shop/sa/<service-account>`
 - Issued by Teleport's workload identity CA
 
-## Step 10: Monitor Workload Identity Usage in Teleport
+## Step 10: Show Workload Identity Configuration
 
 Check Teleport audit logs to see workload identity issuance events:
 
 ```bash
-# View recent workload identity events
-tctl events list --type=workload_identity.issue --count=20
+# Show Workload Identity Configuration
+./teleport-cert-demo.sh
 ```
 
-You should see events showing SPIFFE SVIDs being issued to the sock-shop services.
-
-## Step 11: Test Policy Violations
-
-Create a test scenario where a service tries to access an unauthorized endpoint:
-
-```bash
-# Try to have front-end access catalogue-db directly (should fail)
-FRONTEND_POD=$(kubectl get pod -n sock-shop -l app=front-end -o jsonpath='{.items[0].metadata.name}')
-
-kubectl exec -n sock-shop $FRONTEND_POD -c front-end -- \
-  curl -v http://catalogue-db:3306
-
-# Should be blocked by AuthorizationPolicy
-```
-
-Expected: Connection refused or RBAC denial, proving that front-end cannot bypass catalogue to access the database.
+You should see Envoy's configured certificate chains and expiration dates.
 
 ## Verification Checklist
 
@@ -403,148 +364,6 @@ Note: Istio strips the `spiffe://` prefix in authorization policies.
   to:
   - operation:
       ports: ["3306"]
-```
-
-## Troubleshooting
-
-### Issue: Pods stuck in Init state
-
-```bash
-kubectl describe pod -n sock-shop <pod-name>
-```
-
-Check for:
-- Istio injection enabled on namespace
-- tbot running on the same node
-
-### Issue: Services can't communicate with databases (MongoDB/MySQL)
-
-**Symptom:** Application services show connection errors when trying to reach database pods:
-- `MongoSocketReadException: Prematurely reached end of stream`
-- `Connection refused` or `Connection reset`
-
-**Root Cause:** Database services (carts-db, catalogue-db) require explicit `DestinationRule` configuration because:
-1. They use raw TCP protocols (not HTTP)
-2. Istio cannot auto-detect mTLS for non-HTTP traffic
-3. The client needs explicit instruction to wrap TCP in mTLS
-
-**Solution:** Create a `DestinationRule` AND `PeerAuthentication` for each database service:
-
-```yaml
-# Client-side: tells carts to use mTLS when connecting to carts-db
-apiVersion: networking.istio.io/v1beta1
-kind: DestinationRule
-metadata:
-  name: carts-db
-  namespace: sock-shop
-spec:
-  host: carts-db.sock-shop.svc.cluster.local
-  trafficPolicy:
-    tls:
-      mode: ISTIO_MUTUAL
----
-# Server-side: enables proper mTLS negotiation for MongoDB
-apiVersion: security.istio.io/v1
-kind: PeerAuthentication
-metadata:
-  name: carts-db-mtls
-  namespace: sock-shop
-spec:
-  selector:
-    matchLabels:
-      app: carts-db
-  mtls:
-    mode: STRICT
-```
-
-**Why both are needed:**
-- `DestinationRule`: Tells the **client** (carts) to use mTLS for the TCP connection
-- `PeerAuthentication`: Ensures the **server** (carts-db) properly negotiates mTLS for non-HTTP protocols
-- Even though namespace-level STRICT mTLS is set, workload-specific policies trigger additional Envoy configuration needed for database protocols
-
-**Why HTTP services don't need this:** Istio's Envoy proxy can auto-detect and auto-negotiate mTLS for HTTP traffic based on `PeerAuthentication` policies. For databases, both explicit policies are required.
-
-**Service Port Naming:** Also ensure database service ports are properly named (e.g., `name: mongo`, `name: mysql`) to help Istio recognize the protocol:
-
-```yaml
-spec:
-  ports:
-  - name: mongo  # Named port helps Istio
-    port: 27017
-    targetPort: 27017
-```
-
-### Issue: Services can't communicate
-
-```bash
-# Check Envoy access logs
-kubectl logs -n sock-shop <pod-name> -c istio-proxy --tail=50
-
-# Look for HTTP 403 (RBAC denials) or connection errors
-```
-
-### Issue: RBAC access denied
-
-This is expected behavior when:
-- Authorization policies are applied
-- Service doesn't have the right SPIFFE ID
-- Calling an unauthorized endpoint
-
-Check the policy allows the specific service and path.
-
-### Issue: No SPIFFE socket
-
-```bash
-# Check tbot is running on the node
-NODE=$(kubectl get pod -n sock-shop <pod-name> -o jsonpath='{.spec.nodeName}')
-kubectl get pods -n teleport-system -o wide | grep $NODE
-
-# If no tbot pod, check DaemonSet
-kubectl get daemonset -n teleport-system
-```
-
-### Issue: Kiali shows "Service Account not found for this principal" warning
-
-**Symptom:** Kiali displays validation warnings on AuthorizationPolicy resources showing principals are invalid.
-
-**Root Cause:** Kiali doesn't recognize custom trust domains (like `ellinj.teleport.sh`) by default. It expects either:
-- Standard Kubernetes trust domain: `cluster.local`
-- Full SPIFFE URI format: `spiffe://ellinj.teleport.sh/...`
-
-**Why your policies still work:** Istio automatically prepends `spiffe://` to principals at runtime. The format `ellinj.teleport.sh/ns/sock-shop/sa/carts` is correct for Istio, even though Kiali doesn't validate it properly.
-
-**Solution:** Configure Kiali to recognize your custom trust domain:
-
-```bash
-# Edit Kiali ConfigMap
-kubectl edit configmap kiali -n istio-system
-
-# Add under external_services.istio:
-external_services:
-  istio:
-    root_namespace: istio-system
-    istio_identity_domain: ellinj.teleport.sh  # Add this line
-
-# Restart Kiali
-kubectl rollout restart deployment/kiali -n istio-system
-```
-
-**Principal Format Rules:**
-- **Do NOT** include `spiffe://` prefix in AuthorizationPolicy principals
-- Istio auto-prepends it during runtime conversion to Envoy config
-- Including it yourself results in `spiffe://spiffe://...` which breaks matching
-- Correct format: `"ellinj.teleport.sh/ns/sock-shop/sa/carts"`
-- Incorrect format: `"spiffe://ellinj.teleport.sh/ns/sock-shop/sa/carts"`
-
-Verify the fix:
-```bash
-# Check actual SPIFFE ID in certificate
-kubectl exec -n sock-shop deploy/carts -c istio-proxy -- \
-  curl -s localhost:15000/config_dump | \
-  jq -r '.configs[] | select(."@type" == "type.googleapis.com/envoy.admin.v3.SecretsConfigDump") | .dynamic_active_secrets[0].secret.tls_certificate.certificate_chain.inline_bytes' | \
-  base64 -d | openssl x509 -text -noout 2>/dev/null | grep -A2 "Subject Alternative Name"
-
-# Expected: URI:spiffe://ellinj.teleport.sh/ns/sock-shop/sa/carts
 ```
 
 ## Cleanup

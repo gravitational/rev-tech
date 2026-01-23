@@ -69,18 +69,7 @@ istiod-xxxxxxxxxx-xxxxx                 1/1     Running   0          1m
 
 ### Step 3: Extract Cluster JWKS
 
-**CRITICAL STEP**: Every Kubernetes cluster has unique JWKS (JSON Web Key Set) used to validate service account tokens. You must extract your cluster's JWKS for Teleport authentication.
-
-```bash
-kubectl get --raw /openid/v1/jwks
-```
-
-**Example output:**
-```json
-{"keys":[{"use":"sig","kty":"RSA","kid":"lgRxZ4gmqOUOvCYs4UvaGe_mGsU_xFP60CtzEgT3BFU","alg":"RS256","n":"yjDQbEkltgSNEAZattubid7Uo5fWKrcgoJ3ZQSfWa9_9cLberxef8p0qC4Ss6atMfPMWI5N1_b59LG5ulnXFB0jGl5yjpn20bUOr_7In3-1caBp8yGD9bMPaZ8VAdKhMAAJXnXZTsW33URKiM8C53GE4DmYZJ6neksNCzbQqV8s1g7E96xVE0tmAJu4ZlWksIIRkbNvCx4oZNFcsl4W15jfFuBD2J5DT92UiG_xj-B9Z60ckT_AxND0cRud9aqrsep5YqaW5mGNG3mpt6460oEqWKgrteI8WvdheIZySxpaJOmvnh3kcLK6CxYfByNYbDmmjoCTqzLQ9CyclmJ3ckw","e":"AQAB"}]}
-```
-
-**Copy this entire JSON output** - you'll need it in the next step.
+**CRITICAL STEP**: Every Kubernetes cluster has unique JWKS (JSON Web Key Set) used to validate service account tokens. You must extract your cluster's JWKS for Teleport authentication. This will be used to create the Kubernetes join token in the next step.
 
 ### Step 4: Create Kubernetes Join Token with Cluster JWKS
 
@@ -111,7 +100,9 @@ rm -f istio-tbot-token.yaml.bak
 
 **The file `istio-tbot-token.yaml` is gitignored and should remain local only.**
 
-**Create the token in Teleport:**
+---
+
+**After completing Option A or B above, create the token in Teleport (REQUIRED):**
 
 ```bash
 tctl create -f istio-tbot-token.yaml
@@ -259,6 +250,28 @@ Expected output:
 Existing workload SDS socket found at var/run/secrets/workload-spiffe-uds/socket
 Workload is using file mounted certificates
 ```
+
+**Verify workload identities are being issued by tbot:**
+
+```bash
+kubectl logs -l app=tbot -n teleport-system --all-containers=true --prefix | grep "Issued Workload Identity Credential"
+```
+
+This command shows logs from all tbot pods with prefixes indicating which pod each log line comes from. Look for messages indicating successful workload identity issuance:
+```
+[pod/tbot-xxxxx/tbot] INFO [TBOT:SPIFFE] Issued workload identity
+[pod/tbot-yyyyy/tbot] INFO [TBOT:SPIFFE] Issued workload identity
+```
+
+### Step 10: Next Steps - Sock Shop Demo
+
+For a complete demonstration of Istio + Teleport Workload Identity with a realistic microservices application, see [SOCK-SHOP-DEMO.md](./SOCK-SHOP-DEMO.md).
+
+The Sock Shop demo provides:
+- A complete microservices application with multiple service-to-service interactions
+- Examples of workload identity verification in a multi-service architecture
+- Testing procedures for validating SPIFFE-based authentication
+- Real-world use cases for Istio mTLS with Teleport-issued identities
 
 ## Support
 
