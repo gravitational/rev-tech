@@ -1,0 +1,17 @@
+# Terraform local state
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Local variable overrides
+*.tfvars
+*.tfvars.json
+
+# CLI configuration traces
+terraform.rc
+.terraformrc
