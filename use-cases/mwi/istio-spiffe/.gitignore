@@ -1,0 +1,35 @@
+# Cluster-specific token files (contain sensitive JWKS)
+istio-tbot-token.yaml
+*-token.yaml
+*-token-*.yaml
+
+# Temporary/generated files
+*.tmp
+*.local
+*.generated
+
+# Kubeconfig files
+kubeconfig*
+*.kubeconfig
+
+# Credentials and secrets
+*.key
+*.crt
+*.pem
+secrets/
+credentials/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

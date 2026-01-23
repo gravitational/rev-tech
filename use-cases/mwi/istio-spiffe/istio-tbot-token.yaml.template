@@ -1,0 +1,35 @@
+# Template for Kubernetes Join Token
+# DO NOT commit the actual token file - it contains cluster-specific JWKS
+#
+# To use this template:
+# 1. Extract your cluster's JWKS:
+#    kubectl get --raw /openid/v1/jwks
+#
+# 2. Copy this template:
+#    cp istio-tbot-token.yaml.template istio-tbot-token.yaml
+#
+# 3. Replace PASTE_JWKS_HERE with the actual JWKS JSON from step 1
+#
+# 4. Create the token in Teleport:
+#    tctl create -f istio-tbot-token.yaml
+#
+# The istio-tbot-token.yaml file is gitignored and should never be committed
+
+kind: token
+version: v2
+metadata:
+  name: istio-tbot-k8s-join
+spec:
+  bot_name: istio-tbot
+  roles:
+    - Bot
+  join_method: kubernetes
+  kubernetes:
+    type: static_jwks
+    allow:
+      - service_account: "teleport-system:tbot"
+    static_jwks:
+      # IMPORTANT: Replace the entire jwks value below with your cluster's JWKS
+      # Get it by running: kubectl get --raw /openid/v1/jwks
+      # The JWKS should be a single-line JSON string
+      jwks: 'PASTE_JWKS_HERE'

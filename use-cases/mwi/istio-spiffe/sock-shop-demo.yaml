@@ -1,0 +1,383 @@
+# Sock Shop Microservices Demo with Istio + Teleport Workload Identity
+# This demonstrates SPIFFE-based workload identities for a multi-service application
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sock-shop
+  labels:
+    istio-injection: enabled  # Enable automatic Istio sidecar injection
+---
+# Front-end service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: front-end
+  namespace: sock-shop
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-end
+  namespace: sock-shop
+  labels:
+    app: front-end
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8079
+  selector:
+    app: front-end
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-end
+  namespace: sock-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front-end
+  template:
+    metadata:
+      labels:
+        app: front-end
+      annotations:
+        inject.istio.io/templates: "sidecar,spire"
+    spec:
+      serviceAccountName: front-end
+      containers:
+      - name: front-end
+        image: weaveworksdemos/front-end:0.3.12
+        resources:
+          limits:
+            cpu: 300m
+            memory: 1000Mi
+          requests:
+            cpu: 100m
+            memory: 300Mi
+        ports:
+        - containerPort: 8079
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          capabilities:
+            drop:
+              - all
+          readOnlyRootFilesystem: true
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8079
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8079
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+# Catalogue service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: catalogue
+  namespace: sock-shop
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalogue
+  namespace: sock-shop
+  labels:
+    app: catalogue
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: catalogue
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalogue
+  namespace: sock-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalogue
+  template:
+    metadata:
+      labels:
+        app: catalogue
+      annotations:
+        inject.istio.io/templates: "sidecar,spire"
+    spec:
+      serviceAccountName: catalogue
+      containers:
+      - name: catalogue
+        image: weaveworksdemos/catalogue:0.3.5
+        command: ["/app"]
+        args:
+        - -port=80
+        ports:
+        - containerPort: 80
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          capabilities:
+            drop:
+              - all
+            add:
+              - NET_BIND_SERVICE
+          readOnlyRootFilesystem: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+# Catalogue DB
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: catalogue-db
+  namespace: sock-shop
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalogue-db
+  namespace: sock-shop
+  labels:
+    app: catalogue-db
+spec:
+  ports:
+  - port: 3306
+    targetPort: 3306
+  selector:
+    app: catalogue-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalogue-db
+  namespace: sock-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalogue-db
+  template:
+    metadata:
+      labels:
+        app: catalogue-db
+      annotations:
+        inject.istio.io/templates: "sidecar,spire"
+    spec:
+      serviceAccountName: catalogue-db
+      containers:
+      - name: catalogue-db
+        image: weaveworksdemos/catalogue-db:0.3.0
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: fake_password
+        - name: MYSQL_DATABASE
+          value: socksdb
+        ports:
+        - name: mysql
+          containerPort: 3306
+---
+# Carts service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: carts
+  namespace: sock-shop
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carts
+  namespace: sock-shop
+  labels:
+    app: carts
+spec:
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+  selector:
+    app: carts
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carts
+  namespace: sock-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: carts
+  template:
+    metadata:
+      labels:
+        app: carts
+      annotations:
+        inject.istio.io/templates: "sidecar,spire"
+    spec:
+      serviceAccountName: carts
+      containers:
+      - name: carts
+        image: weaveworksdemos/carts:0.4.8
+        env:
+        - name: JAVA_OPTS
+          value: -Xms64m -Xmx128m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom -Dspring.zipkin.enabled=false
+        ports:
+        - containerPort: 80
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          capabilities:
+            drop:
+              - all
+            add:
+              - NET_BIND_SERVICE
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-volume
+      volumes:
+      - name: tmp-volume
+        emptyDir:
+          medium: Memory
+---
+# Carts DB (MongoDB)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: carts-db
+  namespace: sock-shop
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carts-db
+  namespace: sock-shop
+  labels:
+    app: carts-db
+spec:
+  ports:
+  - name: mongo
+    port: 27017
+    targetPort: 27017
+  selector:
+    app: carts-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carts-db
+  namespace: sock-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: carts-db
+  template:
+    metadata:
+      labels:
+        app: carts-db
+      annotations:
+        inject.istio.io/templates: "sidecar,spire"
+    spec:
+      serviceAccountName: carts-db
+      containers:
+      - name: carts-db
+        image: mongo:4.4
+        ports:
+        - name: mongo
+          containerPort: 27017
+        volumeMounts:
+        - name: carts-db-data
+          mountPath: /data/db
+      volumes:
+      - name: carts-db-data
+        emptyDir: {}
+---
+# Orders service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orders
+  namespace: sock-shop
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders
+  namespace: sock-shop
+  labels:
+    app: orders
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: orders
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders
+  namespace: sock-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orders
+  template:
+    metadata:
+      labels:
+        app: orders
+      annotations:
+        inject.istio.io/templates: "sidecar,spire"
+    spec:
+      serviceAccountName: orders
+      containers:
+      - name: orders
+        image: weaveworksdemos/orders:0.4.7
+        env:
+        - name: JAVA_OPTS
+          value: -Xms64m -Xmx128m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom -Dspring.zipkin.enabled=false
+        ports:
+        - containerPort: 80
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          capabilities:
+            drop:
+              - all
+            add:
+              - NET_BIND_SERVICE
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-volume
+      volumes:
+      - name: tmp-volume
+        emptyDir:
+          medium: Memory
