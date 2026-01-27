@@ -30,19 +30,47 @@ data "aws_ami" "linux" {
   }
 }
 
-module "host_identity" {
-  source = "../machineid-host"
+resource "random_string" "bot_token" {
+  length           = 32
+  special          = true
+  override_special = "-.+"
+}
 
-  bot_name         = local.bot_name
-  user             = var.user
-  env              = var.env
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  role_name        = "ansible-machine-role"
-  allowed_logins   = ["ec2-user", local.user]
-  node_labels = {
-    "tier" = [var.env],
-    "team" = [var.team]
+resource "teleport_provision_token" "bot" {
+  version = "v2"
+  metadata = {
+    expires     = timeadd(timestamp(), "1h")
+    name        = random_string.bot_token.result
+    description = "Provision token for Machine ID bot ${local.bot_name}"
+  }
+  spec = {
+    roles       = ["Bot"]
+    bot_name    = local.bot_name
+    join_method = "token"
+  }
+}
+
+resource "teleport_role" "machine" {
+  version = "v7"
+  metadata = {
+    name        = "ansible-machine-role"
+    description = "Role for Machine ID host access"
+  }
+  spec = {
+    allow = {
+      logins      = ["ec2-user", local.user]
+      node_labels = { "tier" = [var.env], "team" = [var.team] }
+    }
+  }
+}
+
+resource "teleport_bot" "host" {
+  metadata = {
+    name = local.bot_name
+  }
+
+  spec = {
+    roles = [teleport_role.machine.id]
   }
 }
 
@@ -73,7 +101,7 @@ resource "aws_instance" "ansible_host" {
     team             = var.team
     proxy_address    = var.proxy_address
     teleport_version = var.teleport_version
-    bot_token        = module.host_identity.bot_token
+    bot_token        = teleport_provision_token.bot.metadata.name
     node_token       = teleport_provision_token.main.metadata.name
   })
 

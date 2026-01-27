@@ -30,7 +30,7 @@ variable "region" {
 variable "team" {
   description = "Team label for SSH nodes (e.g., platform, sre, app-team)"
   type        = string
-  # default     = "platform"
+  default     = "platform"
 }
 
 variable "user" {

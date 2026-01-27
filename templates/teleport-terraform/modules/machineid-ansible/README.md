@@ -17,7 +17,7 @@ module "machineid_ansible" {
   env              = "dev"
   user             = "engineer@company.com"
   proxy_address    = "teleport.company.com"
-  teleport_version = "17.5.2"
+  teleport_version = "18.6.4"
   
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -215,22 +215,7 @@ ssh_args = -F /opt/machine-id/ssh_config -o CanonicalizeHostname=yes -o Canonica
 
 ## Integration
 
-This module uses the `machineid-host` module internally for bot creation:
-
-```hcl
-# Internal module usage:
-module "host_identity" {
-  source = "../machineid-host"
-  
-  bot_name         = "ansible"
-  role_name        = "ansible-machine-role"
-  allowed_logins   = ["ec2-user", local.user]
-  node_labels = {
-    tier = [var.env]
-    team = [var.team]
-  }
-}
-```
+This module creates the bot token, role, and bot resource internally for Machine ID authentication.
 
 ## Use Cases
 

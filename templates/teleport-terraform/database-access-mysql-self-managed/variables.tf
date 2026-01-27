@@ -26,4 +26,5 @@ variable "teleport_version" {
 variable "team" {
   description = "Team label for RBAC"
   type        = string
+  default     = "platform"
 }

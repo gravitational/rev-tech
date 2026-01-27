@@ -55,7 +55,7 @@ module "mysql_instance" {
   env              = "dev"
   user             = "engineer@company.com"
   proxy_address    = "teleport.company.com"
-  teleport_version = "17.5.2"
+  teleport_version = "18.6.4"
   teleport_db_ca   = data.http.teleport_db_ca_cert.response_body
   
   ami_id             = data.aws_ami.linux.id

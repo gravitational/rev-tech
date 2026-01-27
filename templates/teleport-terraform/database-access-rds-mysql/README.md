@@ -23,7 +23,7 @@ It follows the official [Auto User Provisioning for MySQL guide](https://gotelep
 ```bash
 export TF_VAR_user="engineer@company.com"
 export TF_VAR_proxy_address="teleport.company.com"
-export TF_VAR_teleport_version="17.5.2"
+export TF_VAR_teleport_version="18.6.4"
 export TF_VAR_region="us-east-2"
 export TF_VAR_env="dev"
 ```

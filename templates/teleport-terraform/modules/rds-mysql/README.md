@@ -19,7 +19,7 @@ module "rds_mysql" {
   env                   = "dev"
   user                  = "engineer@company.com"
   proxy_address         = "teleport.company.com"
-  teleport_version      = "17.5.2"
+  teleport_version      = "18.6.4"
   region                = "us-east-2"
   vpc_id                = module.network.vpc_id
   db_subnet_group_name  = module.network.db_subnet_group_name

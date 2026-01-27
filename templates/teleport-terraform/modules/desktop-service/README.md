@@ -17,7 +17,7 @@ module "linux_desktop_service" {
   env              = "dev"
   user             = "engineer@company.com"
   proxy_address    = "teleport.company.com"
-  teleport_version = "17.5.2"
+  teleport_version = "18.6.4"
   
   ami_id               = data.aws_ami.linux.id
   instance_type        = "t3.small"
