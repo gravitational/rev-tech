@@ -29,6 +29,7 @@ provider "aws" {
     tags = {
       "teleport.dev/creator" = var.user
       "env"                  = var.env
+      "team"                 = var.team
       "ManagedBy"            = "terraform"
       "Example"              = "server-access-ssh-getting-started"
     }

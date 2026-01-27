@@ -22,3 +22,9 @@ variable "region" {
   type        = string
   description = "AWS region to deploy resources"
 }
+
+variable "team" {
+  type        = string
+  description = "Team label for Machine ID automation"
+  default     = "platform"
+}

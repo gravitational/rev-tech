@@ -25,6 +25,12 @@ variable "env" {
   default     = "dev"
 }
 
+variable "team" {
+  type        = string
+  description = "Team label for RBAC"
+  default     = "platform"
+}
+
 variable "cidr_vpc" {
   description = "CIDR block for VPC"
   default     = "10.1.0.0/16"

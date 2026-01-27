@@ -46,12 +46,12 @@ This module applies consistent labels for RBAC and dynamic discovery:
 ```yaml
 Labels Applied to SSH Service:
   env: "dev"          # From var.env - environment-based access
-  team: "engineering"  # From var.team - team-based access
+  team: "platform"  # From var.team - team-based access
 
 Bot Role Permissions (target nodes):
   node_labels:
     env: ["dev"]        # Bot can access dev nodes
-    team: ["engineering"] # Within engineering team
+    team: ["platform"] # Within platform team
 ```
 
 ### RBAC Integration
@@ -62,13 +62,13 @@ ansible-machine-role:
     logins: ["ec2-user", "{user}"]      # System users bot can access
     node_labels:
       env: ["dev"]                     # Environment restriction
-      team: ["engineering"]             # Team restriction
+      team: ["platform"]             # Team restriction
 
 # Example human role that can manage the bot instance:
 allow:
   node_labels:
     env: ["dev"]
-    team: ["engineering"]
+    team: ["platform"]
 ```
 
 ### Customization
@@ -122,7 +122,7 @@ cat playbook.yaml
 ### SSH Access (Server Management)
 ```bash
 # List SSH nodes (including Ansible instance)
-tsh ls --labels=env=dev
+tsh ls env=dev
 
 # SSH into the Ansible management server
 tsh ssh ec2-user@dev-ansible

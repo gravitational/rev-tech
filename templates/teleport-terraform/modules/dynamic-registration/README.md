@@ -24,7 +24,7 @@ module "mysql_registration" {
   
   labels = {
     env = "dev"
-    team = "engineering"
+    team = "platform"
   }
 }
 ```
@@ -42,7 +42,7 @@ module "grafana_registration" {
   
   labels = {
     env               = "dev"
-    team               = "engineering"
+    team               = "platform"
     "teleport.dev/app" = "grafana"
   }
   
@@ -71,7 +71,7 @@ This module standardizes label application across all resources:
 ```yaml
 Standard Labels Applied:
   env: "dev"                    # Environment-based access
-  team: "engineering"            # Team-based access
+  team: "platform"            # Team-based access
   "teleport.dev/origin": "dynamic"  # Indicates Terraform-managed
 
 Additional Labels (context-specific):
@@ -86,7 +86,7 @@ Additional Labels (context-specific):
 allow:
   db_labels:
     env: ["dev", "staging"]     # Access specific environments
-    team: ["engineering"]        # Team-based restrictions
+    team: ["platform"]        # Team-based restrictions
   app_labels:
     env: ["dev"]
     "teleport.dev/app": ["grafana", "kibana"]  # Specific applications
@@ -233,7 +233,7 @@ labels = {
   "teleport.dev/app" = "grafana"
   
   # Business context
-  cost_center = "engineering"
+  cost_center = "platform"
   project     = "observability"
   
   # Compliance
@@ -260,7 +260,7 @@ tctl get app/grafana-dev
 
 # Check labels are applied correctly
 tctl get db --labels=env=dev
-tctl get app --labels=team=engineering
+tctl get app --labels=team=platform
 ```
 
 ### Common Issues
@@ -276,8 +276,8 @@ tctl get db --labels="*"
 tctl get app --labels="*"
 
 # Test resource access
-tsh db ls --labels=env=dev
-tsh apps ls --labels=env=dev
+tsh db ls env=dev
+tsh apps ls env=dev
 
 # Verify Terraform state
 terraform state show module.mysql_registration.teleport_database.this[0]

@@ -10,7 +10,7 @@ It mirrors the official [Configure access for local Windows users](https://gotel
 
 - 1 Windows Server 2022 instance
 - 1 Linux Desktop Service instance (Teleport `windows_desktop_service`)
-- Teleport desktop registration with env-based labels (e.g., `env = dev`)
+- Teleport desktop registration with env/team labels (e.g., `env = dev`, `team = platform`)
 - Shared VPC/subnet/security group baseline
 
 ---
@@ -32,6 +32,7 @@ export TF_VAR_proxy_address="teleport.example.com"
 export TF_VAR_teleport_version="18.6.4"
 export TF_VAR_region="us-east-2"
 export TF_VAR_env="dev"
+export TF_VAR_team="platform"
 ```
 
 Or:

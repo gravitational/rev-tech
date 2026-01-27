@@ -13,6 +13,7 @@ It follows the official [Auto User Provisioning for MySQL guide](https://gotelep
 - **Auto user provisioning** - users created automatically on first connection
 - **TLS enforcement** - all connections require secure transport
 - **IAM-based authentication** - uses AWS IAM for database access
+- **Label-based access** - database registered with `env` + `team` labels
 
 ---
 
@@ -26,6 +27,7 @@ export TF_VAR_proxy_address="teleport.company.com"
 export TF_VAR_teleport_version="18.6.4"
 export TF_VAR_region="us-east-2"
 export TF_VAR_env="dev"
+export TF_VAR_team="platform"
 ```
 
 Or:
@@ -53,7 +55,7 @@ terraform apply
 
 ```bash
 # List available databases
-tsh db ls
+tsh db ls env=dev,team=platform
 
 # Connect to the database
 tsh db connect rds-mysql-dev

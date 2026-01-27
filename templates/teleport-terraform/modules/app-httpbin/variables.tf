@@ -41,7 +41,7 @@ variable "security_group_ids" {
 variable "team" {
   description = "Team label for HTTPBin application"
   type        = string
-  default     = "engineering"
+  default     = "platform"
 }
 
 variable "tags" {

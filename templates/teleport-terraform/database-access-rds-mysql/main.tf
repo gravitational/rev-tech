@@ -18,6 +18,7 @@ provider "aws" {
     tags = {
       "teleport.dev/creator" = var.user
       "env"                  = var.env
+      "team"                 = var.team
       "ManagedBy"            = "terraform"
     }
   }
@@ -56,6 +57,7 @@ module "rds_mysql" {
   source = "../modules/rds-mysql"
 
   env                  = var.env
+  team                 = var.team
   user                 = var.user
   proxy_address        = var.proxy_address
   teleport_version     = var.teleport_version
@@ -74,7 +76,7 @@ output "rds_endpoint" {
 output "connection_instructions" {
   value = <<-EOF
     1. Connect to Teleport cluster: tsh login --proxy=${var.proxy_address}:443
-    2. List available databases: tsh db ls
+    2. List available databases: tsh db ls env=${var.env},team=${var.team}
     3. Connect to database: tsh db connect rds-mysql-${var.env}
     4. Auto user creation is enabled - users will be created automatically on first connection
     5. Users are assigned permissions based on their Teleport roles

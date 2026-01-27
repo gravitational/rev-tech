@@ -32,6 +32,8 @@ app_service:
   resources:
     - labels:
         "teleport.dev/app": "httpbin"
+        "env": "${env}"
+        "team": "${team}"
 ssh_service:
   enabled: false
 auth_service:

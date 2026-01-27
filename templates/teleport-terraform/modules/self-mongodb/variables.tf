@@ -46,5 +46,5 @@ variable "security_group_ids" {
 variable "team" {
   description = "Team label for the MongoDB database"
   type        = string
-  default     = "engineering"
+  default     = "platform"
 }

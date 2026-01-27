@@ -50,7 +50,7 @@ variable "security_group_ids" {
 variable "team" {
   description = "Team label for desktop service"
   type        = string
-  default     = "engineering"
+  default     = "platform"
 }
 
 variable "windows_internal_dns" {

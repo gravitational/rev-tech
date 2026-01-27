@@ -22,3 +22,9 @@ variable "teleport_version" {
   description = "Teleport version to install"
   type        = string
 }
+
+variable "team" {
+  description = "Team label for desktop access"
+  type        = string
+  default     = "platform"
+}

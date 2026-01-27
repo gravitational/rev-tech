@@ -50,7 +50,7 @@ terraform apply
 4. Access:
 
 ```bash
-tsh ls --labels=env=dev
+tsh ls env=dev,team=platform
 tsh ssh ec2-user@<ansible-host>
 ```
 

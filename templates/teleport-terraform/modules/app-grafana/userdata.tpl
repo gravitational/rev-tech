@@ -69,6 +69,8 @@ app_service:
   resources:
     - labels:
         "teleport.dev/app": "grafana"
+        "env": "${env}"
+        "team": "${team}"
 ssh_service:
   enabled: true
   labels:

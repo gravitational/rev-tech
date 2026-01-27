@@ -9,6 +9,7 @@ It mirrors the official [Teleport self-hosted Postgres guide](https://goteleport
 - Launches a PostgreSQL 15 EC2 instance with TLS enabled
 - Installs and configures Teleport on the instance
 - Registers the database with Teleport using the `teleport_database` resource
+- Applies `env` + `team` labels for RBAC targeting
 - Uses a custom CA to sign the Postgres server certificate
 - Provides Teleport access to roles like `reader` and `writer` using CN-matching
 
@@ -42,6 +43,7 @@ export TF_VAR_proxy_address="teleport.example.com"
 export TF_VAR_teleport_version="18.6.4"
 export TF_VAR_region="us-east-2"
 export TF_VAR_env="dev"
+export TF_VAR_team="platform"
 ```
 
 Or:
@@ -58,7 +60,7 @@ terraform apply
 Access:
 
 ```bash
-tsh db ls --labels=env=dev
+tsh db ls env=dev,team=platform
 tsh db connect demo-postgres --db-user=reader
 ```
 

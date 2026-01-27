@@ -100,18 +100,18 @@ terraform apply
 After 1-2 minutes nodes will appear
 
 ```bash
-tsh ls 
+tsh ls env=dev,team=platform
 ```
 
 example:
 
 ```bash
-❯ tsh ls
+❯ tsh ls env=dev,team=platform
 Node Name Address    Labels                                                                       
 --------- ---------- ---------------------------------------------------------------------------- 
-dev-ssh-0 ⟵ Tunnel   disk_used=14%,hostname=dev-ssh-0,load_average=0.67,team=engineering,env=dev 
-dev-ssh-1 ⟵ Tunnel   disk_used=14%,hostname=dev-ssh-1,load_average=0.78,team=engineering,env=dev 
-dev-ssh-2 ⟵ Tunnel   disk_used=14%,hostname=dev-ssh-2,load_average=0.48,team=engineering,env=dev 
+dev-ssh-0 ⟵ Tunnel   disk_used=14%,hostname=dev-ssh-0,load_average=0.67,team=platform,env=dev 
+dev-ssh-1 ⟵ Tunnel   disk_used=14%,hostname=dev-ssh-1,load_average=0.78,team=platform,env=dev 
+dev-ssh-2 ⟵ Tunnel   disk_used=14%,hostname=dev-ssh-2,load_average=0.48,team=platform,env=dev 
 ```
 
 SSH into a node

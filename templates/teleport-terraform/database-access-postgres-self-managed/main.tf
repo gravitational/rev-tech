@@ -30,6 +30,7 @@ provider "aws" {
     tags = {
       "teleport.dev/creator" = var.user
       "env"                  = var.env
+      "team"                 = var.team
       "ManagedBy"            = "terraform"
     }
   }
@@ -68,6 +69,7 @@ module "postgres_instance" {
   source             = "../modules/self-postgres"
   env                = var.env
   user               = var.user
+  team               = var.team
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
   teleport_db_ca     = data.http.teleport_db_ca_cert.response_body
@@ -87,6 +89,7 @@ module "postgres_registration" {
   uri           = "localhost:5432"
   ca_cert_chain = module.postgres_instance.ca_cert
   labels = {
-    "env" = var.env
+    "env"  = var.env
+    "team" = var.team
   }
 }

@@ -30,6 +30,7 @@ provider "aws" {
     tags = {
       "teleport.dev/creator" = var.user
       "env"                  = var.env
+      "team"                 = var.team
       "ManagedBy"            = "terraform"
     }
   }
@@ -68,6 +69,7 @@ module "mongodb_instance" {
   source             = "../modules/self-mongodb"
   env                = var.env
   user               = var.user
+  team               = var.team
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
   teleport_db_ca     = data.http.teleport_db_ca_cert.response_body

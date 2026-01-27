@@ -1,11 +1,6 @@
-proxy_address    = "your-teleport-cluster.com"
-region           = "us-east-2"
+user             = "engineer@example.com"
+proxy_address    = "teleport.example.com"
 teleport_version = "18.6.4"
-user             = "your-username"
+region           = "us-east-2"
 env              = "dev"
-
-# Optional: Override default networking
-# cidr_vpc               = "10.1.0.0/16"
-# cidr_subnet            = "10.1.0.0/20"    # Private subnet
-# cidr_public_subnet     = "10.1.16.0/20"   # Public subnet
-# cidr_secondary_subnet  = "10.1.32.0/20"   # Secondary private subnet for RDS
+team             = "platform"

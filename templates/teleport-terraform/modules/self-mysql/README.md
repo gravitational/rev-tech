@@ -86,7 +86,7 @@ This module applies consistent labels for RBAC and dynamic discovery:
 ```yaml
 Labels Applied:
   env: "dev"          # From var.env - environment-based access
-  team: "engineering"  # From var.team - team-based access
+  team: "platform"  # From var.team - team-based access
 ```
 
 ### RBAC Integration
@@ -95,10 +95,10 @@ Labels Applied:
 allow:
   db_labels:
     env: ["dev", "staging"]     # Access dev and staging DBs
-    team: ["engineering"]        # Only engineering team
+    team: ["platform"]        # Only platform team
   node_labels:
     env: ["dev"]                # SSH access to dev servers
-    team: ["engineering"]        # Same team restriction
+    team: ["platform"]        # Same team restriction
 ```
 
 ### Customization
@@ -118,7 +118,7 @@ labels = {
 ### Database Access
 ```bash
 # List databases
-tsh db ls --labels=env=dev
+tsh db ls env=dev
 
 # Connect as reader
 tsh db connect mysql-dev --db-user=reader
@@ -136,7 +136,7 @@ CREATE TABLE test_table (id INT);  # Will fail for reader
 ### SSH Access (Server Management)
 ```bash
 # List SSH nodes
-tsh ls --labels=env=dev
+tsh ls env=dev
 
 # SSH into the database server
 tsh ssh ec2-user@dev-mysql
@@ -162,7 +162,7 @@ sudo tail -f /var/log/mysqld.log
 | `instance_type` | EC2 instance type | `string` | - |
 | `subnet_id` | Subnet for instance | `string` | - |
 | `security_group_ids` | Security group IDs | `list(string)` | - |
-| `team` | Team label | `string` | `"engineering"` |
+| `team` | Team label | `string` | `"platform"` |
 
 ## Outputs
 

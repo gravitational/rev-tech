@@ -55,15 +55,15 @@ This module applies consistent labels for RBAC and dynamic discovery:
 ```yaml
 Labels Applied to Desktop Service:
   env: "dev"          # From var.env - environment-based access
-  team: "engineering"  # From var.team - team-based access
+  team: "platform"  # From var.team - team-based access
 
 Labels Applied to SSH Service:
   env: "dev"          # From var.env - environment-based access  
-  team: "engineering"  # From var.team - team-based access
+  team: "platform"  # From var.team - team-based access
 
 Labels Applied to Windows Desktops:
   env: "dev"          # From var.env - environment-based access
-  team: "engineering"  # From var.team - team-based access
+  team: "platform"  # From var.team - team-based access
 ```
 
 ### RBAC Integration
@@ -72,11 +72,11 @@ Labels Applied to Windows Desktops:
 allow:
   windows_desktop_labels:
     env: ["dev", "staging"]     # Access dev and staging desktops
-    team: ["engineering"]        # Only engineering team
+    team: ["platform"]        # Only platform team
   windows_desktop_logins: ["Administrator", "{{email.local(external.username)}}"]
   node_labels:
     env: ["dev"]                # SSH access to desktop service
-    team: ["engineering"]        # Same team restriction
+    team: ["platform"]        # Same team restriction
 ```
 
 ### Customization
@@ -100,7 +100,7 @@ Access is available via the Teleport UI or [Teleport Connect](https://goteleport
 ### SSH Access (Desktop Service Management)
 ```bash
 # List SSH nodes (including desktop service)
-tsh ls --labels=env=dev
+tsh ls env=dev
 
 # SSH into the desktop service instance
 tsh ssh ec2-user@dev-desktop-service
@@ -136,7 +136,7 @@ tsh play <session-id>
 | `instance_type` | EC2 instance type | `string` | `"t3.medium"` |
 | `subnet_id` | Subnet for instance | `string` | - |
 | `security_group_ids` | Security group IDs | `list(string)` | - |
-| `team` | Team label | `string` | `"engineering"` |
+| `team` | Team label | `string` | `"platform"` |
 | `windows_internal_dns` | Private DNS of Windows host | `string` | - |
 
 ## Outputs
@@ -170,7 +170,7 @@ static_hosts:
     addr: 10.0.1.100:3389
     labels:
       env: dev
-      team: engineering
+      team: platform
 ```
 
 ## Desktop Service Configuration

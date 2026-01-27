@@ -9,7 +9,8 @@ It follows the official [MCP stdio enrollment guide](https://goteleport.com/docs
 ## What It Deploys
 
 - 1 EC2 instance running Teleport Application Service with an MCP stdio server
-- A Machine ID bot and role scoped to MCP access (`mcp.tools = ["*"]`)
+- MCP app registered with `env` + `team` labels for RBAC targeting
+- A Machine ID bot and role scoped to MCP access (`mcp.tools = ["*"]`) and matching labels
 - Shared VPC/subnet/security group baseline
 
 ---

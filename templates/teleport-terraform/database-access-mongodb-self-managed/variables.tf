@@ -21,7 +21,7 @@ variable "proxy_address" {
 variable "team" {
   description = "Team label for the MongoDB database"
   type        = string
-  default     = "engineering"
+  default     = "platform"
 }
 
 variable "teleport_version" {

@@ -10,7 +10,7 @@ It mirrors the official [Protect a Web Application with Teleport](https://gotele
 
 - 1 EC2 instance running Grafana on Docker
 - Teleport agent with `app_service` and `ssh_service`
-- Teleport app registered via dynamic resource registration
+- Teleport app registered via dynamic resource registration with `env` + `team` labels
 
 ---
 
@@ -31,6 +31,7 @@ export TF_VAR_proxy_address="teleport.example.com"
 export TF_VAR_teleport_version="18.6.4"
 export TF_VAR_region="us-east-2"
 export TF_VAR_env="dev"
+export TF_VAR_team="platform"
 ```
 
 Or:
@@ -47,7 +48,7 @@ terraform apply
 
 4. Access:
 ```bash
-tsh apps ls --labels=env=dev
+tsh apps ls env=dev,team=platform
 tsh apps login grafana-dev
 ```
 

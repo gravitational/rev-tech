@@ -22,6 +22,7 @@ provider "aws" {
     tags = {
       "teleport.dev/creator" = var.user
       "env"                  = var.env
+      "team"                 = var.team
       "ManagedBy"            = "terraform"
     }
   }
@@ -56,6 +57,7 @@ module "httpbin_app" {
   source             = "../modules/app-httpbin"
   env                = var.env
   user               = var.user
+  team               = var.team
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
   ami_id             = data.aws_ami.linux.id
@@ -73,6 +75,7 @@ module "httpbin_registration" {
   public_addr   = "httpbin-${var.env}.${var.proxy_address}"
   labels = {
     env                = var.env
+    team               = var.team
     "teleport.dev/app" = "httpbin"
   }
   rewrite_headers = [

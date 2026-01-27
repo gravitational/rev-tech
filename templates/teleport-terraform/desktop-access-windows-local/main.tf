@@ -18,6 +18,7 @@ provider "aws" {
     tags = {
       "teleport.dev/creator" = var.user
       "env"                  = var.env
+      "team"                 = var.team
       "ManagedBy"            = "terraform"
     }
   }
@@ -86,6 +87,7 @@ module "linux_desktop_service" {
 
   env              = var.env
   user             = var.user
+  team             = var.team
   proxy_address    = var.proxy_address
   teleport_version = var.teleport_version
 

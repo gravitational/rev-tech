@@ -19,6 +19,7 @@ provider "aws" {
     tags = {
       "teleport.dev/creator" = var.user
       "env"                  = var.env
+      "team"                 = var.team
       "ManagedBy"            = "terraform"
     }
   }
@@ -76,6 +77,7 @@ module "machineid_bot" {
   node_labels    = {}
   app_labels = {
     env                              = [var.env]
+    team                             = [var.team]
     "teleport.internal/app-sub-kind" = ["mcp"]
   }
   mcp_tools = ["*"]

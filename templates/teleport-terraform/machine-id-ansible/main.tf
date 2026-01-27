@@ -23,6 +23,7 @@ provider "aws" {
     tags = {
       "teleport.dev/creator" = var.user
       "env"                  = var.env
+      "team"                 = var.team
       "ManagedBy"            = "terraform"
     }
   }
@@ -45,6 +46,7 @@ module "machineid_ansible" {
 
   env                = var.env
   user               = var.user
+  team               = var.team
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
   subnet_id          = module.network.subnet_id

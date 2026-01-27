@@ -11,7 +11,7 @@ It mirrors the official [Teleport self-hosted MongoDB guide](https://goteleport.
 - 1 EC2 instance running MongoDB Community Edition 8.0 on Amazon Linux 2023
 - A custom CA and server TLS certificate for encrypted MongoDB access
 - Teleport agent with `db_service` and `ssh_service`
-- Teleport dynamic discovery enabled via label matching: `env = dev`
+- Teleport dynamic discovery enabled via label matching: `env = dev`, `team = platform`
 
 ---
 
@@ -49,7 +49,7 @@ terraform apply
 
 3. Access:
 ```bash
-tsh db ls 
+tsh db ls env=dev,team=platform
 tsh db connect --db-user=reader --db-name dev mongodb-dev
 ```
 
