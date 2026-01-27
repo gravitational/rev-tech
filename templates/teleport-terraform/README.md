@@ -43,3 +43,7 @@ More templates (e.g., control plane and multi-environment blueprints) can be add
 - **dynamic-registration** – reusable `teleport_*` resource registration helpers.
 
 Each module includes its own README with usage and variable details.
+
+## Tools
+
+- `templates/teleport-terraform/tools/terraform-templates-check.sh` – runs `terraform fmt -check` and `terraform validate` per template; supports optional plans with `RUN_TERRAFORM_PLAN=1` (requires AWS + Teleport credentials).

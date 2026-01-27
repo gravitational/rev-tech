@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Resolve paths so the script can run from any working directory.
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+templates_root=$(cd "${script_dir}/.." && pwd)
+
+cat <<'HEADER'
+terraform-templates-check.sh
+--------------------------------
+Checks Terraform formatting and validates each template in templates/teleport-terraform.
+
+Requirements:
+  - terraform on PATH
+  - For RUN_TERRAFORM_PLAN=1:
+      * AWS credentials in this shell (e.g., aws sts get-caller-identity works)
+      * Teleport Terraform auth exported (eval $(tctl terraform env))
+
+Usage:
+  ./tools/terraform-templates-check.sh
+  RUN_TERRAFORM_PLAN=1 ./tools/terraform-templates-check.sh
+  SKIP_TERRAFORM_INIT=1 ./tools/terraform-templates-check.sh
+HEADER
+
+if ! command -v terraform >/dev/null 2>&1; then
+  echo "terraform is not installed or not on PATH" >&2
+  exit 1
+fi
+
+if [[ ! -d "${templates_root}" ]]; then
+  echo "templates root not found: ${templates_root}" >&2
+  exit 1
+fi
+
+# CI-friendly mode: no interactive prompts from Terraform.
+export TF_IN_AUTOMATION=1
+
+# Format check across all templates/modules.
+echo "==> terraform fmt -check"
+terraform fmt -check -recursive "${templates_root}"
+
+# Validate each template folder (skip modules).
+echo "==> terraform validate (per template)"
+for dir in "${templates_root}"/*; do
+  [[ -d "${dir}" ]] || continue
+  [[ "${dir##*/}" == "modules" ]] && continue
+  [[ -f "${dir}/main.tf" ]] || continue
+
+  echo "-- ${dir##*/}"
+  if [[ "${SKIP_TERRAFORM_INIT:-}" != "1" ]]; then
+    # Init per template so validate can resolve providers and modules.
+    (cd "${dir}" && terraform init -backend=false -upgrade=false)
+  fi
+  (cd "${dir}" && terraform validate)
+done
+
+if [[ "${RUN_TERRAFORM_PLAN:-}" == "1" ]]; then
+  if [[ -z "${TF_VAR_team:-}" ]]; then
+    export TF_VAR_team="platform"
+  fi
+  if ! command -v aws >/dev/null 2>&1; then
+    echo "warning: aws CLI not found; plan may fail without credentials" >&2
+  else
+    if ! aws sts get-caller-identity >/dev/null 2>&1; then
+      echo "warning: AWS credentials not available; plan may fail" >&2
+    fi
+  fi
+  if ! command -v tctl >/dev/null 2>&1; then
+    echo "warning: tctl not found; ensure Teleport Terraform auth is exported" >&2
+  fi
+  echo "==> terraform plan (per template)"
+  for dir in "${templates_root}"/*; do
+    [[ -d "${dir}" ]] || continue
+    [[ "${dir##*/}" == "modules" ]] && continue
+    [[ -f "${dir}/main.tf" ]] || continue
+
+    echo "-- ${dir##*/}"
+    (cd "${dir}" && terraform plan -input=false)
+  done
+fi
+
+cat <<'NOTE'
+
+NOTE: terraform init may download providers; ensure network access or run once with provider cache.
+Set SKIP_TERRAFORM_INIT=1 to skip init if already initialized.
+Set RUN_TERRAFORM_PLAN=1 to run terraform plan per template (requires credentials).
+NOTE
