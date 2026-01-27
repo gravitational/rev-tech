@@ -10,7 +10,7 @@ It mirrors the official [Protect a Web Application with Teleport](https://gotele
 
 - 1 EC2 instance running Grafana on Docker
 - Teleport agent with `app_service` and `ssh_service`
-- Teleport dynamic discovery enabled via label matching: `tier : dev`
+- Teleport app registered via dynamic resource registration
 
 ---
 
@@ -47,7 +47,8 @@ terraform apply
 
 4. Access:
 ```bash
-TBD
+tsh apps ls --labels=tier=dev
+tsh apps login grafana-dev
 ```
 
 5. Tear down:
@@ -58,4 +59,4 @@ terraform destroy
 ---
 
 ## Notes
--
+- Grafana is exposed at `grafana-<env>.<proxy_address>` via Teleport App Access

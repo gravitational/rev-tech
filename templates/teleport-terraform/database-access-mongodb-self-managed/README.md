@@ -25,7 +25,7 @@ export TF_VAR_proxy_address="teleport.example.com"
 export TF_VAR_teleport_version="18.6.4"
 export TF_VAR_region="us-east-2"
 export TF_VAR_env="dev"
-export TF_VAR_team="engineering"
+export TF_VAR_team="platform"
 ```
 
 Or:
@@ -41,24 +41,19 @@ tsh login --proxy=teleport.example.com --auth=example
 eval $(tctl terraform env)
 ```
 
-2. Customize the variables:
-```bash
-cp terraform.tfvars.example terraform.tfvars
-```
-
-3. Deploy:
+2. Deploy:
 ```bash
 terraform init
 terraform apply
 ```
 
-4. Access:
+3. Access:
 ```bash
 tsh db ls 
 tsh db connect --db-user=reader --db-name dev mongodb-dev
 ```
 
-5. Tear down:
+4. Tear down:
 ```bash
 terraform destroy
 ```

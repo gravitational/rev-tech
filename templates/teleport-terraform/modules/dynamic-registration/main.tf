@@ -27,7 +27,7 @@ resource "teleport_database" "this" {
   }
 }
 
-# fix for dyanmic block within map spec: assignment 
+# fix for dynamic block within map spec: assignment
 locals {
   base_spec = {
     uri                  = var.uri
