@@ -29,7 +29,7 @@ provider "aws" {
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
-      "tier"                 = var.env
+      "env"                  = var.env
       "ManagedBy"            = "terraform"
     }
   }
@@ -86,7 +86,7 @@ module "mongodb_registration" {
   uri           = "localhost:27017"
   ca_cert_chain = module.mongodb_instance.ca_cert
   labels = {
-    tier = var.env
+    env  = var.env
     team = var.team
   }
 }

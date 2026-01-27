@@ -54,15 +54,15 @@ This module applies consistent labels for RBAC and dynamic discovery:
 
 ```yaml
 Labels Applied to Desktop Service:
-  tier: "dev"          # From var.env - environment-based access
+  env: "dev"          # From var.env - environment-based access
   team: "engineering"  # From var.team - team-based access
 
 Labels Applied to SSH Service:
-  tier: "dev"          # From var.env - environment-based access  
+  env: "dev"          # From var.env - environment-based access  
   team: "engineering"  # From var.team - team-based access
 
 Labels Applied to Windows Desktops:
-  tier: "dev"          # From var.env - environment-based access
+  env: "dev"          # From var.env - environment-based access
   team: "engineering"  # From var.team - team-based access
 ```
 
@@ -71,11 +71,11 @@ Labels Applied to Windows Desktops:
 # Example Teleport role using these labels:
 allow:
   windows_desktop_labels:
-    tier: ["dev", "staging"]     # Access dev and staging desktops
+    env: ["dev", "staging"]     # Access dev and staging desktops
     team: ["engineering"]        # Only engineering team
   windows_desktop_logins: ["Administrator", "{{email.local(external.username)}}"]
   node_labels:
-    tier: ["dev"]                # SSH access to desktop service
+    env: ["dev"]                # SSH access to desktop service
     team: ["engineering"]        # Same team restriction
 ```
 
@@ -84,7 +84,7 @@ To adapt for your environment, modify the labels in your configuration:
 ```hcl
 # Custom labels for your organization
 labels = {
-  tier        = "production"     # or "dev", "staging", "qa"
+  env        = "production"     # or "dev", "staging", "qa"
   team        = "platform"       # or "frontend", "backend", "data"
   region      = "us-west-2"      # Add region-specific access
   compliance  = "iso27001"       # Add compliance requirements
@@ -100,7 +100,7 @@ Access is available via the Teleport UI or [Teleport Connect](https://goteleport
 ### SSH Access (Desktop Service Management)
 ```bash
 # List SSH nodes (including desktop service)
-tsh ls --labels=tier=dev
+tsh ls --labels=env=dev
 
 # SSH into the desktop service instance
 tsh ssh ec2-user@dev-desktop-service
@@ -169,7 +169,7 @@ static_hosts:
   - name: dev-desktop
     addr: 10.0.1.100:3389
     labels:
-      tier: dev
+      env: dev
       team: engineering
 ```
 
@@ -185,7 +185,7 @@ windows_desktop_service:
       ad: false                             # Not Active Directory joined
       addr: {windows_internal_dns}          # Windows instance address
       labels:
-        tier: {env}
+        env: {env}
         team: {team}
 ```
 
@@ -339,7 +339,7 @@ static_hosts:
   - name: production-desktop
     addr: 10.0.1.100:3389
     labels:
-      tier: production
+      env: production
       team: platform
       compliance: pci
       region: us-west-2

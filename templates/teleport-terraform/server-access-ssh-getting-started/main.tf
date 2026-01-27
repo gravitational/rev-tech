@@ -17,7 +17,7 @@ locals {
   user_prefix = lower(split("@", var.user)[0])
   resource_tags = {
     "teleport.dev/creator" = var.user
-    "tier"                 = var.env
+    "env"                  = var.env
     "Example"              = "server-access-ssh-getting-started"
   }
 }
@@ -28,7 +28,7 @@ provider "aws" {
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
-      "tier"                 = var.env
+      "env"                  = var.env
       "ManagedBy"            = "terraform"
       "Example"              = "server-access-ssh-getting-started"
     }

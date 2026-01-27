@@ -124,7 +124,7 @@ db_service:
   enabled: true
   resources:
    - labels:
-       "tier": "${env}"
+       "env": "${env}"
        "team": "${team}"
 
 auth_service:
@@ -133,7 +133,7 @@ auth_service:
 ssh_service:
   enabled: "yes"
   labels:
-    tier: "${env}"
+    env: "${env}"
     team: "${team}"
 
 proxy_service:

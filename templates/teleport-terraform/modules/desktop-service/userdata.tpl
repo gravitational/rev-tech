@@ -47,7 +47,7 @@ ssh_service:
     command: [hostname]
     period: 1m0s
   labels:
-    "tier": "${env}"
+    "env": "${env}"
     "team": "${team}"
   enhanced_recording:
     enabled: "false"
@@ -59,7 +59,7 @@ windows_desktop_service:
     ad: false
     addr: ${windows_internal_dns}
     labels:
-      "tier": "${env}"
+      "env": "${env}"
       "team": "${team}"
 EOF
 

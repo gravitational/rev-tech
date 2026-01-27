@@ -29,7 +29,7 @@ teleport:
 ssh_service:
   enabled: true
   labels:
-    tier: ${env}
+    env: ${env}
     team: ${team}
   enhanced_recording:
     enabled: true

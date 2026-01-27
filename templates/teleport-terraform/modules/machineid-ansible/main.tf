@@ -33,7 +33,7 @@ module "machineid_bot" {
   bot_name       = local.bot_name
   role_name      = "ansible-machine-role"
   allowed_logins = ["ec2-user", local.user]
-  node_labels    = { "tier" = [var.env], "team" = [var.team] }
+  node_labels    = { "env" = [var.env], "team" = [var.team] }
 }
 
 resource "random_string" "token" {

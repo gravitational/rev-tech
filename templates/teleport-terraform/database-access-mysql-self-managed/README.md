@@ -11,7 +11,7 @@ It mirrors the official [Teleport self-hosted MySQL guide](https://goteleport.co
 - 1 EC2 instance running MySQL (MariaDB) on Ubuntu 22.04
 - A custom CA and server TLS certificate for encrypted MySQL access
 - Teleport agent with `db_service` and `ssh_service`
-- Teleport dynamic discovery enabled via label matching: `tier = dev`
+- Teleport dynamic discovery enabled via label matching: `env = dev`
 
 ---
 
@@ -49,7 +49,7 @@ terraform apply
 
 4. Access:
 ```bash
-tsh db ls --labels=tier=dev
+tsh db ls --labels=env=dev
 tsh db connect demo-mysql --db-user=alice
 ```
 

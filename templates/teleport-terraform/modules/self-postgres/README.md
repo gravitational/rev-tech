@@ -48,7 +48,7 @@ This module applies consistent labels for RBAC and dynamic discovery:
 
 ```yaml
 Labels Applied:
-  tier: "dev"          # From var.env - environment-based access
+  env: "dev"          # From var.env - environment-based access
   team: "engineering"  # From var.team - team-based access
 ```
 
@@ -57,10 +57,10 @@ Labels Applied:
 # Example Teleport role using these labels:
 allow:
   db_labels:
-    tier: ["dev", "staging"]     # Access dev and staging DBs
+    env: ["dev", "staging"]     # Access dev and staging DBs
     team: ["engineering"]        # Only engineering team
   node_labels:
-    tier: ["dev"]                # SSH access to dev servers
+    env: ["dev"]                # SSH access to dev servers
     team: ["engineering"]        # Same team restriction
 ```
 
@@ -69,7 +69,7 @@ To adapt for your environment, modify the labels in your configuration:
 ```hcl
 # Custom labels for your organization
 labels = {
-  tier        = "production"     # or "dev", "staging", "qa"
+  env        = "production"     # or "dev", "staging", "qa"
   team        = "platform"       # or "frontend", "backend", "data"
   environment = "us-west-2"      # Add region-specific access
   compliance  = "hipaa"          # Add compliance requirements
@@ -81,7 +81,7 @@ labels = {
 ### Database Access
 ```bash
 # List databases
-tsh db ls --labels=tier=dev
+tsh db ls --labels=env=dev
 
 # Connect as reader
 tsh db connect postgres-dev --db-user=reader
@@ -100,7 +100,7 @@ SELECT * FROM pg_tables;              # Works for both
 ### SSH Access (Server Management)
 ```bash
 # List SSH nodes
-tsh ls --labels=tier=dev
+tsh ls --labels=env=dev
 
 # SSH into the database server
 tsh ssh ec2-user@dev-postgres
@@ -188,7 +188,7 @@ module "postgres_registration" {
   uri           = "localhost:5432"
   ca_cert_chain = module.postgres_instance.ca_cert
   labels = {
-    tier = var.env
+    env = var.env
     team = var.team
   }
 }

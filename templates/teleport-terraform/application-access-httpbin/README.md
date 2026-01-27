@@ -10,7 +10,7 @@ It mirrors the official [Protect a Web Application with Teleport](https://gotele
 
 - 1 EC2 instance running HTTPBin
 - Teleport agent with `app_service` and `ssh_service`
-- Teleport app registration with tier-based labels (e.g., `tier = dev`)
+- Teleport app registration with env-based labels (e.g., `env = dev`)
 
 ---
 
@@ -49,7 +49,7 @@ terraform apply
 4. Access:
 
 ```bash
-tsh apps ls --labels=tier=dev
+tsh apps ls --labels=env=dev
 tsh apps login httpbin-dev
 ```
 

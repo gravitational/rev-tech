@@ -72,7 +72,7 @@ app_service:
 ssh_service:
   enabled: true
   labels:
-    tier: "${env}"
+    env: "${env}"
     team: "${team}"
   commands:
     - name: "hostname"

@@ -10,7 +10,7 @@ It mirrors the official [Configure access for local Windows users](https://gotel
 
 - 1 Windows Server 2022 instance
 - 1 Linux Desktop Service instance (Teleport `windows_desktop_service`)
-- Teleport desktop registration with tier-based labels (e.g., `tier = dev`)
+- Teleport desktop registration with env-based labels (e.g., `env = dev`)
 - Shared VPC/subnet/security group baseline
 
 ---

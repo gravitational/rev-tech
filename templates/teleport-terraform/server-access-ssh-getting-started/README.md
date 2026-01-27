@@ -9,7 +9,7 @@ This template deploys a minimal AWS environment with Teleport registered SSH nod
 - Teleport SSH Service running on **Amazon Linux 2023** EC2 instances
 - Automatic node enrollment via short-lived **provisioning token**
 - Environment-aware labeling for RBAC:
-  - `tier = dev | stage | prod`
+  - `env = dev | stage | prod`
   - `team = platform | sre | app-team`
 - AWS networking baseline (VPC, subnets, NAT gateway, security group)
 - Multi-node deployments via `agent_count` (e.g. 3 SSH nodes)
@@ -109,9 +109,9 @@ example:
 ❯ tsh ls
 Node Name Address    Labels                                                                       
 --------- ---------- ---------------------------------------------------------------------------- 
-dev-ssh-0 ⟵ Tunnel   disk_used=14%,hostname=dev-ssh-0,load_average=0.67,team=engineering,tier=dev 
-dev-ssh-1 ⟵ Tunnel   disk_used=14%,hostname=dev-ssh-1,load_average=0.78,team=engineering,tier=dev 
-dev-ssh-2 ⟵ Tunnel   disk_used=14%,hostname=dev-ssh-2,load_average=0.48,team=engineering,tier=dev 
+dev-ssh-0 ⟵ Tunnel   disk_used=14%,hostname=dev-ssh-0,load_average=0.67,team=engineering,env=dev 
+dev-ssh-1 ⟵ Tunnel   disk_used=14%,hostname=dev-ssh-1,load_average=0.78,team=engineering,env=dev 
+dev-ssh-2 ⟵ Tunnel   disk_used=14%,hostname=dev-ssh-2,load_average=0.48,team=engineering,env=dev 
 ```
 
 SSH into a node
@@ -126,7 +126,7 @@ tsh ssh ec2-user@dev-ssh-0
 | ------------------ | ------------------------------------------------------------- | ------------ |
 | `user`             | Used for tagging & node name prefix                           | **required** |
 | `proxy_address`    | Teleport proxy hostname (no scheme, no port)                  | **required** |
-| `env`              | Label determining access tier (`dev`, `stage`, `prod`)        | `"dev"`      |
+| `env`              | Label determining access env (`dev`, `stage`, `prod`)        | `"dev"`      |
 | `team`             | Label determining team ownership (`platform`, `sre`, `app`)   | `"platform"` |
 | `agent_count`      | Number of SSH nodes to deploy                                 | `3`          |
 | `instance_type`    | EC2 type                                                      | `t3.micro`   |
@@ -137,7 +137,7 @@ tsh ssh ec2-user@dev-ssh-0
 Nodes register with labels
 
 ```bash
-tier: dev  # or whatever you pass in var.env
+env: dev  # or whatever you pass in var.env
 team: platform  # or whatever you pass in var.team
 ```
 
@@ -146,7 +146,7 @@ Developer Role
 ```bash
 allow:
   node_labels:
-    tier: ["dev", "stage"]
+    env: ["dev", "stage"]
     team: ["app"]
   logins: ["{{external.username}}"]
 
@@ -157,7 +157,7 @@ SRE/Platform Role
 ```bash
 allow:
   node_labels:
-    tier: ["dev", "stage", "prod"]
+    env: ["dev", "stage", "prod"]
     team: ["platform", "sre", "app"]
   logins: ["ec2-user", "ubuntu"]
 ```
@@ -179,7 +179,7 @@ Everything is tagged with
 
 ```bash
 teleport.dev/creator = <user>
-tier                 = <env>
+env                 = <env>
 ManagedBy            = terraform
 Example              = server-access-ssh-getting-started
 ```

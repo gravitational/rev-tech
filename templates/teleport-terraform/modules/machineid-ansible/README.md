@@ -45,12 +45,12 @@ This module applies consistent labels for RBAC and dynamic discovery:
 
 ```yaml
 Labels Applied to SSH Service:
-  tier: "dev"          # From var.env - environment-based access
+  env: "dev"          # From var.env - environment-based access
   team: "engineering"  # From var.team - team-based access
 
 Bot Role Permissions (target nodes):
   node_labels:
-    tier: ["dev"]        # Bot can access dev nodes
+    env: ["dev"]        # Bot can access dev nodes
     team: ["engineering"] # Within engineering team
 ```
 
@@ -61,13 +61,13 @@ ansible-machine-role:
   allow:
     logins: ["ec2-user", "{user}"]      # System users bot can access
     node_labels:
-      tier: ["dev"]                     # Environment restriction
+      env: ["dev"]                     # Environment restriction
       team: ["engineering"]             # Team restriction
 
 # Example human role that can manage the bot instance:
 allow:
   node_labels:
-    tier: ["dev"]
+    env: ["dev"]
     team: ["engineering"]
 ```
 
@@ -77,7 +77,7 @@ To adapt for your environment, modify the bot permissions:
 # Custom role configuration for bot access
 allowed_logins = ["ubuntu", "ec2-user", "admin"]
 node_labels = {
-  tier        = ["production", "staging"]  # Multi-environment access
+  env        = ["production", "staging"]  # Multi-environment access
   team        = ["platform", "sre"]        # Multi-team access
   environment = ["us-west-2"]              # Region-specific access
 }
@@ -122,7 +122,7 @@ cat playbook.yaml
 ### SSH Access (Server Management)
 ```bash
 # List SSH nodes (including Ansible instance)
-tsh ls --labels=tier=dev
+tsh ls --labels=env=dev
 
 # SSH into the Ansible management server
 tsh ssh ec2-user@dev-ansible
@@ -365,7 +365,7 @@ monitoring-bot:
   allow:
     logins: ["monitoring"]
     node_labels:
-      tier: ["*"]
+      env: ["*"]
       team: ["sre"]
 ```
 
@@ -373,7 +373,7 @@ monitoring-bot:
 ```hcl
 # Bot with access to multiple environments
 node_labels = {
-  tier = ["dev", "staging", "prod"]
+  env = ["dev", "staging", "prod"]
   team = ["platform"]
   region = ["us-west-2", "us-east-1"]
 }

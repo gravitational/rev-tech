@@ -18,7 +18,7 @@ provider "aws" {
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
-      "tier"                 = var.env
+      "env"                  = var.env
       "ManagedBy"            = "terraform"
     }
   }

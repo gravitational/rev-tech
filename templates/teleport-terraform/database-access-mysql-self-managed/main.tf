@@ -29,7 +29,7 @@ provider "aws" {
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
-      "tier"                 = var.env
+      "env"                  = var.env
       "ManagedBy"            = "terraform"
     }
   }
@@ -88,7 +88,7 @@ module "mysql_registration" {
   ca_cert_chain     = module.mysql_instance.ca_cert
   db_access_pattern = "mapped"
   labels = {
-    tier = var.env
+    env  = var.env
     team = var.team
   }
 }

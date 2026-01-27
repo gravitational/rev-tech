@@ -64,12 +64,12 @@ db_service:
   enabled: true
   resources:
     - labels:
-        "tier": "${env}"
+        "env": "${env}"
         "team": "${team}"
 ssh_service:
   enabled: true
   labels:
-    "tier": "${env}"
+    "env": "${env}"
     "team": "${team}"
 auth_service:
   enabled: false

@@ -12,7 +12,7 @@ module "machineid_bot" {
   role_name      = "ansible-machine-role"
   allowed_logins = ["ec2-user", "engineer"]
   node_labels = {
-    tier = ["dev"]
+    env = ["dev"]
     team = ["platform"]
   }
   app_labels = {

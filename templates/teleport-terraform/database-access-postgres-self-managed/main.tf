@@ -29,7 +29,7 @@ provider "aws" {
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
-      "tier"                 = var.env
+      "env"                  = var.env
       "ManagedBy"            = "terraform"
     }
   }
@@ -87,6 +87,6 @@ module "postgres_registration" {
   uri           = "localhost:5432"
   ca_cert_chain = module.postgres_instance.ca_cert
   labels = {
-    "tier" = var.env
+    "env" = var.env
   }
 }

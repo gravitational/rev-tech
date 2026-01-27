@@ -23,7 +23,7 @@ module "mysql_registration" {
   ca_cert_chain = module.mysql_instance.ca_cert
   
   labels = {
-    tier = "dev"
+    env = "dev"
     team = "engineering"
   }
 }
@@ -41,7 +41,7 @@ module "grafana_registration" {
   public_addr   = "grafana-dev.teleport.company.com"
   
   labels = {
-    tier               = "dev"
+    env               = "dev"
     team               = "engineering"
     "teleport.dev/app" = "grafana"
   }
@@ -70,7 +70,7 @@ This module standardizes label application across all resources:
 
 ```yaml
 Standard Labels Applied:
-  tier: "dev"                    # Environment-based access
+  env: "dev"                    # Environment-based access
   team: "engineering"            # Team-based access
   "teleport.dev/origin": "dynamic"  # Indicates Terraform-managed
 
@@ -85,10 +85,10 @@ Additional Labels (context-specific):
 # Example Teleport roles using registered resources:
 allow:
   db_labels:
-    tier: ["dev", "staging"]     # Access specific environments
+    env: ["dev", "staging"]     # Access specific environments
     team: ["engineering"]        # Team-based restrictions
   app_labels:
-    tier: ["dev"]
+    env: ["dev"]
     "teleport.dev/app": ["grafana", "kibana"]  # Specific applications
 ```
 
@@ -97,7 +97,7 @@ allow:
 # Adapt labels for organizational needs:
 labels = {
   # Environment classification
-  tier        = "production"     # dev, staging, prod
+  env        = "production"     # dev, staging, prod
   environment = "us-west-2"      # Regional classification
   
   # Organizational structure  
@@ -178,7 +178,7 @@ module "postgres_registration" {
   uri           = "localhost:5432"
   ca_cert_chain = module.postgres_instance.ca_cert
   labels = {
-    tier = var.env
+    env = var.env
     team = var.team
   }
 }
@@ -200,7 +200,7 @@ module "httpbin_registration" {
   uri           = "http://localhost:80"
   public_addr   = "httpbin-${var.env}.${var.proxy_address}"
   labels = {
-    tier               = var.env
+    env               = var.env
     team               = var.team
     "teleport.dev/app" = "httpbin"
   }
@@ -226,7 +226,7 @@ rewrite_headers = [
 # Comprehensive labeling for enterprise environments
 labels = {
   # Access control
-  tier        = var.env
+  env        = var.env
   team        = var.team
   
   # Service discovery
@@ -259,7 +259,7 @@ tctl get db/mysql-dev
 tctl get app/grafana-dev
 
 # Check labels are applied correctly
-tctl get db --labels=tier=dev
+tctl get db --labels=env=dev
 tctl get app --labels=team=engineering
 ```
 
@@ -276,8 +276,8 @@ tctl get db --labels="*"
 tctl get app --labels="*"
 
 # Test resource access
-tsh db ls --labels=tier=dev
-tsh apps ls --labels=tier=dev
+tsh db ls --labels=env=dev
+tsh apps ls --labels=env=dev
 
 # Verify Terraform state
 terraform state show module.mysql_registration.teleport_database.this[0]

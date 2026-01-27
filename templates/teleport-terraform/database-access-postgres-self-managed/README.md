@@ -58,7 +58,7 @@ terraform apply
 Access:
 
 ```bash
-tsh db ls --labels=tier=dev
+tsh db ls --labels=env=dev
 tsh db connect demo-postgres --db-user=reader
 ```
 

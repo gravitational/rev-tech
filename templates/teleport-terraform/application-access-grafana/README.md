@@ -47,7 +47,7 @@ terraform apply
 
 4. Access:
 ```bash
-tsh apps ls --labels=tier=dev
+tsh apps ls --labels=env=dev
 tsh apps login grafana-dev
 ```
 

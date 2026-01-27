@@ -21,7 +21,7 @@ provider "aws" {
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
-      "tier"                 = var.env
+      "env"                  = var.env
       "ManagedBy"            = "terraform"
     }
   }
@@ -72,7 +72,7 @@ module "httpbin_registration" {
   uri           = "http://localhost:80"
   public_addr   = "httpbin-${var.env}.${var.proxy_address}"
   labels = {
-    tier               = var.env
+    env                = var.env
     "teleport.dev/app" = "httpbin"
   }
   rewrite_headers = [

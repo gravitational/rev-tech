@@ -22,7 +22,7 @@ ssh_service:
     # Enable or disable enhanced auditing for this node. Default value: false.
     enabled: true
   labels:
-    tier: ${env}
+    env: ${env}
     team: ${team}
   commands:
     - name: "hostname"
