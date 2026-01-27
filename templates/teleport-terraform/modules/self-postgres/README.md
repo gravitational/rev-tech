@@ -12,7 +12,7 @@ Creates a self-hosted PostgreSQL database with TLS encryption and certificate-ba
 
 ```hcl
 module "postgres_instance" {
-  source = "../../modules/postgres_instance"
+  source = "../../modules/self-postgres"
   
   env               = "dev"
   user              = "engineer@company.com"
@@ -181,7 +181,7 @@ This module is designed to work with the `registration` module:
 
 ```hcl
 module "postgres_registration" {
-  source        = "../../modules/registration"
+  source        = "../../modules/dynamic-registration"
   resource_type = "database"
   name          = "postgres-${var.env}"
   protocol      = "postgres"

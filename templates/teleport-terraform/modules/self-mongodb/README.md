@@ -12,7 +12,7 @@ Creates a self-hosted MongoDB database with TLS encryption and certificate-based
 
 ```hcl
 module "mongodb_instance" {
-  source = "../../modules/mongodb_instance"
+  source = "../../modules/self-mongodb"
   
   env               = "dev"
   user              = "engineer@company.com"
@@ -185,7 +185,7 @@ This module is designed to work with the `registration` module:
 
 ```hcl
 module "mongodb_registration" {
-  source        = "../../modules/registration"
+  source        = "../../modules/dynamic-registration"
   resource_type = "database"
   name          = "mongodb-${var.env}"
   protocol      = "mongodb"

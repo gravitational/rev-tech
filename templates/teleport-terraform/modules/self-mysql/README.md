@@ -50,7 +50,7 @@ tctl nodes ls
 sudo cat /etc/teleport.yaml
 ```hcl
 module "mysql_instance" {
-  source = "../../modules/mysql_instance"
+  source = "../../modules/self-mysql"
   
   env              = "dev"
   user             = "engineer@company.com"
@@ -190,7 +190,7 @@ This module is designed to work with the `registration` module:
 
 ```hcl
 module "mysql_registration" {
-  source        = "../../modules/registration"
+  source        = "../../modules/dynamic-registration"
   resource_type = "database"
   name          = "mysql-${var.env}"
   protocol      = "mysql"

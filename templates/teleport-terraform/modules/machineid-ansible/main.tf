@@ -31,7 +31,7 @@ data "aws_ami" "linux" {
 }
 
 module "host_identity" {
-  source = "../machineid_host"
+  source = "../machineid-host"
 
   bot_name         = local.bot_name
   user             = var.user

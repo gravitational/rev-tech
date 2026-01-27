@@ -24,7 +24,19 @@ tsh login --proxy=teleport.example.com --auth=example
 eval $(tctl terraform env)
 ```
 
-2. Customize the variables:
+2. Set variables (preferred) or use a tfvars file:
+
+```bash
+export TF_VAR_user="engineer@example.com"
+export TF_VAR_proxy_address="teleport.example.com"
+export TF_VAR_teleport_version="17.5.2"
+export TF_VAR_region="us-east-2"
+export TF_VAR_env="dev"
+export TF_VAR_team="engineering"
+```
+
+Or:
+
 ```bash
 cp terraform.tfvars.example terraform.tfvars
 ```

@@ -1,0 +1,7 @@
+user          = "engineer@example.com"
+proxy_address = "teleport.example.com"
+region        = "us-east-2"
+env           = "dev"
+team          = "platform"
+agent_count   = 3
+instance_type = "t3.micro"

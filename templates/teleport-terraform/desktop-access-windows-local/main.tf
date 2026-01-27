@@ -58,7 +58,7 @@ data "aws_ami" "windows_server" {
 }
 
 module "network" {
-  source             = "../../modules/network"
+  source             = "../modules/network"
   cidr_vpc           = "10.0.0.0/16"
   cidr_subnet        = "10.0.1.0/24"
   cidr_public_subnet = "10.0.0.0/24"
@@ -66,7 +66,7 @@ module "network" {
 }
 
 module "windows_instance" {
-  source = "../../modules/windows_instance"
+  source = "../modules/windows-instance"
 
   env              = var.env
   user             = var.user
@@ -81,7 +81,7 @@ module "windows_instance" {
 }
 
 module "linux_desktop_service" {
-  source = "../../modules/linux_desktop_service"
+  source = "../modules/desktop-service"
 
   env              = var.env
   user             = var.user

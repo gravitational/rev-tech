@@ -14,7 +14,7 @@ This module creates an RDS MySQL instance with direct IAM authentication for Tel
 
 ```hcl
 module "rds_mysql" {
-  source = "../../modules/rds_mysql"
+  source = "../../modules/rds-mysql"
 
   env                   = "dev"
   user                  = "engineer@company.com"

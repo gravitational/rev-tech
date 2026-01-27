@@ -62,31 +62,39 @@ tsh login --proxy=example.teleport.sh:443 --auth=sso
 eval $(tctl terraform env)
 ```
 
-1. From the template directory 
+1. Set variables (preferred) or use a tfvars file:
+
+```bash
+export TF_VAR_user="user@example.com"
+export TF_VAR_proxy_address="your-proxy.teleport.sh"
+export TF_VAR_env="dev"
+export TF_VAR_team="platform"
+export TF_VAR_region="us-east-2"
+```
+
+Or:
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+```
+
+2. From the template directory
 
 ```bash
 cd templates/teleport-terraform/server-access-ssh-getting-started
 terraform init
 ```
 
-2. Create a plan 
+3. Create a plan
 
 ```bash
-terraform plan \
-  -var "user=user@example.com" \
-  -var "proxy_address=your-proxy.teleport.sh" \
-  -var "env=dev" \
-  -var "team=platform"
+terraform plan
 ```
 
-3. Apply
+4. Apply
 
 ```bash
-terraform apply \
-  -var "user=user@example.com" \
-  -var "proxy_address=your-proxy.teleport.sh" \
-  -var "env=dev" \
-  -var "team=platform"
+terraform apply
 ```
 
 After 1-2 minutes nodes will appear

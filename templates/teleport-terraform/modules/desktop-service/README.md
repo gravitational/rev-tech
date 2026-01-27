@@ -12,7 +12,7 @@ Creates a Linux instance running Teleport Desktop Service to provide secure acce
 
 ```hcl
 module "linux_desktop_service" {
-  source = "../../modules/linux_desktop_service"
+  source = "../../modules/desktop-service"
   
   env              = "dev"
   user             = "engineer@company.com"
@@ -200,13 +200,13 @@ windows_desktop_service:
 ```hcl
 # 1. Create Windows instance
 module "windows_instance" {
-  source = "../../modules/windows_instance"
+  source = "../../modules/windows-instance"
   # ... configuration
 }
 
 # 2. Create Desktop Service pointing to Windows instance  
 module "linux_desktop_service" {
-  source               = "../../modules/linux_desktop_service"
+  source               = "../../modules/desktop-service"
   windows_internal_dns = module.windows_instance.private_dns
   windows_hosts = [
     {
@@ -221,7 +221,7 @@ module "linux_desktop_service" {
 ### Multiple Windows Instances
 ```hcl
 module "linux_desktop_service" {
-  source = "../../modules/linux_desktop_service"
+  source = "../../modules/desktop-service"
   
   windows_hosts = [
     {

@@ -6,7 +6,7 @@ terraform {
     }
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "~> 17.0"
+      version = "~> 18.0"
     }
   }
 }
@@ -40,7 +40,7 @@ data "aws_ami" "linux" {
 }
 
 module "network" {
-  source = "../../modules/network"
+  source = "../modules/network"
 
   env                     = var.env
   cidr_vpc                = var.cidr_vpc
@@ -52,7 +52,7 @@ module "network" {
 }
 
 module "rds_mysql" {
-  source = "../../modules/rds_mysql"
+  source = "../modules/rds-mysql"
 
   env                  = var.env
   user                 = var.user

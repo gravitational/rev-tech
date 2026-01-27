@@ -1,16 +1,16 @@
-# Grafana JWT App Access with Teleport
+# HTTPBin App Access with Teleport
 
-This example provisions a self-hosted Grafana container on EC2 and uses the Teleport App Access Service to register the application dynamically.
+This example provisions a small HTTPBin application on EC2 and registers it with Teleport App Access for quick demo workflows.
 
-It mirrors the official [Protect a Web Application with Teleport](https://goteleport.com/docs/enroll-resources/application-access/getting-started/) and [Use JWT Tokens With Application Access](https://goteleport.com/docs/enroll-resources/application-access/jwt/introduction/) guides and is modularized for reuse.
+It mirrors the official [Protect a Web Application with Teleport](https://goteleport.com/docs/enroll-resources/application-access/getting-started/) guide and is modularized for reuse.
 
 ---
 
 ## What It Deploys
 
-- 1 EC2 instance running Grafana on Docker
+- 1 EC2 instance running HTTPBin
 - Teleport agent with `app_service` and `ssh_service`
-- Teleport dynamic discovery enabled via label matching: `tier : dev`
+- Teleport app registration with tier-based labels (e.g., `tier = dev`)
 
 ---
 
@@ -40,17 +40,21 @@ cp terraform.tfvars.example terraform.tfvars
 ```
 
 3. Deploy:
+
 ```bash
 terraform init
 terraform apply
 ```
 
 4. Access:
+
 ```bash
-TBD
+tsh apps ls --labels=tier=dev
+tsh apps login httpbin-dev
 ```
 
 5. Tear down:
+
 ```bash
 terraform destroy
 ```
@@ -58,4 +62,5 @@ terraform destroy
 ---
 
 ## Notes
--
+- App public address is registered as `httpbin-<env>.<proxy_address>`
+- Customize labels to match your RBAC scheme

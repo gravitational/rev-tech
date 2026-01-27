@@ -6,7 +6,7 @@ terraform {
     }
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "~> 17.0"
+      version = "~> 18.0"
     }
     http = {
       source  = "hashicorp/http"
@@ -44,7 +44,7 @@ data "aws_ami" "linux" {
 }
 
 module "network" {
-  source             = "../../modules/network"
+  source             = "../modules/network"
   cidr_vpc           = "10.0.0.0/16"
   cidr_subnet        = "10.0.1.0/24"
   cidr_public_subnet = "10.0.0.0/24"
@@ -52,7 +52,7 @@ module "network" {
 }
 
 module "grafana_app" {
-  source             = "../../modules/app_grafana"
+  source             = "../modules/app-grafana"
   env                = var.env
   user               = var.user
   proxy_address      = var.proxy_address
@@ -64,7 +64,7 @@ module "grafana_app" {
 }
 
 module "grafana_registration" {
-  source        = "../../modules/registration"
+  source        = "../modules/dynamic-registration"
   resource_type = "app"
   name          = "grafana-${var.env}"
   description   = "Grafana dashboard for ${var.env}"

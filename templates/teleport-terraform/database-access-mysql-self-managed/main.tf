@@ -56,7 +56,7 @@ data "http" "teleport_db_ca_cert" {
 }
 
 module "network" {
-  source             = "../../modules/network"
+  source             = "../modules/network"
   cidr_vpc           = "10.0.0.0/16"
   cidr_subnet        = "10.0.1.0/24"
   cidr_public_subnet = "10.0.0.0/24"
@@ -64,7 +64,7 @@ module "network" {
 }
 
 module "mysql_instance" {
-  source             = "../../modules/mysql_instance"
+  source             = "../modules/self-mysql"
   env                = var.env
   team               = var.team
   user               = var.user
@@ -78,7 +78,7 @@ module "mysql_instance" {
 }
 
 module "mysql_registration" {
-  source            = "../../modules/registration"
+  source            = "../modules/dynamic-registration"
   resource_type     = "database"
   name              = "mysql-${var.env}"
   description       = "Self-hosted MySQL database in ${var.env}"

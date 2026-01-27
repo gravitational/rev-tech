@@ -41,11 +41,11 @@ resource "aws_instance" "ssh_node" {
   associate_public_ip_address = true
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    token            = teleport_provision_token.agent.metadata.name
-    proxy_address    = var.proxy_address
-    env              = var.env
-    name             = "${var.env}-ssh-${count.index}"
-    team             = var.team
+    token         = teleport_provision_token.agent.metadata.name
+    proxy_address = var.proxy_address
+    env           = var.env
+    name          = "${var.env}-ssh-${count.index}"
+    team          = var.team
   })
 
   metadata_options {

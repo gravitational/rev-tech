@@ -12,7 +12,7 @@ Creates an Amazon Linux instance with Teleport Machine ID (tbot) and Ansible con
 
 ```hcl
 module "machineid_ansible" {
-  source = "../../modules/machineid_ansible"
+  source = "../../modules/machineid-ansible"
   
   env              = "dev"
   user             = "engineer@company.com"
@@ -215,12 +215,12 @@ ssh_args = -F /opt/machine-id/ssh_config -o CanonicalizeHostname=yes -o Canonica
 
 ## Integration
 
-This module uses the `machineid_host` module internally for bot creation:
+This module uses the `machineid-host` module internally for bot creation:
 
 ```hcl
 # Internal module usage:
 module "host_identity" {
-  source = "../machineid_host"
+  source = "../machineid-host"
   
   bot_name         = "ansible"
   role_name        = "ansible-machine-role"

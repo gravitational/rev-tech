@@ -14,7 +14,7 @@ terraform {
     }
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "~> 17.0"
+      version = "~> 18.0"
     }
     tls = {
       source  = "hashicorp/tls"
@@ -56,7 +56,7 @@ data "http" "teleport_db_ca_cert" {
 }
 
 module "network" {
-  source             = "../../modules/network"
+  source             = "../modules/network"
   cidr_vpc           = "10.0.0.0/16"
   cidr_subnet        = "10.0.1.0/24"
   cidr_public_subnet = "10.0.0.0/24"
@@ -64,7 +64,7 @@ module "network" {
 }
 
 module "mongodb_instance" {
-  source             = "../../modules/mongodb_instance"
+  source             = "../modules/self-mongodb"
   env                = var.env
   user               = var.user
   proxy_address      = var.proxy_address
@@ -77,7 +77,7 @@ module "mongodb_instance" {
 }
 
 module "mongodb_registration" {
-  source        = "../../modules/registration"
+  source        = "../modules/dynamic-registration"
   resource_type = "database"
   name          = "mongodb-${var.env}"
   description   = "Self-hosted MongoDB database in ${var.env}"

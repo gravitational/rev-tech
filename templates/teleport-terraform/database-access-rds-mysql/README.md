@@ -28,6 +28,12 @@ export TF_VAR_region="us-east-2"
 export TF_VAR_env="dev"
 ```
 
+Or:
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+```
+
 ### 2. Authenticate to Teleport
 
 ```bash

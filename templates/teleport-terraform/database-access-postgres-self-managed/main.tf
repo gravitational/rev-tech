@@ -6,7 +6,7 @@ terraform {
     }
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "~> 17.0"
+      version = "~> 18.0"
     }
     http = {
       source  = "hashicorp/http"
@@ -56,7 +56,7 @@ data "http" "teleport_db_ca_cert" {
 }
 
 module "network" {
-  source             = "../../modules/network"
+  source             = "../modules/network"
   cidr_vpc           = "10.0.0.0/16"
   cidr_subnet        = "10.0.1.0/24"
   cidr_public_subnet = "10.0.0.0/24"
@@ -64,7 +64,7 @@ module "network" {
 }
 
 module "postgres_instance" {
-  source             = "../../modules/postgres_instance"
+  source             = "../modules/self-postgres"
   env                = var.env
   user               = var.user
   proxy_address      = var.proxy_address
@@ -78,7 +78,7 @@ module "postgres_instance" {
 }
 
 module "postgres_registration" {
-  source        = "../../modules/registration"
+  source        = "../modules/dynamic-registration"
   resource_type = "database"
   name          = "postgres-${var.env}"
   description   = "Self-hosted Postgres for ${var.env}"

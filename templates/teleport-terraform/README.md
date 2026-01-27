@@ -6,21 +6,37 @@ Repository of Terraform templates and reusable modules that Solution Engineers c
 
 ```
 templates/teleport-terraform/
-├── modules/
-│   ├── network/      # shared VPC/subnet/NAT scaffolding
-│   └── ssh-node/     # EC2 nodes running Teleport SSH service
-└── server-access-ssh-getting-started/ # template mirroring the official SSH getting started guide
+├── modules/          # shared building blocks (networking, nodes, dbs, apps, desktop)
+└── <template>/       # full demo scenarios (data plane)
 ```
 
 ## Templates
 
-- **server-access-ssh-getting-started** – deploys a small Amazon Linux cluster running the Teleport SSH service for demos or workshops. See its README for prerequisites and usage.
+- **server-access-ssh-getting-started** – Teleport SSH service on Amazon Linux (getting started guide).
+- **application-access-grafana** – Grafana app access with JWT integration.
+- **application-access-httpbin** – HTTPBin app access for quick testing.
+- **database-access-mysql-self-managed** – self-hosted MySQL/MariaDB on EC2.
+- **database-access-postgres-self-managed** – self-hosted PostgreSQL on EC2.
+- **database-access-mongodb-self-managed** – self-hosted MongoDB on EC2.
+- **database-access-rds-mysql** – RDS MySQL with Teleport registration.
+- **desktop-access-windows-local** – Windows Desktop Access (local users).
+- **machine-id-ansible** – Machine ID bot + Ansible automation host.
 
-More templates (e.g., Windows access, database access, app proxies) will be added over time using the common modules in this directory.
+More templates (e.g., control plane and multi-environment blueprints) can be added over time using the common modules in this directory.
 
 ## Modules
 
-- **network** – builds a VPC with public/private subnets, NAT gateway, and security group. Takes `name_prefix` and `tags` inputs so multiple engineers can safely deploy side by side.
-- **ssh-node** – launches EC2 instances that install Teleport via the cluster script and register with dynamic labels for RBAC demos.
+- **network** – VPC/subnet/security group scaffolding.
+- **ssh-node** – EC2 nodes running Teleport SSH service.
+- **self-mysql** – self-hosted MySQL/MariaDB with TLS and Teleport DB agent.
+- **self-postgres** – self-hosted PostgreSQL with TLS and Teleport DB agent.
+- **self-mongodb** – self-hosted MongoDB with Teleport DB agent.
+- **rds-mysql** – RDS MySQL provisioning and wiring.
+- **app-grafana** – Grafana app server + Teleport app agent.
+- **app-httpbin** – HTTPBin app server + Teleport app agent.
+- **windows-instance** – Windows Server host with Teleport Desktop Access prep.
+- **desktop-service** – Linux Desktop Service for Windows desktop access.
+- **machineid-ansible** – Machine ID + Ansible automation host.
+- **dynamic-registration** – reusable `teleport_*` resource registration helpers.
 
 Each module includes its own README with usage and variable details.

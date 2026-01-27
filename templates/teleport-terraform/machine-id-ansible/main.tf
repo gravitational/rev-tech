@@ -8,7 +8,7 @@ terraform {
     }
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "~> 17.0"
+      version = "~> 18.0"
     }
     random = {
       source  = "hashicorp/random"
@@ -33,7 +33,7 @@ provider "teleport" {
 }
 
 module "network" {
-  source             = "../../modules/network"
+  source             = "../modules/network"
   cidr_vpc           = "10.0.0.0/16"
   cidr_subnet        = "10.0.1.0/24"
   cidr_public_subnet = "10.0.0.0/24"
@@ -41,7 +41,7 @@ module "network" {
 }
 
 module "machineid_ansible" {
-  source = "../../modules/machineid_ansible"
+  source = "../modules/machineid-ansible"
 
   env                = var.env
   user               = var.user

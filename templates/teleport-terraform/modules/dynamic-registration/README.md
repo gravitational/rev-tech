@@ -13,7 +13,7 @@ A utility module for registering databases and applications with Teleport using 
 ### Database Registration
 ```hcl
 module "mysql_registration" {
-  source = "../../modules/registration"
+  source = "../../modules/dynamic-registration"
   
   resource_type = "database"
   name          = "mysql-dev"
@@ -32,7 +32,7 @@ module "mysql_registration" {
 ### Application Registration
 ```hcl
 module "grafana_registration" {
-  source = "../../modules/registration"
+  source = "../../modules/dynamic-registration"
   
   resource_type = "app"
   name          = "grafana-dev"
@@ -165,13 +165,13 @@ labels = {
 ```hcl
 # 1. Create database infrastructure
 module "postgres_instance" {
-  source = "../../modules/postgres_instance"
+  source = "../../modules/self-postgres"
   # ... configuration
 }
 
 # 2. Register with Teleport
 module "postgres_registration" {
-  source        = "../../modules/registration"
+  source        = "../../modules/dynamic-registration"
   resource_type = "database"
   name          = "postgres-${var.env}"
   protocol      = "postgres"
@@ -188,13 +188,13 @@ module "postgres_registration" {
 ```hcl
 # 1. Create application infrastructure
 module "httpbin_app" {
-  source = "../../modules/app_httpbin"
+  source = "../../modules/app-httpbin"
   # ... configuration
 }
 
 # 2. Register with Teleport
 module "httpbin_registration" {
-  source        = "../../modules/registration"
+  source        = "../../modules/dynamic-registration"
   resource_type = "app"
   name          = "httpbin-${var.env}"
   uri           = "http://localhost:80"

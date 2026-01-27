@@ -37,5 +37,33 @@ Update `main.tf` with values appropriate to your environment:
 ## Usage
 
 ```bash
+export TF_VAR_user="engineer@example.com"
+export TF_VAR_proxy_address="teleport.example.com"
+export TF_VAR_teleport_version="17.5.2"
+export TF_VAR_region="us-east-2"
+export TF_VAR_env="dev"
+```
+
+Or:
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+```
+
+```bash
 terraform init
 terraform apply
+```
+
+Access:
+
+```bash
+tsh db ls --labels=tier=dev
+tsh db connect demo-postgres --db-user=reader
+```
+
+Tear down:
+
+```bash
+terraform destroy
+```
