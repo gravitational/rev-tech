@@ -127,7 +127,7 @@ tsh ssh ec2-user@dev-ssh-0
 | `user`             | Used for tagging & node name prefix                           | **required** |
 | `proxy_address`    | Teleport proxy hostname (no scheme, no port)                  | **required** |
 | `env`              | Label determining access tier (`dev`, `stage`, `prod`)        | `"dev"`      |
-| `team`             | Label determining team ownership (`platform`, `sre`, `app`)   | **required** |
+| `team`             | Label determining team ownership (`platform`, `sre`, `app`)   | `"platform"` |
 | `agent_count`      | Number of SSH nodes to deploy                                 | `3`          |
 | `instance_type`    | EC2 type                                                      | `t3.micro`   |
 | `region`           | AWS region                                                    | `us-east-2`  |

@@ -142,7 +142,7 @@ sudo systemctl status tbot
 | `teleport_version` | Teleport version to install | `string` | - |
 | `subnet_id` | Subnet for instance | `string` | - |
 | `security_group_ids` | Security group IDs | `list(string)` | - |
-| `team` | Team label | `string` | `"engineering"` |
+| `team` | Team label | `string` | `"platform"` |
 
 ## Outputs
 
@@ -160,20 +160,24 @@ onboarding:
 storage:
   type: directory
   path: /var/lib/teleport/bot
-outputs:
+services:
   - type: identity
+    ssh_config: on
+    allow_reissue: true
     destination:
       type: directory
       path: /opt/machine-id
 ```
 
+Ensure the destination directory is writable by the `tbot` user and readable by the Linux user running Ansible.
+
 ### Bot Identity Output
 ```bash
-# Generated files in /opt/machine-id/:
-identity              # Bot certificate identity
-ssh_config           # SSH client configuration  
+# Common files under /opt/machine-id/:
+ssh_config           # SSH client configuration
 known_hosts          # Trusted host keys
-ca.pem              # Teleport CA certificate
+key                 # Private key for the bot identity
+key-cert.pub        # Bot public certificate
 ```
 
 ## Ansible Configuration
@@ -215,7 +219,7 @@ ssh_args = -F /opt/machine-id/ssh_config -o CanonicalizeHostname=yes -o Canonica
 
 ## Integration
 
-This module creates the bot token, role, and bot resource internally for Machine ID authentication.
+This module uses the `machineid-bot` module to create the bot token, role, and bot resource for Machine ID authentication.
 
 ## Use Cases
 

@@ -31,5 +31,5 @@ variable "security_group_ids" {
 variable "team" {
   description = "Team label for Machine ID automation"
   type        = string
-  default     = "engineering"
+  default     = "platform"
 }

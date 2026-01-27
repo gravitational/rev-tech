@@ -56,11 +56,13 @@ onboarding:
 storage:
   type: directory
   path: /var/lib/teleport/bot
-outputs:
-- type: identity
-  destination:
-    type: directory
-    path: /opt/machine-id
+services:
+  - type: identity
+    ssh_config: on
+    allow_reissue: true
+    destination:
+      type: directory
+      path: /opt/machine-id
 EOF
 
 # Create system user and directories with proper permissions

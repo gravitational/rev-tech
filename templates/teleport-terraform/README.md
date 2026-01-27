@@ -21,6 +21,7 @@ templates/teleport-terraform/
 - **database-access-rds-mysql** – RDS MySQL with Teleport registration.
 - **desktop-access-windows-local** – Windows Desktop Access (local users).
 - **machine-id-ansible** – Machine ID bot + Ansible automation host.
+- **machine-id-mcp** – MCP stdio server + Machine ID bot for automated access.
 
 More templates (e.g., control plane and multi-environment blueprints) can be added over time using the common modules in this directory.
 
@@ -37,6 +38,8 @@ More templates (e.g., control plane and multi-environment blueprints) can be add
 - **windows-instance** – Windows Server host with Teleport Desktop Access prep.
 - **desktop-service** – Linux Desktop Service for Windows desktop access.
 - **machineid-ansible** – Machine ID + Ansible automation host.
+- **machineid-bot** – Machine ID bot, role, and provision token.
+- **mcp-stdio-app** – Teleport app service running a stdio MCP server.
 - **dynamic-registration** – reusable `teleport_*` resource registration helpers.
 
 Each module includes its own README with usage and variable details.

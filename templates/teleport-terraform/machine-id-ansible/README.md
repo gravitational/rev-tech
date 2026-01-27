@@ -31,6 +31,7 @@ export TF_VAR_proxy_address="teleport.example.com"
 export TF_VAR_teleport_version="18.6.4"
 export TF_VAR_region="us-east-2"
 export TF_VAR_env="dev"
+export TF_VAR_team="platform"
 ```
 
 Or:
@@ -64,3 +65,4 @@ terraform destroy
 ## Notes
 - Bot permissions are scoped by labels (tier/team)
 - The host contains `/opt/machine-id/ssh_config` for bot-based SSH
+- For production use, prefer platform-signed join methods (EC2/Kubernetes) over static tokens where possible
