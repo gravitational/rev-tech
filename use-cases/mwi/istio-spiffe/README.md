@@ -196,6 +196,8 @@ kubectl exec -n sock-shop $POD -c istio-proxy -- \
   curl -s localhost:15000/stats | grep "connection_security_policy.mutual_tls"
 ```
 
+Look for "connection_security_policy.mutual_tls" to confirm that the communication policy is set to mTLS.
+
 **Test unauthorized access is blocked:**
 ```bash
 # Create test pod without proper identity
@@ -273,41 +275,6 @@ This removes:
 - Sock Shop (sock-shop namespace)
 - Teleport resources (via tctl)
 - Generated token files (optional)
-
-## Troubleshooting
-
-**tbot pods not starting:**
-```bash
-kubectl logs -n teleport-system -l app=tbot
-```
-
-**SPIFFE IDs not matching:**
-```bash
-# Check workload identity template
-tctl get workload_identity/istio-workloads --format=yaml
-
-# Restart tbot after changes
-kubectl rollout restart daemonset -n teleport-system tbot
-```
-
-**mTLS not working:**
-```bash
-# Check Istio proxy logs
-POD=$(kubectl get pod -n sock-shop -l app=catalogue -o jsonpath='{.items[0].metadata.name}')
-kubectl logs -n sock-shop $POD -c istio-proxy | grep -i "spiffe\|workload"
-```
-
-**Policies blocking traffic:**
-```bash
-# Check for RBAC denials
-kubectl logs -n sock-shop $POD -c istio-proxy --tail=50 | grep "RBAC"
-```
-
-## Resources
-
-- **Teleport Workload Identity:** https://goteleport.com/docs/machine-id/workload-identity/
-- **Istio Security:** https://istio.io/latest/docs/tasks/security/
-- **SPIFFE Specification:** https://github.com/spiffe/spiffe
 
 ## Architecture Diagram
 
