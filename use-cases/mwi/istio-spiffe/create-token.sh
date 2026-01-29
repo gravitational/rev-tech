@@ -10,8 +10,8 @@ echo "=== Teleport Join Token Creation Script ==="
 echo ""
 
 # Check if template exists
-if [ ! -f "istio-tbot-token.yaml.template" ]; then
-    echo "ERROR: istio-tbot-token.yaml.template not found"
+if [ ! -f "istio/istio-tbot-token.yaml.template" ]; then
+    echo "ERROR: istio/istio-tbot-token.yaml.template not found"
     echo "Please run this script from the project root directory"
     exit 1
 fi
@@ -27,8 +27,8 @@ echo "Current cluster: $(kubectl config current-context)"
 echo ""
 
 # Warn if token file already exists
-if [ -f "istio-tbot-token.yaml" ]; then
-    echo "WARNING: istio-tbot-token.yaml already exists"
+if [ -f "istio/istio-tbot-token.yaml" ]; then
+    echo "WARNING: istio/istio-tbot-token.yaml already exists"
     read -p "Do you want to overwrite it? (y/N) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -48,9 +48,9 @@ fi
 echo "Successfully extracted JWKS"
 echo ""
 
-echo "=== Creating istio-tbot-token.yaml ==="
+echo "=== Creating istio/istio-tbot-token.yaml ==="
 # Copy template
-cp istio-tbot-token.yaml.template istio-tbot-token.yaml
+cp istio/istio-tbot-token.yaml.template istio/istio-tbot-token.yaml
 
 # Escape quotes in JWKS for sed
 ESCAPED_JWKS=$(echo "$JWKS" | sed 's/"/\\"/g')
@@ -58,19 +58,19 @@ ESCAPED_JWKS=$(echo "$JWKS" | sed 's/"/\\"/g')
 # Replace placeholder with actual JWKS
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS
-    sed -i '' "s|'PASTE_JWKS_HERE'|'$ESCAPED_JWKS'|" istio-tbot-token.yaml
+    sed -i '' "s|'PASTE_JWKS_HERE'|'$ESCAPED_JWKS'|" istio/istio-tbot-token.yaml
 else
     # Linux
-    sed -i "s|'PASTE_JWKS_HERE'|'$ESCAPED_JWKS'|" istio-tbot-token.yaml
+    sed -i "s|'PASTE_JWKS_HERE'|'$ESCAPED_JWKS'|" istio/istio-tbot-token.yaml
 fi
 
-echo "Successfully created istio-tbot-token.yaml"
+echo "Successfully created istio/istio-tbot-token.yaml"
 echo ""
 
 echo "=== Next Steps ==="
-echo "1. Review the generated file: cat istio-tbot-token.yaml"
-echo "2. Create the token in Teleport: tctl create -f istio-tbot-token.yaml"
+echo "1. Review the generated file: cat istio/istio-tbot-token.yaml"
+echo "2. Create the token in Teleport: tctl create -f istio/istio-tbot-token.yaml"
 echo "3. Verify token creation: tctl get token/istio-tbot-k8s-join"
 echo ""
-echo "IMPORTANT: istio-tbot-token.yaml is gitignored and should NOT be committed"
+echo "IMPORTANT: istio/istio-tbot-token.yaml is gitignored and should NOT be committed"
 echo "           This file contains cluster-specific secrets"

@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# Load environment variables
+if [ -f .env ]; then
+    source .env
+fi
+
+# Check if TELEPORT_TRUST_DOMAIN is set
+if [ -z "$TELEPORT_TRUST_DOMAIN" ]; then
+    echo "Error: TELEPORT_TRUST_DOMAIN is not set."
+    echo "Please copy .env.example to .env and set your Teleport cluster domain."
+    exit 1
+fi
+
 echo "╔════════════════════════════════════════════════════════════════╗"
 echo "║     TELEPORT WORKLOAD IDENTITY CERTIFICATE ISSUANCE DEMO       ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
@@ -46,7 +58,7 @@ echo "Certificate matches Teleport workload identity pattern:"
 echo "  Template: /ns/{{ workload.kubernetes.namespace }}/sa/{{ workload.kubernetes.service_account }}"
 echo "  Issued:   /ns/sock-shop/sa/front-end"
 echo
-echo "Trust domain: ellinj.teleport.sh (Teleport cluster)"
+echo "Trust domain: $TELEPORT_TRUST_DOMAIN (Teleport cluster)"
 echo
 
 echo "🔄 Step 5: Show Certificate Rotation"

@@ -29,7 +29,7 @@ kubectl create namespace istio-system --dry-run=client -o yaml | kubectl apply -
 
 # Install Istio with the configuration
 echo "=== Installing Istio with SPIFFE integration ==="
-istioctl install -f istio-config.yaml -y
+istioctl install -f istio/istio-config.yaml -y
 
 # Wait for Istio components to be ready
 echo ""

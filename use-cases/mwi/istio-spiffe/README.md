@@ -1,170 +1,316 @@
-# Istio + Teleport Workload Identity Integration
+# Istio + Teleport Workload Identity Demo
 
-This project demonstrates the integration of Teleport's Workload Identity service with Istio service mesh, enabling SPIFFE-compliant workload identities for Kubernetes applications.
+Demo showing Teleport-issued SPIFFE identities integrated with Istio service mesh on Kubernetes.
 
-## Overview
+## What This Demo Shows
 
-This integration provides:
+- Teleport issues SPIFFE identities to workloads instead of Istio's built-in CA
+- Istio uses Teleport certificates for mTLS between services
+- Identity-based authorization policies using SPIFFE IDs
+- Zero-trust networking with workload attestation
 
-- **Teleport-issued SPIFFE identities**: Workloads receive cryptographic identities from Teleport instead of Istio's built-in CA
-- **Centralized identity management**: Manage workload identities across multiple clusters from a single Teleport instance
-- **SPIFFE Workload API compliance**: Standard SPIFFE implementation via Unix domain socket
-- **Istio mesh integration**: Seamless integration with Istio's service mesh capabilities
-
-## Architecture
-
-![](images/tbot-istio.png)
-
-## Components
-
-### Istio Configuration
-- **Trust Domain**: `cluster.local`
-- **Path Normalization**: Disabled (NONE) for SPIFFE compatibility
-- **Certificate Provider**: External (Teleport via SPIFFE Workload API)
-
-### Teleport Components
-- **Bot Role**: `istio-workload-identity-issuer` - Allows issuing workload identities with `env:dev` label
-- **Workload Identity**: `istio-workloads` - Defines SPIFFE ID template for Kubernetes workloads
-- **Join Method**: Kubernetes with static JWKS validation
-
-### Kubernetes Resources
-- **Namespace**: `teleport-system` - Contains tbot DaemonSet
-- **tbot DaemonSet**: Runs on each node, provides Workload Identity API via Unix socket
-- **SPIFFE Socket**: `/run/spire/sockets/socket` - Standard SPIFFE Workload API endpoint
-
-## SPIFFE ID Format
-
-Workloads receive SPIFFE IDs following the Istio-compatible pattern:
-
-```
-spiffe://<teleport-domain>/ns/<namespace>/sa/<service-account>
-```
-
-Example:
-```
-spiffe://<teleport-domain>/ns/test-app/sa/test-app
-```
+**For detailed background and architecture, see [blog post link].**
 
 ## Prerequisites
 
-- Kubernetes cluster (1.27+)
-- `kubectl` configured with cluster access
+**Required Tools:**
+- `kubectl` (1.27+)
 - `istioctl` (1.28+)
-- Active Teleport cluster with admin access
-- `tctl` and `tsh` configured
+- `tctl` and `tsh` (Teleport CLI tools)
 
-## Istio Install
+**Required Access:**
+- Kubernetes cluster admin access
+- Teleport cluster admin access (logged in via `tsh login`)
 
-See [INSTALLATION.md](INSTALLATION.md) for detailed installation instructions of Istio and Tbot
+**Verify:**
+```bash
+kubectl cluster-info
+istioctl version
+tctl status
+```
 
+## Configuration
 
-## Sock Shop Demo Application
+### Set Your Teleport Trust Domain
 
-**What Works**:
-- ✅ Teleport issues SPIFFE certificates correctly
-- ✅ Pods receive certificates with proper SPIFFE IDs
-- ✅ Trust domain configuration matches
-- ✅ External access to services works
-- ✅ Service-to-service mTLS validation succeeds with Teleport-issued certificates
-
-For a comprehensive demonstration attempt See [SOCK-SHOP-DEMO.md](SOCK-SHOP-DEMO.md) for detailed installation instructions of Istio and Tbot
+Configure your Teleport cluster domain before starting:
 
 ```bash
-# Deploy the Sock Shop demo
-kubectl apply -f sock-shop-demo.yaml
+# 1. Copy the example environment file
+cp .env.example .env
 
-# Wait for all pods to be ready
+# 2. Find your Teleport cluster domain
+tctl status | grep "Cluster"
+
+# 3. Edit .env and set TELEPORT_TRUST_DOMAIN to your cluster domain
+# Example: TELEPORT_TRUST_DOMAIN=example.teleport.sh
+
+# 4. Run the configuration script to update all files
+./configure-trust-domain.sh
+```
+
+This script automatically updates:
+- [istio/istio-config.yaml](istio/istio-config.yaml) - Istio mesh trust domain
+- [tbot/tbot-config.yaml](tbot/tbot-config.yaml) - tbot proxy server
+- [tbot/tbot-daemonset.yaml](tbot/tbot-daemonset.yaml) - Service account token audience
+- [sockshop/sock-shop-policies.yaml](sockshop/sock-shop-policies.yaml) - Authorization policy principals
+
+The trust domain is also used by validation scripts ([validate-spiffe-ids.sh](validate-spiffe-ids.sh), [teleport-cert-demo.sh](teleport-cert-demo.sh)) which automatically read from `.env`.
+
+## Quick Start
+
+### 1. Install Istio with SPIFFE Integration
+
+```bash
+./istio-install.sh
+```
+
+Verify:
+```bash
+kubectl get pods -n istio-system
+```
+
+### 2. Create Teleport Resources
+
+**Extract cluster JWKS and create join token:**
+```bash
+./create-token.sh
+```
+
+**Create Teleport resources:**
+```bash
+# Create join token in Teleport
+tctl create -f istio/istio-tbot-token.yaml
+
+# Create bot role
+tctl create -f tbot/teleport-bot-role.yaml
+
+# Create workload identity
+tctl create -f tbot/teleport-workload-identity.yaml
+```
+
+Verify:
+```bash
+tctl get token/istio-tbot-k8s-join
+tctl get role/istio-workload-identity-issuer
+tctl get workload_identity/istio-workloads
+```
+
+### 3. Deploy tbot
+
+```bash
+kubectl apply -f tbot/tbot-rbac.yaml
+kubectl apply -f tbot/tbot-config.yaml
+kubectl apply -f tbot/tbot-daemonset.yaml
+```
+
+Verify (should see one pod per node):
+```bash
+kubectl get pods -n teleport-system
+```
+
+Check logs for successful startup:
+```bash
+kubectl logs -n teleport-system -l app=tbot --tail=20 | grep "Workload API"
+```
+
+### 4. Deploy Sock Shop Demo
+
+```bash
+kubectl apply -f sockshop/sock-shop-demo.yaml
+```
+
+Wait for all pods (1-2 minutes):
+```bash
 kubectl get pods -n sock-shop -w
+```
 
-# Test baseline functionality
+All pods should show `2/2` READY (app + istio-proxy sidecar).
+
+### 5. Verify SPIFFE Integration
+
+**What we're checking:** This step confirms that Istio sidecars are successfully receiving SPIFFE identities from Teleport (via tbot) instead of using Istio's default certificate authority. Each service should have a certificate with a SPIFFE ID that matches the format `spiffe://YOUR-DOMAIN/ns/<namespace>/sa/<service-account>`.
+
+**Check SPIFFE IDs:**
+```bash
+./validate-spiffe-ids.sh
+```
+
+Expected output shows matching SPIFFE IDs for each service:
+```
+=== Service: front-end ===
+Expected: spiffe://YOUR-DOMAIN/ns/sock-shop/sa/front-end
+Actual:   spiffe://YOUR-DOMAIN/ns/sock-shop/sa/front-end
+✅ SPIFFE ID matches!
+```
+
+**Check certificates:**
+```bash
+./teleport-cert-demo.sh
+```
+
+### 6. Test Application (Without Policies)
+
+**What we're checking:** At this point, mTLS is enabled using Teleport-issued certificates, but no authorization policies have been applied yet. This means all services can communicate with each other freely - the mesh is encrypting traffic but not restricting it. This baseline test confirms the application works before we add zero-trust policies.
+
+**Verify frontend service and get IP:**
+```bash
+# Check service has external IP
+kubectl get svc -n sock-shop front-end
+
+# Set FRONTEND_IP variable
 FRONTEND_IP=$(kubectl get svc -n sock-shop front-end -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-curl http://$FRONTEND_IP/  # External access works
-curl http://$FRONTEND_IP/catalogue  # Backend service fails with cert error
+
+# Test access
+curl http://$FRONTEND_IP/
+curl http://$FRONTEND_IP/catalogue
 ```
 
-See [SOCK-SHOP-DEMO.md](SOCK-SHOP-DEMO.md) for detailed setup steps and investigation notes embedded there.
+Both should work - all services can talk to each other because there are no authorization policies yet.
 
-## Files
+### 7. Apply Zero-Trust Policies
 
-### Configuration Files (Safe to Commit)
-- `istio-install.sh` - Automated Istio installation script
-- `istio-config.yaml` - Istio configuration with SPIFFE integration
-- `create-token.sh` - Helper script to create cluster-specific join token
-- `cleanup.sh` - Comprehensive cleanup script for all resources
-- `teleport-bot-role.yaml` - Teleport role for workload identity issuer
-- `teleport-workload-identity.yaml` - Workload identity definition
-- `istio-tbot-token.yaml.template` - Template for Kubernetes join token (copy and customize)
-- `tbot-rbac.yaml` - Kubernetes RBAC for tbot
-- `tbot-config.yaml` - tbot configuration
-- `tbot-daemonset.yaml` - tbot DaemonSet deployment
-- `test-app-deployment.yaml` - Sample application with Istio injection
-- `sock-shop-demo.yaml` - Sock Shop microservices demo application
-- `sock-shop-deny-all.yaml` - Default deny-all policy for zero-trust demonstration
-- `sock-shop-policies.yaml` - Complete Istio authorization policies using SPIFFE IDs
+**Break it with deny-all:**
+```bash
+kubectl apply -f sockshop/sock-shop-deny-all.yaml
 
-### Generated Files (Gitignored - DO NOT COMMIT)
-- `istio-tbot-token.yaml` - Cluster-specific join token with JWKS (generated from template)
-
-**Security Note**: The `istio-tbot-token.yaml` file contains sensitive cluster-specific JWKS and should never be committed to version control. It is automatically excluded via `.gitignore`.
-
-## Key Configuration Notes
-
-### SPIFFE Socket Path
-The configuration uses `/run/spire/sockets/socket` as the socket path, which matches the standard SPIFFE Workload API location. This eliminates the need for symlinks or custom path configurations.
-
-### Trust Domain
-Must match between Istio (`ellinj.teleport.sh`) and the workload's SPIFFE ID prefix.
-
-### Path Normalization
-Set to `NONE` in Istio configuration to maintain SPIFFE ID compatibility.
-
-### No Trailing Slash
-SPIFFE IDs must NOT have trailing slashes per the SPIFFE specification.
-
-### Istio injection template (`spire`)
-The custom `spire` template in `istio-config.yaml` adds the SPIFFE Workload API socket mount and sets `CA_ADDR`/`PILOT_CERT_PROVIDER` so the Envoy sidecar uses Teleport-issued identities. Enable it alongside the default sidecar template with the annotation `inject.istio.io/templates: "sidecar,spire"`:
-
-```yaml
-# Per-namespace
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: test-app
-  labels:
-    istio-injection: enabled
-  annotations:
-    inject.istio.io/templates: "sidecar,spire"
+# Test - should FAIL
+curl http://$FRONTEND_IP/catalogue
 ```
 
-```yaml
-# Per-workload (Deployment pod template)
-metadata:
-  annotations:
-    inject.istio.io/templates: "sidecar,spire"
+**Fix it with allow policies:**
+```bash
+kubectl apply -f sockshop/sock-shop-policies.yaml
+
+# Test - should WORK again
+curl http://$FRONTEND_IP/catalogue
 ```
 
-Setting it at the namespace level applies to every injected Pod in the namespace; setting it on a workload overrides or augments whatever is defined on the namespace.
+### 8. Verify mTLS and Authorization
+
+**Check mTLS is working:**
+```bash
+POD=$(kubectl get pod -n sock-shop -l app=catalogue -o jsonpath='{.items[0].metadata.name}')
+
+kubectl exec -n sock-shop $POD -c istio-proxy -- \
+  curl -s localhost:15000/stats | grep "connection_security_policy.mutual_tls"
+```
+
+**Test unauthorized access is blocked:**
+```bash
+# Create test pod without proper identity
+kubectl run test-curl -n sock-shop --image=curlimages/curl:latest --restart=Never -- \
+  sh -c "curl -v http://catalogue/catalogue 2>&1; sleep 10"
+
+# Should see connection failures
+kubectl logs test-curl -n sock-shop
+
+# Cleanup
+kubectl delete pod test-curl -n sock-shop
+```
+
+## What's Happening
+
+1. **tbot DaemonSet** runs on each node, provides SPIFFE Workload API via Unix socket at `/run/spire/sockets/socket`
+2. **Istio sidecars** connect to the socket and request certificates
+3. **Teleport issues certificates** with SPIFFE IDs: `spiffe://YOUR-DOMAIN/ns/<namespace>/sa/<service-account>`
+4. **Istio enforces mTLS** using Teleport-issued certificates instead of its own CA
+5. **Authorization policies** use SPIFFE IDs to control service-to-service access
+
+## Key Configuration Files
+
+**Istio:**
+- [istio/istio-config.yaml](istio/istio-config.yaml) - Istio mesh config with SPIFFE integration
+- [istio-install.sh](istio-install.sh) - Installation script
+
+**Teleport:**
+- [tbot/teleport-bot-role.yaml](tbot/teleport-bot-role.yaml) - Bot role for issuing identities
+- [tbot/teleport-workload-identity.yaml](tbot/teleport-workload-identity.yaml) - SPIFFE ID template
+- [istio/istio-tbot-token.yaml.template](istio/istio-tbot-token.yaml.template) - Join token template (cluster-specific JWKS required)
+
+**tbot:**
+- [tbot/tbot-rbac.yaml](tbot/tbot-rbac.yaml) - Kubernetes RBAC
+- [tbot/tbot-config.yaml](tbot/tbot-config.yaml) - tbot configuration
+- [tbot/tbot-daemonset.yaml](tbot/tbot-daemonset.yaml) - DaemonSet deployment
+
+**Demo App:**
+- [sockshop/sock-shop-demo.yaml](sockshop/sock-shop-demo.yaml) - Microservices application
+- [sockshop/sock-shop-deny-all.yaml](sockshop/sock-shop-deny-all.yaml) - Default deny policy
+- [sockshop/sock-shop-policies.yaml](sockshop/sock-shop-policies.yaml) - SPIFFE-based authorization policies
+
+**Scripts:**
+- [create-token.sh](create-token.sh) - Extract cluster JWKS and create join token
+- [validate-spiffe-ids.sh](validate-spiffe-ids.sh) - Verify SPIFFE IDs
+- [teleport-cert-demo.sh](teleport-cert-demo.sh) - Show certificate details
+- [cleanup.sh](cleanup.sh) - Remove all resources
+
+## Important Notes
+
+**Security:**
+- `istio/istio-tbot-token.yaml` (generated) contains cluster-specific secrets and is gitignored - NEVER commit it
+- Each cluster has unique JWKS - always run `create-token.sh` for your cluster
+
+**SPIFFE ID Format:**
+- Must include `/sa/` component: `/ns/<namespace>/sa/<service-account>`
+- Trust domain must match your Teleport cluster domain
+- No trailing slashes allowed
+
+**Configuration:**
+- Istio path normalization must be `NONE` for SPIFFE compatibility
+- Socket path is `/run/spire/sockets/socket` (standard SPIFFE location)
+- Istio injection uses custom `spire` template (see [istio/istio-config.yaml](istio/istio-config.yaml))
 
 ## Cleanup
 
-To completely remove all installed components:
-
+Remove everything:
 ```bash
 ./cleanup.sh
 ```
 
-The cleanup script removes:
-- Istio components (istio-system namespace)
-- tbot DaemonSet and resources (teleport-system namespace)
-- Test application (test-app namespace)
-- Teleport server-side resources (role, workload identity, token via tctl)
-- Local generated token files (optional, with confirmation)
+This removes:
+- Istio (istio-system namespace)
+- tbot (teleport-system namespace)
+- Sock Shop (sock-shop namespace)
+- Teleport resources (via tctl)
+- Generated token files (optional)
 
-The cleanup script is self-contained; see its inline help for options.
+## Troubleshooting
+
+**tbot pods not starting:**
+```bash
+kubectl logs -n teleport-system -l app=tbot
+```
+
+**SPIFFE IDs not matching:**
+```bash
+# Check workload identity template
+tctl get workload_identity/istio-workloads --format=yaml
+
+# Restart tbot after changes
+kubectl rollout restart daemonset -n teleport-system tbot
+```
+
+**mTLS not working:**
+```bash
+# Check Istio proxy logs
+POD=$(kubectl get pod -n sock-shop -l app=catalogue -o jsonpath='{.items[0].metadata.name}')
+kubectl logs -n sock-shop $POD -c istio-proxy | grep -i "spiffe\|workload"
+```
+
+**Policies blocking traffic:**
+```bash
+# Check for RBAC denials
+kubectl logs -n sock-shop $POD -c istio-proxy --tail=50 | grep "RBAC"
+```
 
 ## Resources
 
-- [Teleport Workload Identity Documentation](https://goteleport.com/docs/machine-id/workload-identity/)
-- [Istio Certificate Management](https://istio.io/latest/docs/tasks/security/cert-management/)
-- [SPIFFE Specification](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE.md)
+- **Teleport Workload Identity:** https://goteleport.com/docs/machine-id/workload-identity/
+- **Istio Security:** https://istio.io/latest/docs/tasks/security/
+- **SPIFFE Specification:** https://github.com/spiffe/spiffe
 
+## Architecture Diagram
+
+![Istio + Teleport Integration](images/tbot-istio.png)
+
+Each workload gets a unique cryptographic identity from Teleport, enabling zero-trust service-to-service authentication in the mesh.

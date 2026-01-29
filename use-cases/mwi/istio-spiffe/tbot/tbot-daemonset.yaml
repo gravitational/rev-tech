@@ -96,7 +96,7 @@ spec:
             sources:
               - serviceAccountToken:
                   path: join-token
-                  audience: ellinj.teleport.sh
+                  audience: YOUR-CLUSTER.teleport.sh
                   expirationSeconds: 600
         # Default service account token for Kubelet API authentication
         - name: default-sa-token

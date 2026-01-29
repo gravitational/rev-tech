@@ -6,7 +6,7 @@ metadata:
 data:
   tbot.yaml: |
     version: v2
-    proxy_server: ellinj.teleport.sh:443
+    proxy_server: YOUR-CLUSTER.teleport.sh:443
     onboarding:
       join_method: kubernetes
       token: istio-tbot-k8s-join

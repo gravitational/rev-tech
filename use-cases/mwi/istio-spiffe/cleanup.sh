@@ -166,18 +166,18 @@ fi
 echo ""
 echo "=== Phase 6: Local Generated Files ==="
 echo "Checking for locally generated token files..."
-if [ -f "istio-tbot-token.yaml" ]; then
-    echo "Found istio-tbot-token.yaml (cluster-specific, safe to delete)"
-    read -p "Delete istio-tbot-token.yaml? (y/N): " -n 1 -r
+if [ -f "istio/istio-tbot-token.yaml" ]; then
+    echo "Found istio/istio-tbot-token.yaml (cluster-specific, safe to delete)"
+    read -p "Delete istio/istio-tbot-token.yaml? (y/N): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        rm -f istio-tbot-token.yaml
-        echo "✓ Deleted istio-tbot-token.yaml"
+        rm -f istio/istio-tbot-token.yaml
+        echo "✓ Deleted istio/istio-tbot-token.yaml"
     else
         echo "  Skipped deletion (file contains cluster-specific JWKS)"
     fi
 else
-    echo "No istio-tbot-token.yaml found"
+    echo "No istio/istio-tbot-token.yaml found"
 fi
 
 # Check for any other token files

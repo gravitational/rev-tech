@@ -2,7 +2,19 @@
 
 # Validate SPIFFE IDs for sock-shop services
 
-TRUST_DOMAIN="ellinj.teleport.sh"
+# Load environment variables
+if [ -f .env ]; then
+    source .env
+fi
+
+# Check if TELEPORT_TRUST_DOMAIN is set
+if [ -z "$TELEPORT_TRUST_DOMAIN" ]; then
+    echo "Error: TELEPORT_TRUST_DOMAIN is not set."
+    echo "Please copy .env.example to .env and set your Teleport cluster domain."
+    exit 1
+fi
+
+TRUST_DOMAIN="$TELEPORT_TRUST_DOMAIN"
 NAMESPACE="sock-shop"
 
 for svc in front-end catalogue carts orders; do

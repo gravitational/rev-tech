@@ -8,7 +8,7 @@ spec:
 
   meshConfig:
     # Trust domain must match Teleport cluster domain
-    trustDomain: ellinj.teleport.sh
+    trustDomain: YOUR-CLUSTER.teleport.sh
 
     # Path normalization configuration
     # Starting with NONE to prevent any normalization that might add trailing slashes

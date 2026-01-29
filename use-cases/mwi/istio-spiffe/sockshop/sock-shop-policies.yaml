@@ -29,7 +29,7 @@ spec:
         # SPIFFE ID format: <trust-domain>/ns/<namespace>/sa/<service-account>
         # Note: Istio automatically adds the spiffe:// prefix
         principals:
-        - "ellinj.teleport.sh/ns/sock-shop/sa/front-end"
+        - "YOUR-CLUSTER.teleport.sh/ns/sock-shop/sa/front-end"
     to:
     - operation:
         methods: ["GET"]
@@ -51,7 +51,7 @@ spec:
   - from:
     - source:
         principals:
-        - "ellinj.teleport.sh/ns/sock-shop/sa/catalogue"
+        - "YOUR-CLUSTER.teleport.sh/ns/sock-shop/sa/catalogue"
     to:
     - operation:
         ports: ["3306"]
@@ -71,7 +71,7 @@ spec:
   - from:
     - source:
         principals:
-        - "ellinj.teleport.sh/ns/sock-shop/sa/carts"
+        - "YOUR-CLUSTER.teleport.sh/ns/sock-shop/sa/carts"
     to:
     - operation:
         ports: ["27017"]
@@ -91,7 +91,7 @@ spec:
   - from:
     - source:
         principals:
-        - "ellinj.teleport.sh/ns/sock-shop/sa/front-end"
+        - "YOUR-CLUSTER.teleport.sh/ns/sock-shop/sa/front-end"
     to:
     - operation:
         methods: ["GET", "POST", "DELETE"]
@@ -112,7 +112,7 @@ spec:
   - from:
     - source:
         principals:
-        - "ellinj.teleport.sh/ns/sock-shop/sa/front-end"
+        - "YOUR-CLUSTER.teleport.sh/ns/sock-shop/sa/front-end"
     to:
     - operation:
         methods: ["GET", "POST"]
