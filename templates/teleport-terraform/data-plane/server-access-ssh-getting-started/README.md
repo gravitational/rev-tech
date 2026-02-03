@@ -81,7 +81,7 @@ cp terraform.tfvars.example terraform.tfvars
 2. From the template directory
 
 ```bash
-cd templates/teleport-terraform/server-access-ssh-getting-started
+cd templates/teleport-terraform/data-plane/server-access-ssh-getting-started
 terraform init
 ```
 
