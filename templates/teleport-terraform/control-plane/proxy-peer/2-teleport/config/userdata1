@@ -1,0 +1,78 @@
+#!/bin/bash
+set -euxo pipefail
+# Confirm AWS CLI is ready
+aws --version || { echo "AWS CLI missing"; exit 1; }
+# Get 10.x.x.x private IP for proxy peering
+PRIVATE_IP=$(ip -o -4 addr show scope global | awk '/10\./ {print $4}' | cut -d/ -f1 | head -n1)
+
+# Set hostname
+sudo hostnamectl set-hostname ${proxy_address}
+
+# Create Teleport Enterprise license file
+sudo mkdir -p /var/lib/teleport
+cat <<EOF >/var/lib/teleport/license.pem
+${license}
+EOF
+
+# Install Teleport
+curl https://cdn.teleport.dev/install.sh | bash -s ${teleport_version} enterprise
+
+# Create Teleport config
+sudo tee /etc/teleport.yaml > /dev/null <<EOF
+version: v3
+teleport:
+  nodename: ${proxy_address}
+  data_dir: /var/lib/teleport
+  log:
+    output: /var/lib/teleport/teleport.log
+    severity: INFO
+    format:
+      output: json
+  ca_pin: ""
+
+auth_service:
+  enabled: "yes"
+  listen_addr: 0.0.0.0:3025
+  cluster_name: ${proxy_address}
+  proxy_listener_mode: multiplex
+  license_file: /var/lib/teleport/license.pem
+  authentication:
+    type: local
+    second_factors: ["webauthn", "otp"]
+  tunnel_strategy:
+    type: proxy_peering
+    agent_connection_count: 1
+
+proxy_service:
+  enabled: "yes"
+  web_listen_addr: 0.0.0.0:443
+  public_addr: ${proxy_address}:443
+  https_keypairs: []
+  acme:
+    enabled: yes
+    email: ${user}
+  peer_listen_addr: 0.0.0.0:3021
+  peer_public_addr: $${PRIVATE_IP}:3021
+
+ssh_service:
+  enabled: "yes"
+  commands:
+    - name: hostname
+      command: [hostname]
+      period: 1m0s
+  labels:
+    env: ${env}
+    team: ${team}
+    os: ubuntu
+  enhanced_recording:
+    enabled: true
+EOF
+
+sudo systemctl enable teleport.service 
+sudo systemctl restart teleport.service 
+sleep 5
+
+sudo tctl tokens add --type node,proxy --format=text > /tmp/token
+sudo tctl users add admin --roles=access,auditor,editor --logins=root,ubuntu,ec2-user > /tmp/user
+aws s3 cp /tmp/token s3://${bucket}/token
+aws s3 cp /tmp/user s3://${bucket}/user

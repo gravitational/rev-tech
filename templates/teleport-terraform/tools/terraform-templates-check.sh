@@ -39,13 +39,17 @@ export TF_IN_AUTOMATION=1
 echo "==> terraform fmt -check"
 terraform fmt -check -recursive "${templates_root}"
 
-# Validate each template folder (skip modules).
-echo "==> terraform validate (per template)"
-for dir in "${templates_root}"/*; do
-  [[ -d "${dir}" ]] || continue
-  [[ "${dir##*/}" == "modules" ]] && continue
-  [[ -f "${dir}/main.tf" ]] || continue
+# Discover template directories (any folder with main.tf), excluding modules.
+mapfile -t template_dirs < <(
+  rg --files -g 'main.tf' "${templates_root}" \
+    | xargs -n1 dirname \
+    | sort -u \
+    | grep -v '/modules$'
+)
 
+# Validate each template folder.
+echo "==> terraform validate (per template)"
+for dir in "${template_dirs[@]}"; do
   echo "-- ${dir##*/}"
   if [[ "${SKIP_TERRAFORM_INIT:-}" != "1" ]]; then
     # Init per template so validate can resolve providers and modules.
@@ -69,11 +73,7 @@ if [[ "${RUN_TERRAFORM_PLAN:-}" == "1" ]]; then
     echo "warning: tctl not found; ensure Teleport Terraform auth is exported" >&2
   fi
   echo "==> terraform plan (per template)"
-  for dir in "${templates_root}"/*; do
-    [[ -d "${dir}" ]] || continue
-    [[ "${dir##*/}" == "modules" ]] && continue
-    [[ -f "${dir}/main.tf" ]] || continue
-
+  for dir in "${template_dirs[@]}"; do
     echo "-- ${dir##*/}"
     (cd "${dir}" && terraform plan -input=false)
   done
