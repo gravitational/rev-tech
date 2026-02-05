@@ -1,6 +1,9 @@
 # Template for Kubernetes Join Token
 # DO NOT commit the actual token file - it contains cluster-specific JWKS
 #
+# These steps are performed by ./create-token.sh. and are only required if you wish to manually
+# update the token.
+# 
 # To use this template:
 # 1. Extract your cluster's JWKS:
 #    kubectl get --raw /openid/v1/jwks
