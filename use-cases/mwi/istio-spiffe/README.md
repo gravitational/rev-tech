@@ -9,8 +9,6 @@ Demo showing Teleport-issued SPIFFE identities integrated with Istio service mes
 - Identity-based authorization policies using SPIFFE IDs
 - Zero-trust networking with workload attestation
 
-**For detailed background and architecture, see [blog post link].**
-
 ## Prerequisites
 
 **Required Tools:**

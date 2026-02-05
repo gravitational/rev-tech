@@ -1,5 +1,20 @@
 # Istio Authorization Policies using SPIFFE IDs from Teleport
 # These policies demonstrate service-to-service authorization based on workload identities
+#
+# AuthorizationPolicy controls ACCESS to services (who can call what).
+# This is APPLICATION LAYER security that answers "is this caller allowed?"
+# 
+# Key concepts:
+# - Uses workload identity (SPIFFE IDs) to identify callers
+# - Supports ALLOW, DENY, AUDIT, and CUSTOM actions
+# - Best practice: Start with deny-all, then explicitly allow needed traffic
+#
+# AuthorizationPolicy is about authorization (access control), while
+# PeerAuthentication is about authentication (identity verification via mTLS).
+#
+# Docs: https://istio.io/latest/docs/reference/config/security/authorization-policy/
+# Tutorial: https://istio.io/latest/docs/tasks/security/authorization/authz-http/
+# SPIFFE: https://istio.io/latest/docs/concepts/security/#spiffe
 ---
 # Default deny-all policy for sock-shop namespace
 # This ensures only explicitly allowed traffic is permitted
@@ -29,7 +44,7 @@ spec:
         # SPIFFE ID format: <trust-domain>/ns/<namespace>/sa/<service-account>
         # Note: Istio automatically adds the spiffe:// prefix
         principals:
-        - "YOUR-CLUSTER.teleport.sh/ns/sock-shop/sa/front-end"
+        - "ellinj.teleport.sh/ns/sock-shop/sa/front-end"
     to:
     - operation:
         methods: ["GET"]
@@ -51,7 +66,7 @@ spec:
   - from:
     - source:
         principals:
-        - "YOUR-CLUSTER.teleport.sh/ns/sock-shop/sa/catalogue"
+        - "ellinj.teleport.sh/ns/sock-shop/sa/catalogue"
     to:
     - operation:
         ports: ["3306"]
@@ -71,7 +86,7 @@ spec:
   - from:
     - source:
         principals:
-        - "YOUR-CLUSTER.teleport.sh/ns/sock-shop/sa/carts"
+        - "ellinj.teleport.sh/ns/sock-shop/sa/carts"
     to:
     - operation:
         ports: ["27017"]
@@ -91,7 +106,7 @@ spec:
   - from:
     - source:
         principals:
-        - "YOUR-CLUSTER.teleport.sh/ns/sock-shop/sa/front-end"
+        - "ellinj.teleport.sh/ns/sock-shop/sa/front-end"
     to:
     - operation:
         methods: ["GET", "POST", "DELETE"]
@@ -112,7 +127,7 @@ spec:
   - from:
     - source:
         principals:
-        - "YOUR-CLUSTER.teleport.sh/ns/sock-shop/sa/front-end"
+        - "ellinj.teleport.sh/ns/sock-shop/sa/front-end"
     to:
     - operation:
         methods: ["GET", "POST"]
@@ -137,8 +152,22 @@ spec:
         namespaces: ["istio-system"]
   - {} # Also allow direct access (for LoadBalancer service)
 ---
+# PeerAuthentication defines how workloads authenticate to each other using mTLS.
+# This is about the TRANSPORT layer security (how the connection is established),
+# while AuthorizationPolicy is about the APPLICATION layer (who can access what).
+#
+# Key concepts:
+# - STRICT: Only accept mTLS connections (most secure)
+# - PERMISSIVE: Accept both mTLS and plaintext (useful for migration)
+# - DISABLE: Only accept plaintext (not recommended)
+#
+# PeerAuthentication works at the namespace or workload level and determines
+# whether sidecars require mTLS for incoming connections.
+#
+# Docs: https://istio.io/latest/docs/reference/config/security/peer_authentication/
+# Tutorial: https://istio.io/latest/docs/tasks/security/authentication/mtls-migration/
+---
 # Enable strict mTLS for the entire namespace
-# This ensures all communication uses Teleport-issued certificates
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication
 metadata:
@@ -175,8 +204,16 @@ spec:
   mtls:
     mode: STRICT
 ---
-# Allow direct access to front-end without mTLS
+
 # This permits external LoadBalancer access without certificates
+# Allow direct access to front-end without mTLS
+# This permits external LoadBalancer access without certificates.
+# PERMISSIVE mode allows both mTLS (from internal services) and plaintext
+# (from external clients like browsers) connections to the front-end.
+#
+# This is necessary because external clients (web browsers) cannot
+# present Istio/Teleport certificates for mTLS authentication.
+
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication
 metadata:
@@ -188,6 +225,16 @@ spec:
       app: front-end
   mtls:
     mode: PERMISSIVE  # Allows both mTLS and plaintext
+---
+# DestinationRule defines CLIENT-SIDE traffic policies for outbound connections.
+# While PeerAuthentication configures the SERVER SIDE (how to accept connections),
+# DestinationRule configures the CLIENT SIDE (how to initiate connections).
+#
+# The 'tls.mode: ISTIO_MUTUAL' setting tells the client sidecar to use mTLS
+# when connecting to this destination, using Istio-issued certificates.
+#
+# Docs: https://istio.io/latest/docs/reference/config/networking/destination-rule/
+# mTLS settings: https://istio.io/latest/docs/reference/config/networking/destination-rule/#ClientTLSSettings
 ---
 # Enforce client mTLS policy for catalogue-db
 apiVersion: networking.istio.io/v1beta1
