@@ -44,8 +44,7 @@ spec:
     metadata:
       labels:
         app: front-end
-      annotations:
-        inject.istio.io/templates: "sidecar,spire"
+
     spec:
       serviceAccountName: front-end
       containers:
@@ -115,8 +114,6 @@ spec:
     metadata:
       labels:
         app: catalogue
-      annotations:
-        inject.istio.io/templates: "sidecar,spire"
     spec:
       serviceAccountName: catalogue
       containers:
@@ -184,8 +181,6 @@ spec:
     metadata:
       labels:
         app: catalogue-db
-      annotations:
-        inject.istio.io/templates: "sidecar,spire"
     spec:
       serviceAccountName: catalogue-db
       containers:
@@ -236,8 +231,6 @@ spec:
     metadata:
       labels:
         app: carts
-      annotations:
-        inject.istio.io/templates: "sidecar,spire"
     spec:
       serviceAccountName: carts
       containers:
@@ -301,8 +294,7 @@ spec:
     metadata:
       labels:
         app: carts-db
-      annotations:
-        inject.istio.io/templates: "sidecar,spire"
+
     spec:
       serviceAccountName: carts-db
       containers:
@@ -353,8 +345,6 @@ spec:
     metadata:
       labels:
         app: orders
-      annotations:
-        inject.istio.io/templates: "sidecar,spire"
     spec:
       serviceAccountName: orders
       containers:

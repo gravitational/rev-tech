@@ -39,26 +39,3 @@ spec:
       # Logging level for debugging
       logging:
         level: "default:info"
-
-    # Sidecar injector configuration
-    sidecarInjectorWebhook:
-      templates:
-        # Define the SPIRE integration template
-        spire: |
-          spec:
-            volumes:
-            - name: workload-socket
-              hostPath:
-                path: /run/spire/sockets
-                type: Directory
-            containers:
-            - name: istio-proxy
-              volumeMounts:
-              - name: workload-socket
-                mountPath: /run/secrets/workload-spiffe-uds
-                readOnly: true
-              env:
-              - name: CA_ADDR
-                value: unix:///run/secrets/workload-spiffe-uds/socket
-              - name: PILOT_CERT_PROVIDER
-                value: "workloadapi"
