@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: tbot
+  namespace: teleport-system
+  labels:
+    app: tbot
+spec:
+  selector:
+    matchLabels:
+      app: tbot
+  template:
+    metadata:
+      labels:
+        app: tbot
+    spec:
+      serviceAccountName: tbot
+      # hostPID required for process attestation (though we'll get permission errors)
+      hostPID: true
+      # hostNetwork required for Kubelet API access
+      hostNetwork: true
+      containers:
+      - name: tbot
+        image: public.ecr.aws/gravitational/tbot-distroless:18.6.4
+        imagePullPolicy: IfNotPresent
+        args:
+          - start
+          - -c
+          - /config/tbot.yaml
+        env:
+          # Anonymous telemetry
+          - name: TELEPORT_ANONYMOUS_TELEMETRY
+            value: "1"
+          # Kubernetes token path for join method
+          - name: KUBERNETES_TOKEN_PATH
+            value: /var/run/secrets/tokens/join-token
+          # Node information for Kubelet API attestation
+          # tbot uses these to construct https://<NODE_IP>:10250/pods
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: NODE_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+        volumeMounts:
+          # Config file
+          - name: config
+            mountPath: /config
+            readOnly: true
+          # Socket directory - mounted as hostPath for sharing with Istio sidecars
+          - name: spiffe-socket
+            mountPath: /run/spire/sockets
+          # Projected service account token for Kubernetes join
+          - name: join-sa-token
+            mountPath: /var/run/secrets/tokens
+            readOnly: true
+          # Default service account token for Kubelet API authentication
+          - name: default-sa-token
+            mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            readOnly: true
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        securityContext:
+          # Run as non-root user
+          runAsNonRoot: false
+          runAsUser: 0
+          capabilities:
+            # Drop all capabilities
+            drop:
+              - ALL
+            # Add only what's needed
+            add:
+              - DAC_READ_SEARCH  # For reading /proc
+              - SYS_PTRACE       # For process attestation
+      volumes:
+        # ConfigMap with tbot configuration
+        - name: config
+          configMap:
+            name: tbot-config
+        # hostPath volume for SPIFFE socket
+        # This directory will be accessible from Istio sidecars on the same node
+        - name: spiffe-socket
+          hostPath:
+            path: /run/spire/sockets
+            type: DirectoryOrCreate
+        # Projected service account token for Kubernetes join method
+        - name: join-sa-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: join-token
+                  audience: YOUR-CLUSTER.teleport.sh
+                  expirationSeconds: 600
+        # Default service account token for Kubelet API authentication
+        - name: default-sa-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: token
+              - configMap:
+                  name: kube-root-ca.crt
+                  items:
+                    - key: ca.crt
+                      path: ca.crt
+              - downwardAPI:
+                  items:
+                    - path: namespace
+                      fieldRef:
+                        fieldPath: metadata.namespace
