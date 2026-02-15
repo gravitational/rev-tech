@@ -3,6 +3,11 @@ output "bot_token" {
   value       = teleport_provision_token.bot.metadata.name
 }
 
+output "bot_registration_secret" {
+  description = "Registration secret for bound keypair onboarding"
+  value       = teleport_provision_token.bot.spec.bound_keypair.onboarding.registration_secret
+}
+
 output "bot_name" {
   description = "The name of the bot"
   value       = teleport_bot.this.metadata.name

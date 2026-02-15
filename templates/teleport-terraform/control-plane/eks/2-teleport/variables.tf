@@ -65,11 +65,11 @@ variable "enable_access_lists" {
 variable "use_dns_validation" {
   description = "Use DNS-01 validation instead of HTTP-01"
   type        = bool
-  default     = true  # Recommended for wildcard certificates
+  default     = true # Recommended for wildcard certificates
 }
 
 variable "certificate_duration" {
   description = "Certificate validity duration"
   type        = string
-  default     = "2160h"  # 90 days
+  default     = "2160h" # 90 days
 }

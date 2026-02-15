@@ -3,10 +3,10 @@
 ##################################################################################
 
 resource "aws_dynamodb_table" "teleport_backend" {
-  name         = "${var.proxy_address}-backend"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "HashKey"
-  range_key    = "FullPath"
+  name             = "${var.proxy_address}-backend"
+  billing_mode     = "PAY_PER_REQUEST"
+  hash_key         = "HashKey"
+  range_key        = "FullPath"
   stream_enabled   = true
   stream_view_type = "NEW_AND_OLD_IMAGES"
   attribute {
@@ -29,10 +29,10 @@ resource "aws_dynamodb_table" "teleport_backend" {
 }
 
 resource "aws_dynamodb_table" "teleport_events" {
-  name         = "${var.proxy_address}-events"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "SessionID"
-  range_key    = "EventIndex"
+  name             = "${var.proxy_address}-events"
+  billing_mode     = "PAY_PER_REQUEST"
+  hash_key         = "SessionID"
+  range_key        = "EventIndex"
   stream_enabled   = true
   stream_view_type = "NEW_AND_OLD_IMAGES"
   attribute {
@@ -106,7 +106,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "session_recording
 }
 
 resource "aws_s3_bucket_public_access_block" "session_recordings" {
-  bucket = aws_s3_bucket.session_recordings.id
+  bucket                  = aws_s3_bucket.session_recordings.id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true

@@ -35,3 +35,9 @@ Access List membership is managed via SCIM. Access List `spec.title` must match 
   - `devs`
   - `engineers`
 - Run the `3-rbac` layer to create roles and SCIM Access Lists.
+
+## SCIM/Okta Wiring (Minimal)
+
+- Teleport: Integrations → SCIM → create integration, select your SAML connector, copy Base URL + Client ID/Secret.
+- Okta: Provisioning → SCIM → paste Base URL + Client ID/Secret, enable Group Push/Assignments.
+- Access Lists: `spec.title` **must** equal Okta group `displayName` (case‑sensitive).

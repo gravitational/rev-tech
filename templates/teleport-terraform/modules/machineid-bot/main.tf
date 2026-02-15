@@ -15,17 +15,30 @@ resource "random_string" "bot_token" {
   override_special = "-.+"
 }
 
+resource "random_string" "registration_secret" {
+  length  = 32
+  special = false
+}
+
 resource "teleport_provision_token" "bot" {
   version = "v2"
   metadata = {
-    expires     = timeadd(timestamp(), "1h")
     name        = random_string.bot_token.result
     description = "Provision token for Machine ID bot ${var.bot_name}"
   }
   spec = {
     roles       = ["Bot"]
     bot_name    = var.bot_name
-    join_method = "token"
+    join_method = "bound_keypair"
+    bound_keypair = {
+      onboarding = {
+        registration_secret = random_string.registration_secret.result
+      }
+      recovery = {
+        mode  = "standard"
+        limit = 1
+      }
+    }
   }
 }
 

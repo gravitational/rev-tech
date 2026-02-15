@@ -83,6 +83,12 @@ Ensure apps, DBs, nodes, and desktops are labeled with the same keys to align wi
   - `engineers`
 - Apply the `3-rbac` layer to create roles and SCIM Access Lists.
 
+## SCIM/Okta Wiring (Minimal)
+
+- Teleport: Integrations → SCIM → create integration, select your SAML connector, copy Base URL + Client ID/Secret.
+- Okta: Provisioning → SCIM → paste Base URL + Client ID/Secret, enable Group Push/Assignments.
+- Access Lists: `spec.title` **must** equal Okta group `displayName` (case‑sensitive).
+
 ## Teleport Updates
 
 Use the helper script to update Teleport without touching the EKS layer:

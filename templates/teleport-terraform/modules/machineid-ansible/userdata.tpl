@@ -51,8 +51,10 @@ cat <<-EOF > /etc/tbot.yaml
 version: v2
 proxy_server: ${proxy_address}:443
 onboarding:
-  join_method: token
+  join_method: bound_keypair
   token: ${bot_token}
+  bound_keypair:
+    registration_secret: ${bot_secret}
 storage:
   type: directory
   path: /var/lib/teleport/bot

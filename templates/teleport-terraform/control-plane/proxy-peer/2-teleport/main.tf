@@ -52,7 +52,7 @@ resource "aws_instance" "main" {
   iam_instance_profile   = data.terraform_remote_state.cluster.outputs.instance_profile_name
   user_data = templatefile("${path.module}/config/userdata1", {
     bucket           = data.terraform_remote_state.cluster.outputs.bucket_name
-    license          = file("${path.module}/../../license.pem")
+    license          = var.license_path != "" ? file(var.license_path) : ""
     proxy_address    = var.proxy_address
     teleport_version = var.teleport_version
     user             = var.user

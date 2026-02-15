@@ -41,17 +41,17 @@ resource "helm_release" "teleport_cluster" {
     jsonencode({
       clusterName       = var.proxy_address
       proxyListenerMode = "multiplex"
-      acme      = false
-      tls = { existingSecretName = "teleport-tls" }
-      enterprise = fileexists("${path.module}/../../license.pem")
-      labels     = { env = var.env, team = var.team }
-      operator = { enabled = true }
-      authentication = { type = "saml" }
-      serviceAccount = { create = false, name = "teleport-cluster" }
-      auth = { serviceAccount = { create = false, name = "teleport-cluster" } }
-      proxy = { serviceAccount = { create = false, name = "teleport-cluster-proxy" } }
-      operator = { enabled = true, serviceAccount = { create = false, name = "teleport-cluster-operator" } }
-      chartMode = "aws"
+      acme              = false
+      tls               = { existingSecretName = "teleport-tls" }
+      enterprise        = fileexists("${path.module}/../../license.pem")
+      labels            = { env = var.env, team = var.team }
+      operator          = { enabled = true }
+      authentication    = { type = "saml" }
+      serviceAccount    = { create = false, name = "teleport-cluster" }
+      auth              = { serviceAccount = { create = false, name = "teleport-cluster" } }
+      proxy             = { serviceAccount = { create = false, name = "teleport-cluster-proxy" } }
+      operator          = { enabled = true, serviceAccount = { create = false, name = "teleport-cluster-operator" } }
+      chartMode         = "aws"
       aws = {
         region                 = var.region
         backendTable           = aws_dynamodb_table.teleport_backend.name

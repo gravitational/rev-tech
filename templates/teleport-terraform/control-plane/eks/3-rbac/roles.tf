@@ -24,7 +24,7 @@ resource "kubectl_manifest" "saml_connector_okta" {
 }
 
 resource "kubectl_manifest" "saml_connector_okta_preview" {
-  count      = var.enable_okta_preview ? 1 : 0
+  count = var.enable_okta_preview ? 1 : 0
   yaml_body = yamlencode({
     apiVersion = "resources.teleport.dev/v2"
     kind       = "TeleportSAMLConnector"
@@ -113,17 +113,17 @@ resource "kubectl_manifest" "role_dev_access" {
     spec = {
       allow = {
         app_labels = {
-          env = ["dev"]
+          env  = ["dev"]
           team = [var.dev_team]
         }
         aws_role_arns = ["{{external.aws_role_arns}}"]
         db_labels = {
-          env = ["dev"]
-          team = [var.dev_team]
+          env                      = ["dev"]
+          team                     = [var.dev_team]
           "teleport.dev/db-access" = ["mapped"]
         }
-        db_names = ["{{external.db_names}}", "*"]
-        db_users = ["{{external.db_users}}", "reader", "writer"]
+        db_names       = ["{{external.db_names}}", "*"]
+        db_users       = ["{{external.db_users}}", "reader", "writer"]
         desktop_groups = ["Administrators"]
         impersonate = {
           roles = ["Db"]
@@ -139,7 +139,7 @@ resource "kubectl_manifest" "role_dev_access" {
         ]
         kubernetes_groups = ["{{external.kubernetes_groups}}", "system:masters"]
         kubernetes_labels = {
-          env = "dev"
+          env  = "dev"
           team = var.dev_team
         }
         kubernetes_resources = [
@@ -147,7 +147,7 @@ resource "kubectl_manifest" "role_dev_access" {
         ]
         logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}"]
         node_labels = {
-          env = ["dev"]
+          env  = ["dev"]
           team = [var.dev_team]
         }
         rules = [
@@ -155,7 +155,7 @@ resource "kubectl_manifest" "role_dev_access" {
           { resources = ["session"], verbs = ["read", "list"] }
         ]
         windows_desktop_labels = {
-          env = ["dev"]
+          env  = ["dev"]
           team = [var.dev_team]
         }
         windows_desktop_logins = ["{{external.windows_logins}}", "{{email.local(external.username)}}"]
@@ -195,8 +195,8 @@ resource "kubectl_manifest" "role_platform_dev_access" {
           env  = ["dev"]
           team = ["*"]
         }
-        db_names = ["{{external.db_names}}", "*"]
-        db_users = ["{{external.db_users}}", "reader", "writer"]
+        db_names       = ["{{external.db_names}}", "*"]
+        db_users       = ["{{external.db_users}}", "reader", "writer"]
         desktop_groups = ["Administrators"]
         join_sessions = [
           {
@@ -265,8 +265,8 @@ resource "kubectl_manifest" "role_prod_access" {
           env  = ["prod"]
           team = [var.prod_team]
         }
-        db_names = ["{{external.db_names}}", "*"]
-        db_users = ["{{external.db_users}}", "reader", "writer"]
+        db_names       = ["{{external.db_names}}", "*"]
+        db_users       = ["{{external.db_users}}", "reader", "writer"]
         desktop_groups = ["Administrators"]
         impersonate = {
           roles = ["Db"]
@@ -399,7 +399,7 @@ resource "kubectl_manifest" "role_dev_requester" {
     spec = {
       allow = {
         request = {
-          roles = ["platform-dev-access", "prod-readonly-access", "prod-access"]
+          roles           = ["platform-dev-access", "prod-readonly-access", "prod-access"]
           search_as_roles = ["platform-dev-access", "prod-readonly-access", "prod-access"]
         }
       }

@@ -1,6 +1,6 @@
 # Machine ID Bot Module
 
-Creates a Teleport Machine ID bot, provision token, and role for automated access.
+Creates a Teleport Machine ID bot, bound keypair provision token, and role for automated access.
 
 ## Usage
 
@@ -38,7 +38,8 @@ module "machineid_bot" {
 
 | Output | Description |
 | ------ | ----------- |
-| `bot_token` | Provision token for the bot |
+| `bot_token` | Provision token name for the bot |
+| `bot_registration_secret` | Registration secret for bound keypair onboarding |
 | `bot_name` | Bot name |
 | `role_id` | Role ID |
 

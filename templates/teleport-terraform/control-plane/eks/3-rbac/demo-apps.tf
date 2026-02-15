@@ -45,7 +45,7 @@ resource "kubernetes_deployment" "webapp_dev" {
   spec {
     selector {
       match_labels = {
-        app = "nginx-webapp"
+        app  = "nginx-webapp"
         env  = "dev"
         team = var.dev_team
       }
@@ -53,7 +53,7 @@ resource "kubernetes_deployment" "webapp_dev" {
     template {
       metadata {
         labels = {
-          app = "nginx-webapp"
+          app  = "nginx-webapp"
           env  = "dev"
           team = var.dev_team
         }
@@ -82,7 +82,7 @@ resource "kubernetes_deployment" "webapp_prod" {
   spec {
     selector {
       match_labels = {
-        app = "nginx-webapp"
+        app  = "nginx-webapp"
         env  = "prod"
         team = var.prod_team
       }
@@ -90,7 +90,7 @@ resource "kubernetes_deployment" "webapp_prod" {
     template {
       metadata {
         labels = {
-          app = "nginx-webapp"
+          app  = "nginx-webapp"
           env  = "prod"
           team = var.prod_team
         }
@@ -120,7 +120,7 @@ resource "kubernetes_deployment" "loadbalancer_dev" {
   spec {
     selector {
       match_labels = {
-        app = "nginx-loadbalancer"
+        app  = "nginx-loadbalancer"
         env  = "dev"
         team = var.dev_team
       }
@@ -128,7 +128,7 @@ resource "kubernetes_deployment" "loadbalancer_dev" {
     template {
       metadata {
         labels = {
-          app = "nginx-loadbalancer"
+          app  = "nginx-loadbalancer"
           env  = "dev"
           team = var.dev_team
         }
@@ -157,7 +157,7 @@ resource "kubernetes_deployment" "loadbalancer_prod" {
   spec {
     selector {
       match_labels = {
-        app = "nginx-loadbalancer"
+        app  = "nginx-loadbalancer"
         env  = "prod"
         team = var.prod_team
       }
@@ -165,7 +165,7 @@ resource "kubernetes_deployment" "loadbalancer_prod" {
     template {
       metadata {
         labels = {
-          app = "nginx-loadbalancer"
+          app  = "nginx-loadbalancer"
           env  = "prod"
           team = var.prod_team
         }

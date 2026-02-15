@@ -4,7 +4,7 @@
 
 output "teleport_url" {
   description = "Teleport demo URL"
-  value       = var.domain_name != "" ? "https://${var.proxy_address}" : "https://${try(data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname, "pending")}" 
+  value       = var.domain_name != "" ? "https://${var.proxy_address}" : "https://${try(data.kubernetes_service.teleport_cluster.status[0].load_balancer[0].ingress[0].hostname, "pending")}"
 }
 
 output "teleport_version" {

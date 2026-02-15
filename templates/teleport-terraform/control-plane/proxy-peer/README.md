@@ -21,7 +21,7 @@ control-plane/proxy-peer/
 
 - AWS CLI configured (`aws sts get-caller-identity` works)
 - Terraform v1.6+
-- Teleport Enterprise license at `control-plane/license.pem`
+- Optional: Teleport Enterprise license file (set `TF_VAR_license_path` if needed)
 
 ## Usage
 
@@ -47,6 +47,7 @@ export TF_VAR_env="dev"
 export TF_VAR_team="platform"
 export TF_VAR_parent_domain="example.com"
 export TF_VAR_proxy_address="teleport.example.com"
+export TF_VAR_license_path="../../license.pem" # optional
 export TF_VAR_teleport_version="18.4.1"
 export TF_VAR_proxy_count=1
 terraform init
@@ -95,3 +96,9 @@ Request/review roles (`dev-requester`, `prod-requester`, `dev-reviewer`) handle 
   - `devs`
   - `engineers`
 - Apply the `3-rbac` layer to create roles and SCIM Access Lists.
+
+## SCIM/Okta Wiring (Minimal)
+
+- Teleport: Integrations → SCIM → create integration, select your SAML connector, copy Base URL + Client ID/Secret.
+- Okta: Provisioning → SCIM → paste Base URL + Client ID/Secret, enable Group Push/Assignments.
+- Access Lists: `spec.title` **must** equal Okta group `displayName` (case‑sensitive).

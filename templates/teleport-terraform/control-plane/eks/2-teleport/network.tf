@@ -18,7 +18,7 @@ data "aws_route53_zone" "main" {
 }
 
 resource "aws_route53_record" "cluster_endpoint" {
-  count = var.domain_name != "" ? 1 : 0
+  count   = var.domain_name != "" ? 1 : 0
   zone_id = data.aws_route53_zone.main[0].zone_id
   name    = var.proxy_address
   type    = "CNAME"
@@ -27,7 +27,7 @@ resource "aws_route53_record" "cluster_endpoint" {
 }
 
 resource "aws_route53_record" "wild_cluster_endpoint" {
-  count = var.domain_name != "" ? 1 : 0
+  count   = var.domain_name != "" ? 1 : 0
   zone_id = data.aws_route53_zone.main[0].zone_id
   name    = "*.${var.proxy_address}"
   type    = "CNAME"

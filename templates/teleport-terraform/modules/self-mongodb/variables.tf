@@ -1,13 +1,15 @@
 variable "env" {
-  description = "Environment name (e.g., dev, prod)"
+  description = "Environment label (e.g., dev, prod)"
+  type        = string
 }
 
 variable "user" {
   description = "Tag value for resource creator"
+  type        = string
 }
 
 variable "proxy_address" {
-  description = "Teleport Proxy address (without https://)"
+  description = "Teleport Proxy address (host only, no https://)"
   type        = string
 }
 
@@ -18,6 +20,7 @@ variable "teleport_version" {
 
 variable "teleport_db_ca" {
   description = "Teleport DB CA cert from /webapi/auth/export"
+  type        = string
 }
 
 variable "mongodb_hostname" {
@@ -27,10 +30,12 @@ variable "mongodb_hostname" {
 
 variable "ami_id" {
   description = "AMI ID for the EC2 instance"
+  type        = string
 }
 
 variable "instance_type" {
   description = "EC2 instance type (e.g., t3.small)"
+  type        = string
 }
 
 variable "subnet_id" {

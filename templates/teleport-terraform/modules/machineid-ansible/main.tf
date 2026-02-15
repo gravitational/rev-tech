@@ -64,6 +64,7 @@ resource "aws_instance" "ansible_host" {
     proxy_address    = var.proxy_address
     teleport_version = var.teleport_version
     bot_token        = module.machineid_bot.bot_token
+    bot_secret       = module.machineid_bot.bot_registration_secret
     node_token       = teleport_provision_token.main.metadata.name
   })
 

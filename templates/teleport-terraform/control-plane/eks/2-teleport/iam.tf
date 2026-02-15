@@ -10,7 +10,7 @@ data "aws_caller_identity" "current" {}
 resource "aws_iam_policy" "teleport_auth" {
   name        = "${var.proxy_address}-auth-policy"
   description = "IAM policy for Teleport auth service"
-  policy      = jsonencode({
+  policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {

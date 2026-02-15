@@ -31,6 +31,12 @@ variable "proxy_address" {
   description = "Fully qualified domain name of Teleport cluster (e.g. teleport.example.com)"
 }
 
+variable "license_path" {
+  type        = string
+  default     = ""
+  description = "Path to Teleport Enterprise license file (PEM). Leave empty for no license."
+}
+
 variable "teleport_version" {
   type        = string
   description = "Full version of Teleport to use (e.g. 18.4.1)"

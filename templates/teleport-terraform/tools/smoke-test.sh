@@ -6,6 +6,7 @@ set -euo pipefail
 # Parse required positional arg and optional flags.
 if [[ $# -lt 1 ]]; then
   echo "usage: $0 <template-dir> [--no-destroy] [--skip-verify]" >&2
+  echo "example: $0 data-plane/server-access-ssh-getting-started" >&2
   exit 1
 fi
 
@@ -34,6 +35,14 @@ done
 # Resolve paths relative to this script to avoid CWD issues.
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 templates_root=$(cd "${script_dir}/.." && pwd)
+
+# Allow passing a bare template name by resolving under data-plane/.
+if [[ "${template_dir}" != */* ]]; then
+  if [[ -d "${templates_root}/data-plane/${template_dir}" ]]; then
+    template_dir="data-plane/${template_dir}"
+  fi
+fi
+
 workdir="${templates_root}/${template_dir}"
 
 # Sanity checks for the template directory.
@@ -101,24 +110,36 @@ trap cleanup EXIT
 if [[ ${skip_verify} -eq 0 ]]; then
   env_label="${TF_VAR_env:-dev}"
   team_label="${TF_VAR_team:-platform}"
+  ssh_login="${TF_SMOKE_SSH_LOGIN:-${TF_VAR_ssh_login:-ec2-user}}"
   case "${template_dir}" in
-    application-access-*)
+    application-access-*|*/application-access-*)
       tsh apps ls env=${env_label},team=${team_label}
       ;;
-    database-access-*)
+    database-access-*|*/database-access-*)
       tsh db ls env=${env_label},team=${team_label}
       ;;
-    server-access-ssh-getting-started)
+    server-access-ssh-getting-started|*/server-access-ssh-getting-started)
       tsh ls env=${env_label},team=${team_label}
       ;;
-    desktop-access-*)
+    desktop-access-*|*/desktop-access-*)
       echo "desktop verification skipped: this tsh build has no desktop list command" >&2
       ;;
-    machine-id-ansible)
-      tsh ls env=${env_label},team=${team_label}
+    machine-id-ansible|*/machine-id-ansible)
+      nodes=$(tsh ls env=${env_label},team=${team_label} --format=names)
+      if [[ -z "${nodes}" ]]; then
+        echo "no nodes found for env=${env_label}, team=${team_label}" >&2
+        exit 1
+      fi
+      while IFS= read -r node; do
+        [[ -z "${node}" ]] && continue
+        echo "checking tbot on ${node}"
+        tsh ssh -l "${ssh_login}" "${node}" -- "sudo systemctl is-active tbot"
+        echo "checking /opt/machine-id/ssh_config on ${node}"
+        tsh ssh -l "${ssh_login}" "${node}" -- "test -f /opt/machine-id/ssh_config"
+      done <<< "${nodes}"
       ;;
-    machine-id-mcp)
-      tsh mcp ls
+    machine-id-mcp|*/machine-id-mcp)
+      tsh mcp ls env=${env_label},team=${team_label}
       ;;
     *)
       echo "no verification rule for ${template_dir}; use --skip-verify" >&2

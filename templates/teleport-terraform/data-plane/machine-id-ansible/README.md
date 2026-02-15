@@ -65,4 +65,4 @@ terraform destroy
 ## Notes
 - Bot permissions are scoped by labels (env/team)
 - The host contains `/opt/machine-id/ssh_config` for bot-based SSH
-- For production use, prefer platform-signed join methods (EC2/Kubernetes) over static tokens where possible
+- This example uses **bound keypair** onboarding for tbot (no expiring token join)
