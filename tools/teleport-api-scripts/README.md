@@ -26,35 +26,18 @@ Monitors infrastructure and identity usage, reporting:
 
 1. **Choose your script** based on what you want to track (users vs. resources)
 2. **Review the detailed README** for your chosen script (MAU_README.md or TPR_README.md)
-3. **Configure the script** by updating the variables at the top of the file
-4. **Run it** with `go run <script>.go`
-
-## Common Configuration
-
-Both scripts share similar configuration patterns:
-
-```go
-// Required: Update to your Teleport proxy
-teleportProxyURL = "your-proxy.teleport.sh:443"
-
-// Optional: Use identity file for automation
-useIdentityFile = true
-identityFilePath = "/path/to/identity"
-
-// Optional: Adjust time range, report format, etc.
-```
 
 See individual README files for complete configuration options.
 
 ## Output
 
 Both scripts generate reports in JSON or text format:
-- **MAU Script** → `Teleport_Active_Users.json` or `Teleport_Active_Users.txt`
-- **TPR Script** → `Teleport_Usage_Report.json` or `Teleport_Usage_Report.txt`
+- **MAU Script** → `Teleport_Active_Users.txt` or `Teleport_Active_Users.json`
+- **TPR Script** → `Teleport_Usage_Report.txt` or `Teleport_Usage_Report.json`
 
 ## Requirements
 
-- Go 1.19 or later
+- Go 1.24 or later
 - Access to a Teleport cluster
 - Valid Teleport credentials (tsh login or identity file)
 - Network connectivity to your Teleport proxy

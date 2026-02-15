@@ -122,7 +122,10 @@ To create a standalone binary for deployment:
 go build -o teleport-tpr-tracker tpr.go
 
 # Build for Linux (common for containers/servers)
-GOOS=linux GOARCH=amd64 go build -o teleport-tpr-tracker tpr.go
+# Change target arch if you're running on Mac/arm64
+# You will need a C compiler for the chosen OS/arch available as the script requires sqlite
+# Look into toolchains for cross-compiling if you need them
+CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o teleport-tpr-tracker tpr.go
 
 # Run the binary
 # Update to use your own proxy address
@@ -141,7 +144,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY tpr.go .
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o teleport-tpr-tracker .
+RUN CGO_ENABLED=1 GOOS=linux go build -o teleport-tpr-tracker tpr.go
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates sqlite

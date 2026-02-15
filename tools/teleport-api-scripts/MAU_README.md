@@ -35,7 +35,7 @@ Users utilizing just-in-time access and governance features:
 - Go 1.24+ installed
 - Access to a Teleport cluster with audit log read permissions
 - Valid Teleport credentials (see [Authentication](#authentication) section below)
-- Network connectivity to your Teleport proxy and to gthub.com/golang.org repositories
+- Network connectivity to your Teleport proxy and to github.com/golang.org repositories
 
 ## Installation
 
@@ -118,6 +118,7 @@ To create a standalone binary for deployment:
 go build -o teleport-mau-tracker mau.go
 
 # Build for Linux (common for containers/servers)
+# Change target OS/arch if you're running on Mac/arm64
 GOOS=linux GOARCH=amd64 go build -o teleport-mau-tracker mau.go
 
 # Run the binary
