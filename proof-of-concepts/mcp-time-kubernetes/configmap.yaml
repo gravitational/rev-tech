@@ -1,0 +1,31 @@
+apiVersion: v1
+data:
+  teleport.yaml: |
+    version: v3
+    app_service:
+      enabled: "yes"
+      apps:
+      - name: time-kube
+        labels:
+          env: container
+        mcp:
+          command: "/usr/local/bin/uvx"
+          args: ["mcp-server-time", "--local-timezone=America/Denver"]
+          run_as_host_user: "root"
+    teleport:
+      data_dir: "/teleport/teleport-data"
+      join_params:
+        method: "kubernetes"
+        token_name: "kubernetes-token-mcp"
+      proxy_server: "your-teleport-address:443"
+    auth_service:
+      enabled: "no"
+    ssh_service:
+      enabled: "no"
+    proxy_service:
+      enabled: "no"
+kind: ConfigMap
+metadata:
+  name: teleport-config-mcp
+  namespace: your-mcp-namespace
+
