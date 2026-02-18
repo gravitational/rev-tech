@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+packages/backend/.web/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test output
+coverage/
+test-results/
+playwright-report/
+blob-report/
+
+# Helm
+charts/*/charts/*.tgz
+Chart.lock
+
+# Teleport (local dev credentials)
+/tbot/
+*.identity
+
+# Secrets and keys
+*.pem
+*.key
+*.crt
+ssh-out/
+k8s-out/
+svid-out/
+
+# Logs
+*.log

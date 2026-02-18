@@ -1,0 +1,16 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(tbot:*)",
+      "Bash(tsh:*)",
+      "WebFetch(domain:goteleport.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+    ]
+  },
+  "spinnerTipsEnabled": false,
+  "alwaysThinkingEnabled": true,
+  "model": "opus"
+}
