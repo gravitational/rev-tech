@@ -11,6 +11,7 @@ packages/backend/.web/
 .env
 .env.local
 .env.*.local
+infra/teleport/persistence/data/*
 
 # IDE
 .vscode/

@@ -1,0 +1,20 @@
+services:
+  agent-demo-teleport:
+    #network_mode: host
+    container_name: agent-teleport-cluster
+    image: public.ecr.aws/gravitational/teleport-distroless:18
+    ports:
+      - "3022:3022"
+      - "3023:3023"
+      - "3024:3024"
+      - "3025:3025"
+      - "3026:3026"
+      - "3027:3027"
+      - "3028:3028"
+      - "3036:3036"
+      - "3080:3080"
+      - "443:3080"
+    restart: always
+    volumes:
+      - ./persistence/etc:/etc/teleport
+      - ./persistence/data:/var/lib/teleport

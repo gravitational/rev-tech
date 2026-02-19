@@ -1,0 +1,36 @@
+version: v3
+teleport:
+  nodename: ai-agent-demo
+  data_dir: /var/lib/teleport
+  log:
+    output: stderr
+    severity: WARN
+    format:
+      output: text
+  ca_pin: ""
+  diag_addr: ""
+auth_service:
+  enabled: "yes"
+  listen_addr: 0.0.0.0:3025
+  cluster_name: teleport.demo.ai
+  proxy_listener_mode: multiplex
+  authentication:
+    type: local
+    second_factor: on
+    webauthn:
+      rp_id: teleport.demo.ai
+debug_service:
+  enabled: false
+ssh_service:
+  enabled: "no"
+proxy_service:
+  enabled: "yes"
+  web_listen_addr: 0.0.0.0:3080
+  public_addr: teleport.demo.ai:443
+  https_keypairs: []
+  acme: {}
+app_service:
+  enabled: "yes"
+  debug_app: false
+db_service:
+  enabled: "yes"
