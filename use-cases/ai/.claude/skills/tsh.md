@@ -3,7 +3,7 @@
 tsh is Teleport's client CLI for accessing SSH nodes, databases, Kubernetes clusters, applications, cloud providers, and MCP servers through Teleport's proxy service. It supports interactive login, headless authentication, and non-interactive access via tbot-issued identity files.
 
 **Binary:** `tsh` (Teleport v18+)
-**Documentation:** https://goteleport.com/docs/reference/cli/tsh/
+**Documentation:** <https://goteleport.com/docs/reference/cli/tsh/>
 
 ---
 
@@ -36,6 +36,7 @@ tsh login --proxy=proxy.example.com --browser=none
 # Check current session status
 tsh status
 tsh status --format=json
+tsh status --client
 
 # Logout
 tsh logout
@@ -92,7 +93,7 @@ These flags work with ALL tsh commands:
 | `--ttl` | | Minutes to live for session | |
 | `--jumphost` | `-J` | SSH jumphost | |
 | `--insecure` | | Skip TLS verification (testing only) | |
-| `--relay` | | Teleport relay address | `$TELEPORT_RELAY` |
+| `--relay` | | Teleport relay address (`none` to disable, `default` to use cluster-provided address) | `$TELEPORT_RELAY` |
 | `--skip-version-check` | | Skip version checking between server and client | |
 | `--os-log` | | Verbose logging to unified logging system (implies --debug) | `$TELEPORT_OS_LOG` |
 | `--add-keys-to-agent` | `-k` | Key handling: auto, no, yes, only (default: auto) | `$TELEPORT_ADD_KEYS_TO_AGENT` |
@@ -409,6 +410,7 @@ tsh db logout my-postgres
 | `--labels` | | Filter by labels |
 | `--query` | | Predicate language query |
 | `--format` | `-f` | Format output (text, json, yaml) |
+| `--cluster` | `-c` | Specify the Teleport cluster |
 | `--disable-access-request` | | Disable automatic resource access requests |
 | `--request-reason` | | Reason for requesting access |
 
@@ -500,6 +502,7 @@ tsh apps logout myapp
 | `--search` | | Search keywords or phrases |
 | `--verbose` | `-v` | Show extra information |
 | `--all` | `-R` | List across all clusters |
+| `--cluster` | `-c` | Specify the Teleport cluster |
 
 ### Key Apps Login Flags
 
@@ -510,12 +513,14 @@ tsh apps logout myapp
 | `--gcp-service-account` | | GCP service account |
 | `--target-port` | | Target port for multi-port TCP apps |
 | `--quiet` | `-q` | Quiet mode |
+| `--cluster` | `-c` | Specify the Teleport cluster |
 
 ### Key Apps Config Flags
 
 | Flag | Short | Description |
 |------|-------|-------------|
 | `--format` | `-f` | Format: uri, ca, cert, key, curl, json, yaml |
+| `--cluster` | `-c` | Specify the Teleport cluster |
 
 ### Application Proxy
 
@@ -848,12 +853,14 @@ tsh headless approve --skip-confirm --user=alice --proxy=proxy.example.com <requ
 | `--skip-confirm` | | Skip confirmation and prompt for MFA immediately (default: false) ($TELEPORT_HEADLESS_SKIP_CONFIRM) |
 
 **Characteristics:**
+
 - Each command requires separate MFA approval
 - Private keys held in memory only (never written to disk)
 - Certificates have one-minute TTL
 - Supported commands: ls, ssh, scp, proxy kube
 
 **When NOT to use headless (prefer tbot instead):**
+
 - CI/CD pipelines
 - Automated workloads
 - Long-running processes
@@ -877,10 +884,11 @@ tsh join <session-id>
 tsh join --mode=observer <session-id>
 tsh join --cluster=my-leaf-cluster <session-id>
 
-# Replay a recorded session
+# Replay a recorded session (--format: pty (default), json, yaml, text)
 tsh play <session-id>
 tsh play --speed=2 --skip-idle-time <session-id>
 tsh play --format=json <session-id>
+tsh play --format=text <session-id>
 tsh play --cluster=my-leaf-cluster <session-id>
 
 # List recordings
@@ -958,12 +966,14 @@ tsh vnet-ssh-autoconfig
 ```
 
 **How it works:**
+
 - Assigns virtual IPs from `100.64.0.0/10` (CGNAT range) to Teleport apps
 - Local DNS resolves app names to virtual IPs
 - TCP connections are proxied through authenticated Teleport tunnels
 - Works with CLI tools, IDEs, browsers, any TCP client
 
 **Considerations:**
+
 - IP range may conflict with Tailscale or other CGNAT users
 - Teleport Connect GUI is the preferred VNet client (better MFA prompts)
 - `tsh vnet` provides the CLI alternative
@@ -1081,7 +1091,16 @@ tsh workload-identity issue-x509 --name-selector=my-workload --credential-ttl=2h
 | `--dns-san` | | DNS SAN for the SVID |
 | `--ip-san` | | IP SAN for the SVID |
 | `--svid-ttl` | | TTL for the SVID |
-| `--type` | | SVID type (default: x509) |
+| `--type` | | Type of SVID to issue (default: x509) |
+
+### Key Workload-Identity Issue-X509 Flags
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--name-selector` | | Select workload identity by name |
+| `--label-selector` | | Select workload identities by labels |
+| `--credential-ttl` | | TTL for the credential (default: `1h`) |
+| `--output` | | Path to directory to write the SVID into |
 
 ---
 
@@ -1187,33 +1206,39 @@ tsh --debug ssh user@host
 ### Common Issues
 
 **"access denied" or "certificate expired":**
+
 - Check session status: `tsh status`
 - Re-login: `tsh login --proxy=proxy.example.com`
 - For identity files: verify tbot is running and renewing certificates
 - Check certificate TTL: identity files expire (default 1h, max 24h)
 
 **"cluster not found" when accessing leaf cluster:**
+
 - List clusters: `tsh clusters`
 - Login to specific cluster: `tsh login my-leaf-cluster`
 - Use `--cluster` flag: `tsh ls --cluster=my-leaf-cluster`
 
 **Database proxy connection refused:**
+
 - Ensure `tsh db login` was run before `tsh proxy db`
 - Use `--tunnel` flag for authenticated tunnels (simpler client config)
 - Check database user/name permissions in Teleport role
 
 **Kubernetes proxy kubeconfig not working:**
+
 - Verify cluster access: `tsh kube ls`
 - Re-login to cluster: `tsh kube login my-cluster`
 - Check impersonation settings in Teleport role
 
 **Identity file not working:**
+
 - Verify file exists and is readable
 - Check it was generated recently (tbot should be renewing)
 - Ensure `--proxy` flag is set (identity files do not store proxy address)
 - Verify bot role grants access to the target resource
 
 **MCP server not appearing:**
+
 - List MCP servers: `tsh mcp ls`
 - Verify role grants `app_labels` matching the MCP server
 - Verify role includes `mcp.tools` allowing the needed tools

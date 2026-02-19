@@ -3,7 +3,7 @@
 tctl is Teleport's administrative CLI for managing cluster resources, users, bots, tokens, certificate authorities, access requests, locks, devices, inventory, SSO connectors, plugins, recordings, alerts, workload identity, and dynamic configuration. It connects to the Teleport Auth Service directly or via the Proxy.
 
 **Binary:** `tctl` (Teleport v18+)
-**Documentation:** https://goteleport.com/docs/reference/cli/tctl/
+**Documentation:** <https://goteleport.com/docs/reference/cli/tctl/>
 
 ---
 
@@ -790,7 +790,7 @@ tctl auth ls --format=json
 tctl auth ls --format=text
 ```
 
-### `tctl auth crl` -- Export Certificate Revocation List
+### `tctl auth crl` -- Export Empty Certificate Revocation List
 
 ```bash
 tctl auth crl --type=host
@@ -1231,8 +1231,8 @@ tctl proxy ls --format=text
 |------|-------|-------------|---------|
 | `--format` | | Output format: text, json, yaml | `text` |
 | `--verbose` | `-v` | Verbose table output | off |
-| `--search` | | Comma-separated search keywords | |
-| `--query` | | Predicate language query | |
+| `--search` | | Comma-separated search keywords (not available for `desktop ls`) | |
+| `--query` | | Predicate language query (not available for `desktop ls`) | |
 
 ---
 
@@ -1939,7 +1939,7 @@ tctl scoped status
 | `--format` | Output format: text, json, yaml | |
 | `--assign-scope` | Scope for resources provisioned by this token | |
 | `--scope` | Scope assigned to the token itself | |
-| `--mode` | Usage mode: default, unlimited, single_use | |
+| `--mode` | Usage mode: unlimited (default), single_use | |
 | `--labels` | Token labels | |
 | `--ssh-labels` | Immutable SSH labels for provisioned resources | |
 
@@ -1989,16 +1989,6 @@ Used by `--query` flags across many commands:
 
 ---
 
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `TELEPORT_CONFIG_FILE` | Path to tctl configuration file |
-| `TELEPORT_AUTH_SERVER` | Auth/proxy server address |
-| `TELEPORT_IDENTITY_FILE` | Path to identity file for remote connections |
-
----
-
 ## Troubleshooting
 
 ### Enable Debug Logging
@@ -2011,33 +2001,39 @@ tctl -d get roles
 ### Common Issues
 
 **"access denied" when running tctl:**
+
 - Ensure you have admin role access
 - For remote connections, use `--auth-server` and `-i` with a valid identity
 - Check if the identity file has expired
 - Verify the user's role includes the necessary `rules` for the resource type
 
 **"connection refused" to auth server:**
+
 - Check if Teleport auth service is running: `systemctl status teleport`
 - Verify the auth server address: default is `127.0.0.1:3025`
 - For remote access, use the proxy address with port 443
 - Ensure network connectivity and firewall rules allow the connection
 
 **"token not found" when using join tokens:**
+
 - List tokens: `tctl tokens ls`
 - Tokens expire; check TTL and recreate if needed
 - Verify the token type matches the joining service
 
 **"resource already exists" on create:**
+
 - Use `tctl create -f` to overwrite
 - Or use `tctl edit` to modify in place
 
 **CA rotation issues:**
+
 - Check current rotation status: `tctl status`
 - Use `--manual` mode for controlled step-by-step rotation
 - Rollback if needed: `tctl auth rotate --manual --type=<type> --phase=rollback`
 - Ensure grace period is sufficient for all clients to update
 
 **Identity file not working for remote tctl:**
+
 - Verify the file exists and is readable
 - Check if the identity was generated recently (certificates expire)
 - Ensure the user associated with the identity has admin privileges
@@ -2151,3 +2147,13 @@ tctl get locks --format=json
 # Remove a lock
 tctl rm lock/<lock-id>
 ```
+
+---
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `TELEPORT_CONFIG_FILE` | Path to tctl configuration file |
+| `TELEPORT_AUTH_SERVER` | Auth/proxy server address |
+| `TELEPORT_IDENTITY_FILE` | Path to identity file for remote connections |

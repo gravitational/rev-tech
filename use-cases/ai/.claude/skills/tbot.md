@@ -4,7 +4,7 @@ tbot issues and renews short-lived certificates so machines and workloads can ac
 
 **Binary:** `tbot` (Teleport v18+)
 **Image:** `public.ecr.aws/gravitational/tbot-distroless` (FIPS: `tbot-fips-distroless`)
-**Documentation:** https://goteleport.com/docs/reference/cli/tbot/
+**Documentation:** <https://goteleport.com/docs/reference/cli/tbot/>
 
 ---
 
@@ -12,9 +12,9 @@ tbot issues and renews short-lived certificates so machines and workloads can ac
 
 ### Generate a Configuration File
 
-Use `tbot configure <output-type>` to generate YAML. All `configure` subcommands mirror `start` subcommands.
+Use `tbot configure <output-type>` to generate YAML. All `configure` subcommands mirror `start` subcommands. All accept `-o, --output=PATH` to write to a file (defaults to stdout).
 
-Available configure subcommands: `identity`, `database`, `kubernetes`, `kubernetes/v2`, `application`, `database-tunnel`, `application-tunnel`, `application-proxy`, `ssh-multiplexer`, `workload-identity-x509`, `workload-identity-jwt`, `workload-identity-aws-roles-anywhere`, `workload-identity-api`, `legacy`.
+Available configure subcommands: `identity`, `database`, `kubernetes`, `kubernetes/v2`, `application`, `database-tunnel`, `application-tunnel`, `application-proxy`, `ssh-multiplexer`, `workload-identity-x509`, `workload-identity-jwt`, `workload-identity-aws-roles-anywhere`, `workload-identity-api`, `noop`, `legacy`.
 
 ```bash
 # Generate identity output config
@@ -55,7 +55,7 @@ tbot configure workload-identity-x509 \
 
 ### Start tbot Directly (CLI flags)
 
-Available start subcommands: `identity`, `database`, `kubernetes`, `kubernetes/v2`, `application`, `database-tunnel`, `application-tunnel`, `application-proxy`, `ssh-multiplexer`, `workload-identity-x509`, `workload-identity-jwt`, `workload-identity-aws-roles-anywhere`, `workload-identity-api`, `legacy`.
+Available start subcommands: `identity` (aliases: `ssh`, `id`), `database` (alias: `db`), `kubernetes` (alias: `k8s`), `kubernetes/v2` (alias: `k8s/v2`), `application` (alias: `app`), `database-tunnel` (alias: `db-tunnel`), `application-tunnel` (alias: `app-tunnel`), `application-proxy` (alias: `app-proxy`), `ssh-multiplexer`, `workload-identity-x509`, `workload-identity-jwt`, `workload-identity-aws-roles-anywhere`, `workload-identity-api`, `noop` (alias: `no-op`), `legacy`.
 
 ```bash
 # Identity output
@@ -142,8 +142,15 @@ tbot start workload-identity-x509 \
   --token=wi-bot \
   --destination=file:///opt/machine-id/svid \
   --name-selector=my-workload \
-  --label-selector=team=backend \
   --include-federated-trust-bundles
+
+# SPIFFE X.509 SVID output (with label selector -- mutually exclusive with --name-selector)
+tbot start workload-identity-x509 \
+  --proxy-server=example.teleport.sh:443 \
+  --join-method=kubernetes \
+  --token=wi-bot \
+  --destination=file:///opt/machine-id/svid \
+  --label-selector=team=backend
 
 # SPIFFE JWT SVID output
 tbot start workload-identity-jwt \
@@ -257,6 +264,7 @@ services: []   # all output and service types (see below)
 ## Output Types
 
 All output types support these optional per-output fields:
+
 - `roles` -- list of roles for certificate generation (overrides default)
 - `credential_ttl` -- per-output TTL override
 - `renewal_interval` -- per-output renewal interval override
@@ -774,6 +782,7 @@ When using the workload-identity-api with Kubernetes attestation, tbot must run 
 Three variants based on how the SA token is validated:
 
 **in_cluster** -- Uses Kubernetes TokenReview API. Requires network access from Teleport Auth to the K8s API.
+
 ```yaml
 kind: token
 version: v2
@@ -790,6 +799,7 @@ spec:
 ```
 
 **static_jwks** -- Validates SA JWT signatures using exported JWKS. Works when K8s API is not reachable from Teleport.
+
 ```yaml
 kind: token
 version: v2
@@ -811,6 +821,7 @@ spec:
 Export JWKS: `kubectl get --raw /openid/v1/jwks`
 
 **oidc** -- Uses publicly accessible OIDC issuer. Best for EKS, GKE, AKS.
+
 ```yaml
 kind: token
 version: v2
@@ -901,6 +912,7 @@ Non-renewable methods re-join on each renewal cycle. Prefer secret-free methods 
 ### Step-by-Step
 
 **1. Create a WorkloadIdentity resource in Teleport:**
+
 ```yaml
 kind: workload_identity
 version: v1
@@ -916,6 +928,7 @@ spec:
 Apply: `tctl create -f workload-identity.yaml`
 
 **2. Create an RBAC role for issuing the identity:**
+
 ```yaml
 kind: role
 version: v6
@@ -933,6 +946,7 @@ spec:
 Apply: `tctl create -f role.yaml`
 
 **3. Create a bot with the role:**
+
 ```yaml
 kind: bot
 version: v1
@@ -947,6 +961,7 @@ Apply: `tctl create -f bot.yaml`
 Or CLI: `tctl bots add wi-bot --roles=wi-issuer`
 
 **4. Create a join token:**
+
 ```yaml
 kind: token
 version: v2
@@ -965,6 +980,7 @@ spec:
 Apply: `tctl create -f token.yaml`
 
 **5. Deploy tbot with workload-identity-x509 output:**
+
 ```yaml
 version: v2
 proxy_server: "example.teleport.sh:443"
@@ -983,6 +999,7 @@ services:
 ```
 
 Or use workload-identity-api for the SPIFFE Workload API:
+
 ```yaml
 services:
   - type: workload-identity-api
@@ -992,6 +1009,7 @@ services:
 ```
 
 **6. In workloads, consume via SPIFFE SDK:**
+
 ```bash
 export SPIFFE_ENDPOINT_SOCKET=unix:///run/tbot/workload.sock
 ```
@@ -1060,6 +1078,9 @@ tbot wait --diag-addr=127.0.0.1:3025 --timeout=30s
 # Wait for a specific service to become ready
 tbot wait --diag-addr=127.0.0.1:3025 --service=my-service --timeout=30s
 
+# Print tbot version
+tbot version
+
 # Inspect SPIFFE Workload API
 tbot spiffe-inspect --path=unix:///run/tbot/workload.sock
 
@@ -1116,31 +1137,37 @@ tbot start -c /etc/tbot.yaml --debug
 ### Common Issues
 
 **"token not found" or "access denied" on join:**
+
 - Verify the token exists: `tctl tokens ls`
 - Check `bot_name` in token matches the bot name
 - For kubernetes join: verify ServiceAccount matches the `allow` rules (`NAMESPACE:SA_NAME`)
 - For in_cluster type: ensure Teleport Auth can reach the K8s API server
 
 **"certificate has expired":**
+
 - tbot renewal may have failed; check logs
 - Ensure `renewal_interval` < `credential_ttl`
 - For non-renewable join methods, tbot must be able to re-join
 
 **Kubernetes credentials not working:**
+
 - Verify the bot has a role granting `kubernetes_labels` matching the target cluster
 - Check cluster name matches exactly: `tctl get kube_cluster`
 
 **Workload identity SVIDs empty or not issued:**
+
 - Verify WorkloadIdentity resource exists: `tctl get workload_identity`
 - Verify bot role has `workload_identity_labels` matching the resource
 - Verify the selector in tbot config matches the resource name or labels
 
 **Permission denied on destination directory:**
+
 - Run `tbot init` to set up proper ownership and ACLs
 - Ensure the tbot user can write to the directory
 - For Kubernetes Secret destinations, ensure RBAC allows Secret create/update
 
 **Helm chart: pod in CrashLoopBackOff:**
+
 - Check logs: `kubectl logs deployment/tbot`
 - Verify `clusterName` and `teleportProxyAddress` are correct
 - Verify the join token exists and allows the ServiceAccount
@@ -1149,11 +1176,13 @@ tbot start -c /etc/tbot.yaml --debug
 ### Diagnostic Endpoint
 
 Run tbot with `--diag-addr=0.0.0.0:3025` and check:
+
 - `http://localhost:3025/healthz` -- health check
 - `http://localhost:3025/readyz` -- readiness check
 - `http://localhost:3025/livez` -- liveness check
 
 Use with Kubernetes probes:
+
 ```yaml
 # In Helm values or pod spec
 livenessProbe:
@@ -1168,19 +1197,6 @@ readinessProbe:
 
 ---
 
-## Environment Variables
-
-| Variable | Maps to |
-|----------|---------|
-| `TBOT_DEBUG` | `--debug` |
-| `TBOT_CONFIG_PATH` | `--config` |
-| `TELEPORT_AUTH_SERVER` | `--auth-server` |
-| `TELEPORT_PROXY` | `--proxy-server` |
-| `TELEPORT_BOT_TOKEN` | `--token` |
-| `SPIFFE_ENDPOINT_SOCKET` | Consumed by SPIFFE SDKs to find the Workload API |
-
----
-
 ## Global Flags
 
 | Flag | Description |
@@ -1190,6 +1206,8 @@ readinessProbe:
 | `--fips` | FIPS compliance mode |
 | `--insecure` | Skip TLS verification (never in production) |
 | `--log-format=text` | Log format: `text` or `json` |
+
+---
 
 ## Common Start/Configure Flags
 
@@ -1215,3 +1233,16 @@ These flags are shared across all `start` and `configure` subcommands (the `lega
 | `--registration-secret` | Registration secret for bound keypair join |
 | `--registration-secret-path` | File containing bound keypair registration secret |
 | `--static-key-path` | Path to static key for bound keypair join |
+
+---
+
+## Environment Variables
+
+| Variable | Maps to |
+|----------|---------|
+| `TBOT_DEBUG` | `--debug` |
+| `TBOT_CONFIG_PATH` | `--config` |
+| `TELEPORT_AUTH_SERVER` | `--auth-server` |
+| `TELEPORT_PROXY` | `--proxy-server` |
+| `TELEPORT_BOT_TOKEN` | `--token` |
+| `SPIFFE_ENDPOINT_SOCKET` | Consumed by SPIFFE SDKs to find the Workload API |

@@ -92,6 +92,7 @@ teleport join openssh --proxy-server=proxy.example.com:443 \
 ```bash
 # Print version
 teleport version
+teleport version --raw    # raw version string only
 
 # Print SSH session status
 teleport status
@@ -117,6 +118,7 @@ Starts the Teleport service. By default runs auth, proxy, and node services.
 | `--roles` | `-r` | Comma-separated service roles: proxy, node, auth, app, db | `node,proxy,auth` |
 | `--debug` | `-d` | Enable verbose logging to stderr | `false` |
 | `--token` | | Invitation token or path to file with token value | |
+| `--token-secret` | | Invitation token secret or path to file with secret value | |
 | `--auth-server` | | Address of the auth server (repeatable) | `127.0.0.1:3025` |
 | `--listen-ip` | `-l` | IP address to bind to | `0.0.0.0` |
 | `--advertise-ip` | | IP to advertise to clients if running behind NAT | |
@@ -707,10 +709,10 @@ Bootstrap the necessary configuration for the discovery agent.
 | `--proxy` | | Teleport proxy address | |
 | `--policy-name` | | Name of the Discovery service policy | `TeleportEC2Discovery` |
 | `--attach-to-role` | | Role name to attach policy to | |
+| `--external-id` | | Optional AWS external ID used when assuming an AWS role | |
 | `--attach-to-user` | | User name to attach policy to | |
 | `--assume-role-arn` | | Optional AWS IAM role to assume while bootstrapping | |
 | `--assumes-roles` | | Additional IAM roles to assume | |
-| `--external-id` | | Optional AWS external ID for assuming roles | |
 | `--database-service-role` | | Role name to attach database access policies to | |
 | `--database-service-policy-name` | | Policy name for database service bootstrap | `DatabaseAccess` |
 
@@ -944,7 +946,7 @@ force: false
 
 ```bash
 # Clone backend data
-teleport backend clone clone-config.yaml
+teleport backend clone --config clone-config.yaml
 
 # Get a backend key
 teleport backend get /tokens/my-token
@@ -1265,19 +1267,6 @@ All join methods supported across `teleport configure`, `teleport node configure
 
 ---
 
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `TELEPORT_CONFIG` | Path to configuration file (alternative to `--config`) |
-| `TELEPORT_DEBUG` | Enable debug logging (`1` or `true`) |
-| `TELEPORT_AUTH_SERVER` | Auth server address |
-| `TELEPORT_PROXY` | Proxy server address |
-| `TELEPORT_DATA_DIR` | Data directory path |
-| `TELEPORT_NODE_NAME` | Node name |
-
----
-
 ## Diagnostic Endpoint
 
 When started with `--diag-addr`, Teleport exposes health and metrics endpoints:
@@ -1438,3 +1427,16 @@ teleport debug profile cmdline,goroutine,mutex,threadcreate,trace,allocs,block,h
 | Default proxy web port | `3080` |
 | Default proxy SSH port | `3023` |
 | Default reverse tunnel port | `3024` |
+
+---
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `TELEPORT_CONFIG` | Path to configuration file (alternative to `--config`) |
+| `TELEPORT_DEBUG` | Enable debug logging (`1` or `true`) |
+| `TELEPORT_AUTH_SERVER` | Auth server address |
+| `TELEPORT_PROXY` | Proxy server address |
+| `TELEPORT_DATA_DIR` | Data directory path |
+| `TELEPORT_NODE_NAME` | Node name |

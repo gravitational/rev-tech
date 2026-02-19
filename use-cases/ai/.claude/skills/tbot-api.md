@@ -270,6 +270,7 @@ cfg := connection.Config{
 
 | AddressKind | Constant | Description |
 |-------------|----------|-------------|
+| Unspecified | `AddressKindUnspecified` | Auto-detect address type |
 | Proxy | `AddressKindProxy` | Connect via Teleport Proxy |
 | Auth | `AddressKindAuth` | Connect directly to Auth Server |
 
@@ -308,8 +309,9 @@ All `types.JoinMethod*` constants are supported: `JoinMethodToken`, `JoinMethodK
 import "github.com/gravitational/teleport/lib/tbot/bot"
 
 lifetime := bot.CredentialLifetime{
-    TTL:             time.Hour,        // certificate validity duration
-    RenewalInterval: 20 * time.Minute, // how often to renew
+    TTL:                  time.Hour,        // certificate validity duration
+    RenewalInterval:      20 * time.Minute, // how often to renew
+    SkipMaxTTLValidation: false,            // set true for services with non-standard limits
 }
 
 // Defaults:

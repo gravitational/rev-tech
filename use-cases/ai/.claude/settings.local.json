@@ -11,7 +11,13 @@
       "Bash(teleport:*)",
       "WebFetch(domain:goteleport.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(wc:*)",
+      "Bash(echo:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(for cmd in deployservice-iam ec2-ssm-iam aws-app-access-iam eks-iam awsoidc-idp listdatabases-iam externalauditstorage azure-oidc awsra-trust-anchor)",
+      "Bash(do echo \"=== $cmd ===\")",
+      "Bash(done)"
     ]
   },
   "model": "opus",
