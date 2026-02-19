@@ -344,7 +344,7 @@ services:
       - labels:
           env: production
     # disable_exec_plugin: false
-    # context_name_template: "{{.ClusterName}}-{{.KubeName}}"
+    # context_name_template: "{{.ClusterName}}-{{.KubeName}}"  # also supports {{.Labels}}
     # relay_server: relay.example.com:443
     destination:
       type: directory
@@ -410,7 +410,7 @@ services:
       path: /opt/machine-id/svid
 ```
 
-Files produced: `svid.pem`, `svid_key.pem`, `bundle.pem`
+Files produced: `svid.pem`, `svid.key`, `bundle.pem`
 
 ### workload-identity-jwt -- SPIFFE JWT SVID
 
@@ -425,6 +425,8 @@ services:
       type: directory
       path: /opt/machine-id/jwt
 ```
+
+Files produced: `jwt_svid`
 
 #### JWT SVID Claims and OIDC Compatibility
 
@@ -873,7 +875,7 @@ spec:
 ### Other Methods
 
 | Method | Use Case |
-|--------|----------|
+| -------- | ---------- |
 | `gcp` | GCP VMs with service accounts |
 | `azure` | Azure VMs with managed identity |
 | `github` | GitHub Actions OIDC |
@@ -891,7 +893,7 @@ spec:
 ### Join Method Properties
 
 | Method | Renewable | Secret-free |
-|--------|-----------|-------------|
+| -------- | ----------- | ------------- |
 | token | Yes | No (ephemeral secret) |
 | kubernetes | No | Yes |
 | iam | No | Yes |

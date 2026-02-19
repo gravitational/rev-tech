@@ -20,7 +20,7 @@ fdpass-teleport <path to mux socket> <connection target>
 | Argument | Description |
 |----------|-------------|
 | `<path to mux socket>` | Path to the Unix domain socket created by tbot's ssh-multiplexer service (e.g., `v1.sock` in the destination directory) |
-| `<connection target>` | The target address for the SSH connection, forwarded to the ssh-multiplexer service |
+| `<connection target>`  | The target address for the SSH connection, forwarded to the ssh-multiplexer service |
 
 There are no subcommands, flags, or environment variables. This is a minimal single-purpose binary. All invocations without exactly two arguments (including `--help`, `--version`) print the usage banner and exit with code 1.
 

@@ -32,7 +32,7 @@ When answering questions or making decisions about Teleport configuration, archi
 This project has detailed CLI skill files in `.claude/skills/`:
 
 | Skill | Covers |
-|-------|--------|
+| ------- | -------- |
 | `tctl.md` | Cluster admin: resources, users, bots, tokens, auth, locks, SSO, plugins |
 | `tsh.md` | Client CLI: SSH, databases, Kubernetes, apps, MCP, cloud providers |
 | `tbot.md` | Machine identity agent: outputs, tunnels, SPIFFE, Helm, join methods |

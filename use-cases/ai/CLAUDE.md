@@ -38,6 +38,10 @@ This project includes Claude Code skills for working with Teleport:
 - **`.claude/skills/teleport.md`** -- Teleport server daemon. Covers all service roles (auth, proxy, node, app, db, kube, discovery), start/configure commands, database configuration and bootstrapping, cloud integration configure (AWS OIDC, EC2 SSM, EKS, Azure, GCP), backend management, debug commands, OpenSSH joining, and systemd installation.
 - **`.claude/skills/fdpass-teleport.md`** -- Teleport SSH file descriptor passing helper. Covers the fd-passing architecture for tbot's ssh-multiplexer, ProxyCommand integration with OpenSSH 9.4+, usage examples, and troubleshooting.
 
+## Documentation
+
+General information about how Teleport works can be found <https://goteleport.com/docs/>
+
 ## Tech Choices
 
 - **Agent communication:** Google A2A protocol (JSON-RPC 2.0 over HTTP, SSE for streaming)
