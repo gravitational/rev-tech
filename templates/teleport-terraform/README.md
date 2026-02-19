@@ -27,6 +27,7 @@ templates/teleport-terraform/
 - **data-plane/server-access-ssh-getting-started** – Teleport SSH service on Amazon Linux (getting started guide).
 - **data-plane/application-access-grafana** – Grafana app access with JWT integration.
 - **data-plane/application-access-httpbin** – HTTPBin app access for quick testing.
+- **data-plane/application-access-aws-console** – Shared app host with one or more AWS Console apps (shared-account safe defaults).
 - **data-plane/database-access-mysql-self-managed** – self-hosted MySQL/MariaDB on EC2.
 - **data-plane/database-access-postgres-self-managed** – self-hosted PostgreSQL on EC2.
 - **data-plane/database-access-mongodb-self-managed** – self-hosted MongoDB on EC2.

@@ -53,7 +53,13 @@ locals {
     )
   } : {}
 
-  app_spec = merge(local.base_spec, local.rewrite_spec, local.mcp_spec)
+  aws_spec = var.app_aws_external_id != null ? {
+    aws = {
+      external_id = var.app_aws_external_id
+    }
+  } : {}
+
+  app_spec = merge(local.base_spec, local.rewrite_spec, local.mcp_spec, local.aws_spec)
 }
 
 resource "teleport_app" "this" {

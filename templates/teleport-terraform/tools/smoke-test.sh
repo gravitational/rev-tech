@@ -126,6 +126,21 @@ if [[ ${skip_verify} -eq 0 ]]; then
   verify_timeout="${verify_timeout_arg:-${TF_SMOKE_VERIFY_TIMEOUT_SECONDS:-180}}"
   verify_interval="${verify_interval_arg:-${TF_SMOKE_VERIFY_INTERVAL_SECONDS:-10}}"
   case "${template_dir}" in
+    application-access-aws-console|*/application-access-aws-console)
+      apps_out=$(tsh apps ls env=${env_label} --format=names || true)
+      if ! grep -q '^awsconsole-a$' <<< "${apps_out}"; then
+        echo "expected awsconsole-a app in env=${env_label}" >&2
+        tsh apps ls env=${env_label} || true
+        exit 1
+      fi
+      if [[ "${TF_VAR_enable_app_b:-false}" == "true" ]]; then
+        if ! grep -q '^awsconsole-b$' <<< "${apps_out}"; then
+          echo "expected awsconsole-b app in env=${env_label} when TF_VAR_enable_app_b=true" >&2
+          tsh apps ls env=${env_label} || true
+          exit 1
+        fi
+      fi
+      ;;
     application-access-*|*/application-access-*)
       tsh apps ls env=${env_label},team=${team_label}
       ;;

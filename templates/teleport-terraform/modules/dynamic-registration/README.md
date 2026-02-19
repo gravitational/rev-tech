@@ -121,12 +121,16 @@ labels = {
 | `name` | Name of the Teleport resource | `string` | - |
 | `description` | Description for the resource | `string` | `""` |
 | `protocol` | Protocol (database only: mysql, postgres, mongodb) | `string` | `""` |
-| `uri` | Connection URI (host:port for DB, full URL for apps) | `string` | - |
+| `uri` | Connection URI (host:port for DB, URL for web apps, optional for MCP stdio apps) | `string` | `null` |
 | `ca_cert_chain` | CA certificate chain in PEM format (database only) | `string` | `""` |
 | `public_addr` | Public address for application access (app only) | `string` | `null` |
 | `labels` | Labels to apply to the resource | `map(string)` | - |
 | `rewrite_headers` | HTTP headers to rewrite (app only) | `list(string)` | `[]` |
 | `insecure_skip_verify` | Skip TLS verification (app only) | `bool` | `false` |
+| `mcp_command` | Optional MCP stdio command (app only) | `string` | `null` |
+| `mcp_args` | Optional MCP stdio command args (app only) | `list(string)` | `[]` |
+| `mcp_run_as_host_user` | Optional host user for MCP stdio command | `string` | `null` |
+| `app_aws_external_id` | Optional `spec.aws.external_id` for AWS Console apps | `string` | `null` |
 
 ## Outputs
 

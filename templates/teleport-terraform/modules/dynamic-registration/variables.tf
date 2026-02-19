@@ -76,6 +76,12 @@ variable "mcp_run_as_host_user" {
   default     = null
 }
 
+variable "app_aws_external_id" {
+  description = "Optional AWS external_id for teleport_app.spec.aws.external_id"
+  type        = string
+  default     = null
+}
+
 variable "db_access_pattern" {
   description = "Database access pattern: 'mapped' for pre-created users, 'auto' for auto user provisioning"
   type        = string
