@@ -1,6 +1,6 @@
 # MCP Stdio App Module
 
-Deploys an EC2 instance running the Teleport Application Service with a stdio-based MCP server definition.
+Deploys an EC2 instance running the Teleport Application Service configured to discover dynamically registered MCP apps by labels.
 
 ## Usage
 
@@ -26,6 +26,6 @@ module "mcp_stdio_app" {
 ```
 
 ## Notes
-- Uses the Teleport Application Service to run the MCP server via stdio transport.
-- Ensure the host has the tools needed to execute the MCP command (e.g., `docker`).
-- The `run_as_host_user` must exist on the host and be able to execute the command.
+- This module configures only the App Service host (`app_service.resources` label matching).
+- Register MCP apps separately using `teleport_app` (for example via `modules/dynamic-registration`).
+- Ensure the host has the tools needed to execute the MCP command (e.g., `docker`) and the runtime user exists.

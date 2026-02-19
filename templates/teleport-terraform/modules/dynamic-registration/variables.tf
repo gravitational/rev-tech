@@ -28,6 +28,7 @@ variable "protocol" {
 variable "uri" {
   description = "Connection URI (host:port or app URI)"
   type        = string
+  default     = null
 }
 
 variable "ca_cert_chain" {
@@ -55,6 +56,24 @@ variable "rewrite_headers" {
 variable "insecure_skip_verify" {
   type    = bool
   default = false
+}
+
+variable "mcp_command" {
+  description = "Optional MCP stdio command for teleport_app.spec.mcp"
+  type        = string
+  default     = null
+}
+
+variable "mcp_args" {
+  description = "Optional MCP stdio args for teleport_app.spec.mcp"
+  type        = list(string)
+  default     = []
+}
+
+variable "mcp_run_as_host_user" {
+  description = "Optional host user for MCP stdio command"
+  type        = string
+  default     = null
 }
 
 variable "db_access_pattern" {

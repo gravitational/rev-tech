@@ -54,7 +54,23 @@ tsh ls env=dev,team=platform
 tsh ssh ec2-user@<ansible-host>
 ```
 
-5. Tear down:
+5. Run the Ansible playbook:
+
+```bash 
+# from the ec2-user's home directory
+cd ansible/
+vi hosts # add the names of Teleport nodes as shown in the note below
+ansible-playbook -i hosts playbook.yaml
+```
+
+> tsh ls --format=json | jq -r '.[].spec.hostname' can be used to gather hostnames of Teleport nodes. An example of the output used in the host file is shown below:
+> dev-desktop-service
+> dev-mysql
+> dev-ssh-0
+> dev-ssh-1
+> dev-ssh-2
+
+6. Tear down:
 
 ```bash
 terraform destroy
@@ -65,4 +81,6 @@ terraform destroy
 ## Notes
 - Bot permissions are scoped by labels (env/team)
 - The host contains `/opt/machine-id/ssh_config` for bot-based SSH
-- This example uses **bound keypair** onboarding for tbot (no expiring token join)
+- This example uses **bound keypair preregistered key** onboarding (`initial_public_key`)
+- Recovery mode is set to `insecure` for demo reliability when scope pin fields are unavailable
+- Bot names are generated as `<prefix>-<4 char suffix>` (default `ansible-xxxx`) to avoid backend collisions from reusing static bot names across rapid destroy/apply cycles

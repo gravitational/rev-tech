@@ -1,6 +1,6 @@
 #!/bin/bash
 #cloud-config
-set -euxo pipefail
+set -euo pipefail
 
 hostnamectl set-hostname "${env}-ansible"
 
@@ -10,8 +10,9 @@ yum install -y jq python3 python3-pip git
 # Install Ansible
 pip3 install ansible
 
-# Install Teleport
-curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
+# Install Teleport client/agent binaries from the cluster install script.
+# This avoids client/server feature skew during Machine ID onboarding.
+curl "https://${proxy_address}/scripts/install.sh" | bash
 echo "${node_token}" > /tmp/token
 
 # Write teleport.yaml
@@ -53,8 +54,6 @@ proxy_server: ${proxy_address}:443
 onboarding:
   join_method: bound_keypair
   token: ${bot_token}
-  bound_keypair:
-    registration_secret: ${bot_secret}
 storage:
   type: directory
   path: /var/lib/teleport/bot
@@ -72,9 +71,15 @@ useradd --system --shell /bin/false teleport || true
 mkdir -p /var/lib/teleport/bot
 mkdir -p /opt/machine-id
 
+# Seed preregistered bound keypair private key expected by tbot.
+cat <<-EOF >/var/lib/teleport/bot/id_bkp
+${bot_private_key}
+EOF
+
 # Set up proper group ownership for machine-id directory
 chown -R teleport:teleport /var/lib/teleport/
 chown -R teleport:teleport /opt/machine-id
+chmod 600 /var/lib/teleport/bot/id_bkp
 
 # Add ec2-user to teleport group for access
 usermod -aG teleport ec2-user
@@ -89,6 +94,8 @@ cat <<-EOF > /etc/systemd/system/tbot.service
 Description=tbot - Teleport Machine ID Service
 After=network-online.target
 Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
 
 [Service]
 Type=simple
@@ -96,8 +103,6 @@ User=teleport
 Group=teleport
 Restart=always
 RestartSec=15
-StartLimitBurst=5
-StartLimitIntervalSec=300
 TimeoutStartSec=120
 Environment="TELEPORT_ANONYMOUS_TELEMETRY=1"
 UMask=0027

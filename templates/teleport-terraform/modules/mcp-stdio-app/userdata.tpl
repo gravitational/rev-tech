@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euxo pipefail
+exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
 
 hostnamectl set-hostname "${name}"
 
@@ -8,9 +9,11 @@ sudo dnf install -y docker jq
 systemctl enable docker
 systemctl start docker
 
-# Create a dedicated user for running the MCP stdio command
-useradd --system --shell /bin/false docker || true
-usermod -aG docker docker
+# Create a dedicated user for running the MCP stdio command.
+# The docker group is created by the package install; ensure the user exists in that group.
+if ! id -u docker >/dev/null 2>&1; then
+  useradd --system --shell /bin/false --gid docker docker
+fi
 
 # Install Teleport
 curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
@@ -32,16 +35,11 @@ teleport:
       output: text
 app_service:
   enabled: true
-  apps:
-    - name: "${app_name}"
-      description: "${app_description}"
-      labels:
+  resources:
+    - labels:
         env: "${env}"
         team: "${team}"
-      mcp:
-        command: "${mcp_command}"
-        args: ${mcp_args_json}
-        run_as_host_user: "${run_as_host_user}"
+        teleport.dev/origin: "dynamic"
 ssh_service:
   enabled: true
   labels:

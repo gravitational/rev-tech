@@ -6,11 +6,17 @@ terraform {
     teleport = {
       source = "terraform.releases.teleport.dev/gravitational/teleport"
     }
+    tls = {
+      source = "hashicorp/tls"
+    }
+    random = {
+      source = "hashicorp/random"
+    }
   }
 }
 
 locals {
-  bot_name = "ansible"
+  bot_name = "${var.bot_name_prefix}-${random_string.bot_suffix.result}"
   user     = lower(split("@", var.user)[0])
 }
 
@@ -27,13 +33,26 @@ data "aws_ami" "linux" {
   }
 }
 
+resource "tls_private_key" "bound_keypair" {
+  algorithm = "ED25519"
+}
+
+resource "random_string" "bot_suffix" {
+  length  = 4
+  upper   = false
+  special = false
+}
+
 module "machineid_bot" {
   source = "../machineid-bot"
 
-  bot_name       = local.bot_name
-  role_name      = "ansible-machine-role"
-  allowed_logins = ["ec2-user", local.user]
-  node_labels    = { "env" = [var.env], "team" = [var.team] }
+  bot_name                      = local.bot_name
+  role_name                     = "ansible-machine-role"
+  allowed_logins                = ["ec2-user", local.user]
+  node_labels                   = { "env" = [var.env], "team" = [var.team] }
+  onboarding_initial_public_key = trimspace(tls_private_key.bound_keypair.public_key_openssh)
+  bound_keypair_recovery_mode   = "insecure"
+  bound_keypair_recovery_limit  = 100
 }
 
 resource "random_string" "token" {
@@ -53,6 +72,9 @@ resource "teleport_provision_token" "main" {
 }
 
 resource "aws_instance" "ansible_host" {
+  # Ensure bot role/user resources exist in Teleport before tbot starts on boot.
+  depends_on = [module.machineid_bot]
+
   ami                    = data.aws_ami.linux.id
   instance_type          = "t3.small"
   subnet_id              = var.subnet_id
@@ -64,7 +86,7 @@ resource "aws_instance" "ansible_host" {
     proxy_address    = var.proxy_address
     teleport_version = var.teleport_version
     bot_token        = module.machineid_bot.bot_token
-    bot_secret       = module.machineid_bot.bot_registration_secret
+    bot_private_key  = tls_private_key.bound_keypair.private_key_openssh
     node_token       = teleport_provision_token.main.metadata.name
   })
 

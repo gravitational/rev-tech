@@ -10,17 +10,13 @@ terraform {
 }
 
 resource "random_string" "bot_token" {
-  length           = 32
-  special          = true
-  override_special = "-.+"
-}
-
-resource "random_string" "registration_secret" {
   length  = 32
   special = false
 }
 
 resource "teleport_provision_token" "bot" {
+  depends_on = [teleport_bot.this]
+
   version = "v2"
   metadata = {
     name        = random_string.bot_token.result
@@ -31,12 +27,10 @@ resource "teleport_provision_token" "bot" {
     bot_name    = var.bot_name
     join_method = "bound_keypair"
     bound_keypair = {
-      onboarding = {
-        registration_secret = random_string.registration_secret.result
-      }
+      onboarding = local.onboarding
       recovery = {
-        mode  = "standard"
-        limit = 1
+        mode  = var.bound_keypair_recovery_mode
+        limit = var.bound_keypair_recovery_limit
       }
     }
   }
@@ -54,6 +48,7 @@ resource "teleport_role" "machine" {
 }
 
 locals {
+  onboarding = var.onboarding_initial_public_key != "" ? { initial_public_key = var.onboarding_initial_public_key } : {}
   allow = merge(
     length(var.allowed_logins) > 0 ? { logins = var.allowed_logins } : {},
     length(var.node_labels) > 0 ? { node_labels = var.node_labels } : {},

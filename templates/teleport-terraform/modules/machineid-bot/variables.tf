@@ -31,3 +31,25 @@ variable "mcp_tools" {
   type        = list(string)
   default     = []
 }
+
+variable "onboarding_initial_public_key" {
+  description = "Optional SSH public key for preregistered bound keypair onboarding"
+  type        = string
+  default     = ""
+}
+
+variable "bound_keypair_recovery_limit" {
+  description = "Maximum number of bound keypair recovery rejoins allowed"
+  type        = number
+  default     = 10
+}
+
+variable "bound_keypair_recovery_mode" {
+  description = "Bound keypair recovery mode: standard, relaxed, or insecure"
+  type        = string
+  default     = "standard"
+  validation {
+    condition     = contains(["standard", "relaxed", "insecure"], var.bound_keypair_recovery_mode)
+    error_message = "bound_keypair_recovery_mode must be one of: standard, relaxed, insecure."
+  }
+}

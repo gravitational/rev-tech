@@ -52,7 +52,7 @@ terraform apply
 
 ```bash
 tsh mcp ls
-tsh mcp config mcp-everything
+tsh mcp config mcp-everything-dev
 ```
 
 Use the `tsh mcp config` output to configure your MCP client (Claude Desktop, Cursor, etc.).
@@ -61,7 +61,10 @@ Use the `tsh mcp config` output to configure your MCP client (Claude Desktop, Cu
 
 ## Notes
 
+- The MCP app is created as a dynamic `teleport_app` resource named `mcp-everything-<env>`.
+- The Application Service host discovers MCP apps via `app_service.resources` label matching.
 - The MCP server is launched via `docker run -i --rm mcp/everything` on the Application Service host.
 - MCP stdio enrollment requires Teleport v18.1.0+.
 - The Machine ID bot token is exposed as a Terraform output for automated clients.
 - To use the bot, configure `tbot` with the token and grant access using `app_labels` and `mcp.tools`.
+- Bot names are generated as `<prefix>-<4 char suffix>` (default `mcp-bot-xxxx`) to avoid backend collisions from reusing static bot names across rapid destroy/apply cycles.

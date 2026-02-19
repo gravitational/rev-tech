@@ -29,7 +29,7 @@ resource "teleport_provision_token" "app" {
     name    = random_string.token.result
   }
   spec = {
-    roles = ["App"]
+    roles = ["App", "Node"]
   }
 }
 

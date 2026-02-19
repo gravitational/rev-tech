@@ -146,6 +146,9 @@ resource "kubectl_manifest" "role_dev_access" {
           { kind = "*", name = "*", namespace = "dev", verbs = ["*"] }
         ]
         logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}"]
+        mcp = {
+          tools = ["*"]
+        }
         node_labels = {
           env  = ["dev"]
           team = [var.dev_team]
@@ -215,6 +218,9 @@ resource "kubectl_manifest" "role_platform_dev_access" {
           { kind = "*", name = "*", namespace = "dev", verbs = ["*"] }
         ]
         logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}"]
+        mcp = {
+          tools = ["*"]
+        }
         node_labels = {
           env  = ["dev"]
           team = ["*"]
@@ -289,6 +295,9 @@ resource "kubectl_manifest" "role_prod_access" {
           { kind = "*", name = "*", namespace = "prod", verbs = ["*"] }
         ]
         logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}", "ubuntu", "ec2-user"]
+        mcp = {
+          tools = ["*"]
+        }
         node_labels = {
           env  = ["prod"]
           team = [var.prod_team]
@@ -340,6 +349,9 @@ resource "kubectl_manifest" "role_prod_readonly_access" {
         }
         db_names = ["*"]
         db_users = ["reader", "reporting", "{{external.readonly_db_user}}"]
+        mcp = {
+          tools = ["*"]
+        }
         kubernetes_labels = {
           env  = "prod"
           team = var.prod_team

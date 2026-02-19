@@ -5,7 +5,7 @@ output "bot_token" {
 
 output "bot_registration_secret" {
   description = "Registration secret for bound keypair onboarding"
-  value       = teleport_provision_token.bot.spec.bound_keypair.onboarding.registration_secret
+  value       = try(teleport_provision_token.bot.status.bound_keypair.registration_secret, null)
 }
 
 output "bot_name" {

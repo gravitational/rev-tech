@@ -34,3 +34,9 @@ variable "instance_type" {
   type        = string
   default     = "t3.small"
 }
+
+variable "bot_name_prefix" {
+  description = "Prefix for Machine ID bot name. A short random suffix is appended per deployment."
+  type        = string
+  default     = "mcp-bot"
+}

@@ -5,7 +5,7 @@ set -euo pipefail
 
 # Parse required positional arg and optional flags.
 if [[ $# -lt 1 ]]; then
-  echo "usage: $0 <template-dir> [--no-destroy] [--skip-verify]" >&2
+  echo "usage: $0 <template-dir> [--no-destroy] [--skip-verify] [--ssh-login=<login>] [--verify-timeout=<seconds>] [--verify-interval=<seconds>]" >&2
   echo "example: $0 data-plane/server-access-ssh-getting-started" >&2
   exit 1
 fi
@@ -15,6 +15,9 @@ shift
 
 no_destroy=0
 skip_verify=0
+ssh_login_arg=""
+verify_timeout_arg=""
+verify_interval_arg=""
 
 # Basic flag parsing (no short options to keep it simple).
 for arg in "$@"; do
@@ -24,6 +27,15 @@ for arg in "$@"; do
       ;;
     --skip-verify)
       skip_verify=1
+      ;;
+    --ssh-login=*)
+      ssh_login_arg="${arg#*=}"
+      ;;
+    --verify-timeout=*)
+      verify_timeout_arg="${arg#*=}"
+      ;;
+    --verify-interval=*)
+      verify_interval_arg="${arg#*=}"
       ;;
     *)
       echo "unknown option: $arg" >&2
@@ -110,7 +122,9 @@ trap cleanup EXIT
 if [[ ${skip_verify} -eq 0 ]]; then
   env_label="${TF_VAR_env:-dev}"
   team_label="${TF_VAR_team:-platform}"
-  ssh_login="${TF_SMOKE_SSH_LOGIN:-${TF_VAR_ssh_login:-ec2-user}}"
+  ssh_login="${ssh_login_arg:-${TF_SMOKE_SSH_LOGIN:-${TF_VAR_ssh_login:-ec2-user}}}"
+  verify_timeout="${verify_timeout_arg:-${TF_SMOKE_VERIFY_TIMEOUT_SECONDS:-180}}"
+  verify_interval="${verify_interval_arg:-${TF_SMOKE_VERIFY_INTERVAL_SECONDS:-10}}"
   case "${template_dir}" in
     application-access-*|*/application-access-*)
       tsh apps ls env=${env_label},team=${team_label}
@@ -125,20 +139,49 @@ if [[ ${skip_verify} -eq 0 ]]; then
       echo "desktop verification skipped: this tsh build has no desktop list command" >&2
       ;;
     machine-id-ansible|*/machine-id-ansible)
-      nodes=$(tsh ls env=${env_label},team=${team_label} --format=names)
+      # Give Teleport time to register the node before asserting readiness.
+      nodes=""
+      elapsed=0
+      while [[ ${elapsed} -le ${verify_timeout} ]]; do
+        nodes=$(tsh ls env=${env_label},team=${team_label} --format=names || true)
+        if [[ -n "${nodes}" ]]; then
+          break
+        fi
+        echo "waiting for nodes (env=${env_label}, team=${team_label})... ${elapsed}s/${verify_timeout}s"
+        sleep "${verify_interval}"
+        elapsed=$((elapsed + verify_interval))
+      done
       if [[ -z "${nodes}" ]]; then
-        echo "no nodes found for env=${env_label}, team=${team_label}" >&2
+        echo "no nodes found for env=${env_label}, team=${team_label} after ${verify_timeout}s" >&2
         exit 1
       fi
       while IFS= read -r node; do
         [[ -z "${node}" ]] && continue
         echo "checking tbot on ${node}"
-        tsh ssh -l "${ssh_login}" "${node}" -- "sudo systemctl is-active tbot"
+        if ! tsh ssh -l "${ssh_login}" "${node}" -- "sudo systemctl is-active tbot"; then
+          echo "tbot is not active on ${node}; collecting diagnostics..." >&2
+          tsh ssh -l "${ssh_login}" "${node}" -- "sudo systemctl status tbot --no-pager -l || true"
+          tsh ssh -l "${ssh_login}" "${node}" -- "sudo journalctl -u tbot -n 200 --no-pager || true"
+          tsh ssh -l "${ssh_login}" "${node}" -- "sudo cat /etc/tbot.yaml || true"
+          exit 1
+        fi
         echo "checking /opt/machine-id/ssh_config on ${node}"
-        tsh ssh -l "${ssh_login}" "${node}" -- "test -f /opt/machine-id/ssh_config"
+        if ! tsh ssh -l "${ssh_login}" "${node}" -- "test -f /opt/machine-id/ssh_config"; then
+          echo "missing /opt/machine-id/ssh_config on ${node}; collecting diagnostics..." >&2
+          tsh ssh -l "${ssh_login}" "${node}" -- "ls -la /opt/machine-id || true"
+          tsh ssh -l "${ssh_login}" "${node}" -- "sudo journalctl -u tbot -n 200 --no-pager || true"
+          tsh ssh -l "${ssh_login}" "${node}" -- "sudo cat /etc/tbot.yaml || true"
+          exit 1
+        fi
       done <<< "${nodes}"
       ;;
     machine-id-mcp|*/machine-id-mcp)
+      mcp_app_name="mcp-everything-${env_label}"
+      if ! tctl get "app/${mcp_app_name}" >/dev/null 2>&1; then
+        echo "expected MCP app ${mcp_app_name} not found in cluster resources" >&2
+        tctl get apps || true
+        exit 1
+      fi
       tsh mcp ls env=${env_label},team=${team_label}
       ;;
     *)

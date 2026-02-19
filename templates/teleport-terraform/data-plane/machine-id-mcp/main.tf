@@ -10,7 +10,17 @@ terraform {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
       version = "~> 18.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
+}
+
+resource "random_string" "bot_suffix" {
+  length  = 4
+  upper   = false
+  special = false
 }
 
 provider "aws" {
@@ -68,10 +78,27 @@ module "mcp_stdio_app" {
   team            = var.team
 }
 
+module "mcp_registration" {
+  source = "../../modules/dynamic-registration"
+
+  resource_type = "app"
+  name          = "mcp-everything-${var.env}"
+  description   = "MCP stdio demo server"
+  labels = {
+    env                              = var.env
+    team                             = var.team
+    "teleport.internal/app-sub-kind" = "mcp"
+  }
+
+  mcp_command          = "docker"
+  mcp_args             = ["run", "-i", "--rm", "mcp/everything"]
+  mcp_run_as_host_user = "docker"
+}
+
 module "machineid_bot" {
   source = "../../modules/machineid-bot"
 
-  bot_name       = "mcp-bot"
+  bot_name       = "${var.bot_name_prefix}-${random_string.bot_suffix.result}"
   role_name      = "mcp-bot-role"
   allowed_logins = []
   node_labels    = {}

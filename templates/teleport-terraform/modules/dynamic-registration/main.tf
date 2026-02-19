@@ -29,11 +29,11 @@ resource "teleport_database" "this" {
 
 # fix for dynamic block within map spec: assignment
 locals {
-  base_spec = {
-    uri                  = var.uri
-    public_addr          = var.public_addr
-    insecure_skip_verify = var.insecure_skip_verify
-  }
+  base_spec = merge(
+    var.uri != null ? { uri = var.uri } : {},
+    var.public_addr != null ? { public_addr = var.public_addr } : {},
+    var.insecure_skip_verify ? { insecure_skip_verify = true } : {}
+  )
 
   rewrite_spec = length(var.rewrite_headers) > 0 ? {
     rewrite = {
@@ -46,7 +46,14 @@ locals {
     }
   } : {}
 
-  app_spec = merge(local.base_spec, local.rewrite_spec)
+  mcp_spec = var.mcp_command != null ? {
+    mcp = merge(
+      { command = var.mcp_command, args = var.mcp_args },
+      var.mcp_run_as_host_user != null ? { run_as_host_user = var.mcp_run_as_host_user } : {}
+    )
+  } : {}
+
+  app_spec = merge(local.base_spec, local.rewrite_spec, local.mcp_spec)
 }
 
 resource "teleport_app" "this" {

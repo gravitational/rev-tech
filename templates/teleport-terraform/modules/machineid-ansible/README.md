@@ -31,7 +31,7 @@ module "machineid_ansible" {
 - **IAM Configuration:** No special IAM roles (uses Teleport for authentication)
 
 ### Teleport Resources
-- **Bot Identity:** `ansible` bot with appropriate roles for infrastructure access
+- **Bot Identity:** `<bot_name_prefix>-<4 char suffix>` bot with appropriate roles for infrastructure access
 - **Bot Token:** Provision token for bot authentication
 - **Teleport Role:** Custom role for machine access to target nodes
 
@@ -155,7 +155,7 @@ sudo systemctl status tbot
 version: v2
 proxy_server: {proxy_address}:443
 onboarding:
-  join_method: token
+  join_method: bound_keypair
   token: {bot_token}
 storage:
   type: directory
@@ -312,7 +312,7 @@ ansible all -m ping -vvv
 ### Bot Identity Verification
 ```bash
 # Check bot registration
-tctl get bot/ansible
+tctl get bots | grep ansible-
 tctl get role/ansible-machine-role
 
 # Verify bot token
