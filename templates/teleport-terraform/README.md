@@ -60,3 +60,8 @@ Each module includes its own README with usage and variable details.
 ## Tools
 
 - `templates/teleport-terraform/tools/terraform-templates-check.sh` – runs `terraform fmt -check` and `terraform validate` per template; supports optional plans with `RUN_TERRAFORM_PLAN=1` (requires AWS + Teleport credentials).
+
+## AWS Console Note
+
+The shared IAM ownership guidance applies to `data-plane/application-access-aws-console` only.
+Other data-plane templates are not expected to manage the same account-global IAM role set.

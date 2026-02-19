@@ -94,6 +94,18 @@ terraform import 'aws_iam_role.account_a["TeleportEC2Access"]' TeleportEC2Access
 terraform import 'aws_iam_role.account_a["TeleportAdminAccess"]' TeleportAdminAccess
 ```
 
+## Shared Account Policy
+
+This policy is specific to this AWS Console template.
+
+For shared AWS accounts, use this policy:
+
+- One dedicated IAM-owner stack (or team) manages shared roles and trust.
+- All other deployments keep `manage_account_a_roles=false` (default).
+- Other deployments only create app host infrastructure and reference existing role ARNs/names.
+
+This avoids role trust-policy drift when multiple users run Terraform concurrently in the same account.
+
 ## Notes
 
 - The host uses an EC2 instance profile (IMDSv2 required), so Teleport App Service assumes roles with instance credentials.
