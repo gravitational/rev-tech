@@ -19,13 +19,12 @@ When answering questions or making decisions about Teleport configuration, archi
   - `tbot`: <https://goteleport.com/docs/reference/cli/tbot/>
   - `teleport`: <https://goteleport.com/docs/reference/cli/teleport/>
   - `fdpass-teleport`: <https://goteleport.com/docs/reference/cli/fdpass-teleport/>
-- Machine ID (tbot): <https://goteleport.com/docs/machine-id/getting-started/>
-- Workload Identity / SPIFFE: <https://goteleport.com/docs/workload-identity/>
+- Workload Identity / SPIFFE: <https://goteleport.com/docs/machine-workload-identity/workload-identity/>
 - Access Controls: <https://goteleport.com/docs/access-controls/>
-- Application Access: <https://goteleport.com/docs/application-access/>
-- Database Access: <https://goteleport.com/docs/database-access/>
-- Kubernetes Access: <https://goteleport.com/docs/kubernetes-access/>
-- Server Access (SSH): <https://goteleport.com/docs/server-access/>
+- Application Access: <https://goteleport.com/docs/enroll-resources/application-access/getting-started/>
+- Database Access: <https://goteleport.com/docs/enroll-resources/database-access/>
+- Kubernetes Access: <https://goteleport.com/docs/enroll-resources/kubernetes-access/>
+- Server Access (SSH): <https://goteleport.com/docs/enroll-resources/server-access/getting-started/>
 
 ## Available Skills
 
