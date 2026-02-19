@@ -18,7 +18,7 @@ Key capabilities:
 
 ### Services
 
-- **frontend** -- Chainlit based web frontend <https://docs.chainlit.io/get-started/overview>
+- **frontend** -- Chainlit based web frontend <https://docs.chainlit.io>
 - **backend** -- Node.js/Koa BFF that serves the web app, validates Teleport JWT tokens, and proxies to orchestrator via A2A client
 - **orchestrator** -- LangGraph-based agent that discovers agents using Teleport App Access `tsh apps ls` with label selectors, converts each to a LangChain tool, and routes tasks to appropriate agents
 - **agent-ssh** -- SSH command execution agents (port 8081), uses tbot ssh-multiplexer

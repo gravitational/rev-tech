@@ -12,6 +12,9 @@ packages/backend/.web/
 .env.local
 .env.*.local
 infra/teleport/persistence/data/*
+.venv
+.chainlit
+.files
 
 # IDE
 .vscode/

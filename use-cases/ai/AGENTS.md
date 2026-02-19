@@ -25,6 +25,7 @@ When answering questions or making decisions about Teleport configuration, archi
 - Database Access: <https://goteleport.com/docs/enroll-resources/database-access/>
 - Kubernetes Access: <https://goteleport.com/docs/enroll-resources/kubernetes-access/>
 - Server Access (SSH): <https://goteleport.com/docs/enroll-resources/server-access/getting-started/>
+- ChainlitL <https://docs.chainlit.io>
 
 ## Available Skills
 
