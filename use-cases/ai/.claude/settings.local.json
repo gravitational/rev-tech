@@ -6,11 +6,15 @@
     "allow": [
       "Bash(tbot:*)",
       "Bash(tsh:*)",
+      "Bash(tctl:*)",
+      "Bash(fdpass-teleport:*)",
+      "Bash(teleport:*)",
       "WebFetch(domain:goteleport.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch"
     ]
   },
+  "model": "opus",
   "spinnerTipsEnabled": false,
-  "alwaysThinkingEnabled": true,
-  "model": "opus"
+  "alwaysThinkingEnabled": true
 }

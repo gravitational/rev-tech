@@ -3,6 +3,7 @@
 tsh is Teleport's client CLI for accessing SSH nodes, databases, Kubernetes clusters, applications, cloud providers, and MCP servers through Teleport's proxy service. It supports interactive login, headless authentication, and non-interactive access via tbot-issued identity files.
 
 **Binary:** `tsh` (Teleport v18+)
+**Documentation:** https://goteleport.com/docs/reference/cli/tsh/
 
 ---
 

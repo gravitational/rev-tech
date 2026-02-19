@@ -4,6 +4,7 @@ tbot issues and renews short-lived certificates so machines and workloads can ac
 
 **Binary:** `tbot` (Teleport v18+)
 **Image:** `public.ecr.aws/gravitational/tbot-distroless` (FIPS: `tbot-fips-distroless`)
+**Documentation:** https://goteleport.com/docs/reference/cli/tbot/
 
 ---
 
