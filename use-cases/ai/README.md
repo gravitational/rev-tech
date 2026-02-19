@@ -9,7 +9,7 @@ flowchart TB
     Proxy["Teleport Proxy"]
 
     subgraph frontend["Frontend"]
-        Web["Frontend (React)<br/><i>:5201</i>"]
+        Web["Frontend (Chainlit)<br/><i>:5201</i>"]
     end
 
     subgraph bff["Backend for Frontend"]
@@ -23,12 +23,12 @@ flowchart TB
         TbotOrch["tbot<br/><i>application-tunnels · identity</i>"]
     end
 
-    subgraph workers["Worker Agents"]
-        SSH["worker-ssh<br/><i>:8081</i>"]
-        Quotes["worker-quotes<br/><i>:8082</i>"]
-        DB["worker-db<br/><i>:8083</i>"]
-        K8s["worker-k8s<br/><i>:8084</i>"]
-        MCP["worker-mcp<br/><i>:8085</i>"]
+    subgraph agents["AI Agents"]
+        SSH["agent-ssh<br/><i>:8081</i>"]
+        Quotes["agent-quotes<br/><i>:8082</i>"]
+        DB["agent-db<br/><i>:8083</i>"]
+        K8s["agent-k8s<br/><i>:8084</i>"]
+        MCP["agent-mcp<br/><i>:8085</i>"]
     end
 
     subgraph sidecars["tbot Sidecars (Machine ID)"]
