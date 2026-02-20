@@ -5,18 +5,12 @@ This demo shows how Teleport secures multi-agent AI workflows with per-agent Mac
 ```mermaid
 flowchart TB
     User([User])
-    AppAccess["App Access<br/><i>JWT assertion</i>"]
+    AppAccess["App Access<br/><i>teleport-jwt-assertion</i>"]
     Proxy["Teleport Proxy"]
 
     subgraph frontend["Frontend"]
-        Web["Frontend (Chainlit)<br/><i>:5201</i>"]
+        Web["Frontend (Chainlit) attest JWT<br/><i>:5201</i>"]
     end
-
-    subgraph bff["Backend for Frontend"]
-        Backend["Backend (Koa)<br/><i>:5200 · JWT validation</i>"]
-        TbotBackend["tbot<br/><i>application-tunnel</i>"]
-    end
-
 
     subgraph orchestration["Orchestration"]
         Orchestrator["Orchestrator (LangGraph)<br/><i>:8080 · task routing</i>"]
@@ -49,9 +43,7 @@ flowchart TB
 
     User -->|"Teleport App Access"| AppAccess
     AppAccess --> Web
-    Web -->|"HTTP + SSE"| Backend
-    Backend --- TbotBackend
-    TbotBackend -->|"A2A over mTLS"| Proxy
+    Web -->|"HTTP + SSE"| Proxy
     Proxy -->|"A2A"| Orchestrator
     Orchestrator --- TbotOrch
     TbotOrch -->|"A2A over mTLS"| Proxy
