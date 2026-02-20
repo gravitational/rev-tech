@@ -9,7 +9,7 @@ flowchart TB
     Proxy["Teleport Proxy"]
 
     subgraph frontend["Frontend"]
-        Web["Frontend (Chainlit) attest JWT<br/><i>:5201</i>"]
+        Web["Frontend (Chainlit)<br/><i>:5201</i>"]
     end
 
     subgraph orchestration["Orchestration"]
