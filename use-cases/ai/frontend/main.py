@@ -15,6 +15,10 @@ SYSTEM_PROMPT = (
     "If the user greets you or asks a general question, respond directly."
 )
 
+# ----------------------------------------------------------------------------------------
+# Teleport JWT authentication: extract user info from the token and create a Chainlit user
+# ----------------------------------------------------------------------------------------
+
 @cl.header_auth_callback
 async def header_auth_callback(headers: Dict) -> Optional[cl.User]:
     token = headers.get("teleport-jwt-assertion")
