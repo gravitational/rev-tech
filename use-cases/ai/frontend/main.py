@@ -1,4 +1,7 @@
 import json
+import jwt
+import base64
+from typing import Optional, Dict
 import chainlit as cl
 import httpx
 from mcp import ClientSession
@@ -12,6 +15,30 @@ SYSTEM_PROMPT = (
     "If the user greets you or asks a general question, respond directly."
 )
 
+@cl.header_auth_callback
+async def header_auth_callback(headers: Dict) -> Optional[cl.User]:
+    token = headers.get("teleport-jwt-assertion")
+    if not token:
+        return None
+
+    try:
+        payload = jwt.decode(token, options={"verify_signature": False})
+
+        sub = payload.get("sub")
+        traits = payload.get("traits", {})
+        if not sub:
+            return None
+
+        display = traits.get("logins", [sub])[0]
+
+        return cl.User(
+            identifier=sub,
+            display_name=display,
+            metadata={"traits": traits, "display_name": display, "provider": "teleport"},
+        )
+    except Exception as e:
+        print(f"Failed to parse Teleport JWT: {e}")
+        return None
 
 # ---------------------------------------------------------------------
 # MCP connection: expose tools to Ollama
