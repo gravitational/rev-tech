@@ -1,6 +1,5 @@
 import json
 import jwt
-import base64
 from typing import Optional, Dict
 import chainlit as cl
 import httpx
