@@ -1,0 +1,22 @@
+{
+  "name": "General Knowledge Agent",
+  "description": "Answers general knowledge questions using a locally-hosted Ollama LLM. Best for open-ended questions, explanations, summaries, and reasoning tasks that do not require database access or document retrieval.",
+  "url": "http://localhost:9003",
+  "version": "1.0.0",
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "capabilities": { "streaming": false },
+  "skills": [
+    {
+      "id": "general-qa",
+      "name": "General Question Answering",
+      "description": "Answers open-ended questions, explains concepts, summarises topics, and performs general reasoning using a local Ollama LLM. Use this for any question that does not require live data, database queries, or document search.",
+      "tags": ["general", "knowledge", "qa", "ollama"],
+      "examples": [
+        "Explain how TLS certificates work",
+        "What is the difference between authentication and authorisation?",
+        "Summarise the CAP theorem"
+      ]
+    }
+  ]
+}

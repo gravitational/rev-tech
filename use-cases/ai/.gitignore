@@ -1,53 +1,29 @@
-# Dependencies
-node_modules/
-.pnpm-store/
-
-# Build output
-dist/
-packages/backend/.web/
-*.tsbuildinfo
-
 # Environment
 .env
-.env.local
-.env.*.local
-infra/teleport/persistence/data/*
-.venv
-.chainlit
-.files
+*.env
 
-# IDE
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# uv
+.uv/
+
+# VS Code
 .vscode/
-.idea/
-*.swp
-*.swo
-*~
 
-# OS
-.DS_Store
-Thumbs.db
+# Go
+operator/bin/
 
-# Test output
-coverage/
-test-results/
-playwright-report/
-blob-report/
-
-# Helm
-charts/*/charts/*.tgz
-Chart.lock
-
-# Teleport (local dev credentials)
-/tbot/
-*.identity
-
-# Secrets and keys
+# Teleport certs (never commit)
 *.pem
-*.key
 *.crt
-ssh-out/
-k8s-out/
-svid-out/
+*.key
+.tsh/
 
-# Logs
-*.log
+# macOS
+.DS_Store
