@@ -72,6 +72,60 @@ flowchart TB
     Proxy --> McpServers
 ```
 
+## Running the Agents
+
+### Prerequisites
+
+- Python ≥ 3.12
+- [`uv`](https://docs.astral.sh/uv/) package manager
+- One of the following LLM backends:
+  - **Anthropic** (default): API key required
+  - **Ollama**: running locally (e.g. `ollama run llama3.2`)
+  - **LM Studio**: running locally on port `1234`
+
+### Setup
+
+```bash
+cd use-cases/ai
+cp .env.example .env
+# Edit .env — set ANTHROPIC_API_KEY or configure your preferred LLM_PROVIDER
+uv sync
+```
+
+### Run all agents and the orchestrator
+
+```bash
+./scripts/local-run.sh
+```
+
+ Logs are written to `/tmp/a2a-demo-logs/`. Press `Ctrl+C` to stop all services.
+
+
+### Verify General knowledge agent
+
+```bash
+# Fetch the agent card
+curl http://localhost:9003/.well-known/agent.json
+
+# Ask a question (A2A JSON-RPC)
+curl -s http://localhost:9003/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "message/send",
+    "params": {
+      "message": {
+        "messageId": "1",
+        "role": "user",
+        "parts": [{"kind": "text", "text": "Explain how TLS certificates work"}]
+      }
+    },
+    "id": 1
+  }' | jq
+```
+
+---
+
 ## How Teleport Secures This
 
 - **Per-agent Machine Identity** -- Each worker gets its own tbot sidecar with a unique `BOT_NAME`, issuing short-lived certificates via Teleport Machine ID.
