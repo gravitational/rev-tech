@@ -10,6 +10,6 @@
 [tool.uv.workspace]
 members = [
     "frontend",
-    # "agents",        # TODO: add when feature/ai-base-specialist-agent merges
-    # "orchestrator",  # TODO: add when feature/ai-base-specialist-agent merges
+    "agents",
+    # "orchestrator",  # TODO: add when orchestrator is promoted from untracked
 ]
