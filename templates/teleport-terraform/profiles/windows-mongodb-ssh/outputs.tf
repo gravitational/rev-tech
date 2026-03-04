@@ -18,8 +18,8 @@ output "connection_guide" {
        tsh db connect mongodb-${var.env} --db-user=teleport --db-name=test
 
     4. Windows Desktop:
-       tsh desktop ls env=${var.env},team=${var.team}
-       tsh desktop connect <desktop-name>
+       Open the Teleport Web UI → Resources → filter by Desktops
+       (Desktop connections require the Web UI or Teleport Connect app)
 
     ──────────────────────────────────────────────────────
   EOT

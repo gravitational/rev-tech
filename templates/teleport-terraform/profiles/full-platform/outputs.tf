@@ -24,7 +24,8 @@ output "connection_guide" {
        tsh apps login awsconsole-${var.env}
 
     5. Windows Desktop:
-       tsh desktop ls env=${var.env},team=${var.team}
+       Open the Teleport Web UI → Resources → filter by Desktops
+       (Desktop connections require the Web UI or Teleport Connect app)
 
     6. MCP / Machine ID:
        tsh mcp ls env=${var.env},team=${var.team}

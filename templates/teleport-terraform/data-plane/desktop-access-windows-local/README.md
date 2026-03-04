@@ -50,11 +50,9 @@ terraform apply
 
 4. Access:
 
-```bash
-tsh desktops ls
-```
+Open the Teleport Web UI → **Resources** → filter by **Desktops**, then click **Connect**.
 
-Then connect via the Teleport Web UI or your preferred RDP client through Teleport.
+Alternatively, use the Teleport Connect desktop app.
 
 5. Tear down:
 

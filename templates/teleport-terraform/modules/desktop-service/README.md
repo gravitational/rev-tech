@@ -152,7 +152,7 @@ tsh play <session-id>
 ```hcl
 windows_hosts = [
   {
-    name    = "dev-desktop-01"              # Name shown in tsh desktops ls
+    name    = "dev-desktop-01"              # Name shown in the Teleport Web UI
     address = "10.0.1.100:3389"             # Windows instance IP:port
   },
   {
