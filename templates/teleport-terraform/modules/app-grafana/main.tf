@@ -24,19 +24,25 @@ resource "random_string" "token" {
 resource "teleport_provision_token" "grafana" {
   version = "v2"
   metadata = {
-    expires = timeadd(timestamp(), "1h")
+    expires = timeadd(timestamp(), "8h")
   }
   spec = {
     roles = ["App", "Node"]
     name  = random_string.token.result
   }
+  # timestamp() changes on every plan, causing perpetual drift noise.
+  # The token only needs to live long enough for the instance to boot and register.
+  lifecycle {
+    ignore_changes = [metadata]
+  }
 }
 
 resource "aws_instance" "grafana" {
-  ami                         = var.ami_id
-  instance_type               = var.instance_type
-  subnet_id                   = var.subnet_id
-  associate_public_ip_address = true
+  ami           = var.ami_id
+  instance_type = var.instance_type
+  subnet_id     = var.subnet_id
+  # Teleport nodes register via outbound reverse tunnel — no public IP needed.
+  associate_public_ip_address = false
   vpc_security_group_ids      = var.security_group_ids
 
   user_data = templatefile("${path.module}/userdata.tpl", {

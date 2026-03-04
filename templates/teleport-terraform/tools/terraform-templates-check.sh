@@ -15,10 +15,14 @@ Requirements:
   - For RUN_TERRAFORM_PLAN=1:
       * AWS credentials in this shell (e.g., aws sts get-caller-identity works)
       * Teleport Terraform auth exported (eval $(tctl terraform env))
+  - For RUN_CONFTEST=1 (policy checks against plan JSON):
+      * conftest on PATH (brew install conftest)
+      * All RUN_TERRAFORM_PLAN=1 requirements
 
 Usage:
   ./tools/terraform-templates-check.sh
   RUN_TERRAFORM_PLAN=1 ./tools/terraform-templates-check.sh
+  RUN_TERRAFORM_PLAN=1 RUN_CONFTEST=1 ./tools/terraform-templates-check.sh
   SKIP_TERRAFORM_INIT=1 ./tools/terraform-templates-check.sh
 HEADER
 
@@ -81,9 +85,54 @@ if [[ "${RUN_TERRAFORM_PLAN:-}" == "1" ]]; then
   done <<< "${template_dirs}"
 fi
 
+# ---------------------------------------------------------------------------
+# Conftest policy checks (optional, requires RUN_TERRAFORM_PLAN=1 first).
+#
+# Runs OPA policies in tools/policy/ against each template's plan JSON.
+# Policies check for: IMDSv2, EBS encryption, no public IPs, Teleport label
+# conventions, and IAM wildcard principals.
+#
+# To run: RUN_TERRAFORM_PLAN=1 RUN_CONFTEST=1 ./tools/terraform-templates-check.sh
+# Install conftest: brew install conftest
+# ---------------------------------------------------------------------------
+if [[ "${RUN_CONFTEST:-}" == "1" ]]; then
+  if [[ "${RUN_TERRAFORM_PLAN:-}" != "1" ]]; then
+    echo "RUN_CONFTEST=1 requires RUN_TERRAFORM_PLAN=1 to generate plan JSON files first." >&2
+    exit 1
+  fi
+  if ! command -v conftest >/dev/null 2>&1; then
+    echo "conftest not found; install with: brew install conftest" >&2
+    exit 1
+  fi
+  policy_dir="${script_dir}/policy"
+  echo "==> conftest policy checks (per template)"
+  conftest_failed=0
+  while IFS= read -r dir; do
+    [[ -z "${dir}" ]] && continue
+    plan_json="${dir}/plan.json"
+    if [[ ! -f "${plan_json}" ]]; then
+      # Generate plan JSON inline if not already present.
+      (cd "${dir}" && terraform plan -input=false -out=plan.bin -no-color >/dev/null 2>&1)
+      (cd "${dir}" && terraform show -json plan.bin > plan.json)
+      rm -f "${dir}/plan.bin"
+    fi
+    echo "-- ${dir##*/}"
+    if ! conftest test "${plan_json}" --policy "${policy_dir}" --no-color; then
+      conftest_failed=1
+    fi
+    # Clean up plan JSON — it may contain sensitive values.
+    rm -f "${plan_json}"
+  done <<< "${template_dirs}"
+  if [[ ${conftest_failed} -ne 0 ]]; then
+    echo "conftest: one or more policy checks failed" >&2
+    exit 1
+  fi
+fi
+
 cat <<'NOTE'
 
 NOTE: terraform init may download providers; ensure network access or run once with provider cache.
 Set SKIP_TERRAFORM_INIT=1 to skip init if already initialized.
 Set RUN_TERRAFORM_PLAN=1 to run terraform plan per template (requires credentials).
+Set RUN_CONFTEST=1 (with RUN_TERRAFORM_PLAN=1) to run OPA policy checks via conftest.
 NOTE

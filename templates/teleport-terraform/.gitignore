@@ -1,14 +1,23 @@
-# Terraform local state
+# Terraform local state and cache — never commit these
 .terraform/
-.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
+
+# .terraform.lock.hcl IS committed intentionally for reproducibility.
+# When adding a new template or module, generate a multi-platform lock file:
+#   terraform providers lock \
+#     -platform=linux_amd64 \
+#     -platform=linux_arm64 \
+#     -platform=darwin_arm64 \
+#     -platform=darwin_amd64
+# This ensures the same provider checksums work on both macOS (SE laptops)
+# and Linux (CI runners) without re-downloading on every init.
 
 # Crash logs
 crash.log
 crash.*.log
 
-# Local variable overrides
+# Local variable overrides — keep credentials and personal values out of git
 *.tfvars
 *.tfvars.json
 

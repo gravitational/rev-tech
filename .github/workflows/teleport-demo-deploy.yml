@@ -1,0 +1,199 @@
+# teleport-demo-deploy.yml
+#
+# Manual one-click demo deployment workflow for Solutions Engineers.
+#
+# USAGE: GitHub → Actions tab → "Deploy Teleport Demo" → "Run workflow"
+# Fill in the inputs and click Run. The workflow provisions the selected
+# use cases in AWS and registers them with your Teleport Cloud cluster.
+#
+# REQUIRED SECRETS (Settings → Secrets and variables → Actions):
+#   AWS_ROLE_ARN         - IAM role ARN to assume via OIDC (recommended) or
+#                          AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (fallback)
+#   TELEPORT_PROXY       - Your Teleport Cloud proxy hostname (e.g., myorg.teleport.sh)
+#   TELEPORT_TOKEN       - A Teleport bot/machine-id token with terraform provider access
+#                          Generate via: tctl tokens add --type=terraform_provider
+#   TELEPORT_IDENTITY    - Base64-encoded tbot identity file for the terraform provider
+#                          Generate via: tctl auth sign --format=file --out=identity | base64
+#
+# AWS OIDC SETUP (recommended — no long-lived keys):
+#   1. Create an OIDC provider in IAM: https://token.actions.githubusercontent.com
+#   2. Create an IAM role with trust policy allowing this repo to assume it.
+#   3. Set AWS_ROLE_ARN secret to the role ARN.
+#   See: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
+
+name: Deploy Teleport Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      use_cases:
+        description: "Use cases to deploy (comma-separated). Leave blank for all."
+        required: false
+        default: "server-access-ssh-getting-started"
+        type: string
+
+      env_label:
+        description: "Environment label applied to all Teleport resources (env= label)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+
+      team_label:
+        description: "Team label applied to all Teleport resources (team= label)"
+        required: true
+        default: "platform"
+        type: choice
+        options:
+          - platform
+          - sre
+          - app
+
+      aws_region:
+        description: "AWS region to deploy into"
+        required: true
+        default: "us-east-2"
+        type: choice
+        options:
+          - us-east-1
+          - us-east-2
+          - us-west-2
+          - eu-west-1
+          - ap-southeast-1
+
+      teleport_version:
+        description: "Teleport version to install on nodes (e.g., 18.0.0)"
+        required: true
+        default: "18.0.0"
+        type: string
+
+      destroy:
+        description: "Destroy deployed resources instead of applying"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  TF_IN_AUTOMATION: "1"
+  TF_VAR_env: ${{ inputs.env_label }}
+  TF_VAR_team: ${{ inputs.team_label }}
+  TF_VAR_region: ${{ inputs.aws_region }}
+  TF_VAR_proxy_address: ${{ secrets.TELEPORT_PROXY }}
+  TF_VAR_teleport_version: ${{ inputs.teleport_version }}
+  # user is derived from the GitHub actor who triggered the workflow.
+  TF_VAR_user: ${{ github.actor }}@github-actions
+
+jobs:
+  deploy:
+    name: ${{ inputs.destroy == true && 'Destroy' || 'Deploy' }} — ${{ inputs.use_cases }} (${{ inputs.env_label }})
+    runs-on: ubuntu-latest
+    # Limit concurrency per env label so two SEs don't stomp each other's
+    # dev/stage/prod deployment in the same account.
+    concurrency:
+      group: teleport-demo-${{ inputs.env_label }}
+      cancel-in-progress: false
+
+    permissions:
+      id-token: write  # required for AWS OIDC
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+
+      # AWS OIDC authentication (no long-lived keys stored).
+      # If you prefer key-based auth, replace this step with:
+      #   aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #   aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ inputs.aws_region }}
+
+      # Write the Teleport identity file so the Terraform provider can auth.
+      # The identity file is a short-lived credential — generate a fresh one
+      # before running this workflow if it has expired.
+      - name: Write Teleport identity file
+        run: |
+          echo "${{ secrets.TELEPORT_IDENTITY }}" | base64 -d > /tmp/teleport-identity
+          # Export provider credentials so Terraform picks them up automatically.
+          echo "TELEPORT_IDENTITY_FILE=/tmp/teleport-identity" >> "$GITHUB_ENV"
+
+      - name: Determine templates to deploy
+        id: templates
+        run: |
+          templates_root="templates/teleport-terraform"
+          input_list="${{ inputs.use_cases }}"
+
+          if [[ -z "${input_list}" ]]; then
+            # Deploy all data-plane templates.
+            templates=$(find "${templates_root}/data-plane" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | tr '\n' ',')
+          else
+            templates="${input_list}"
+          fi
+
+          echo "list=${templates}" >> "$GITHUB_OUTPUT"
+          echo "Templates selected: ${templates}"
+
+      - name: Deploy / Destroy templates
+        env:
+          TEMPLATES: ${{ steps.templates.outputs.list }}
+        run: |
+          templates_root="templates/teleport-terraform"
+          action="${{ inputs.destroy == true && 'destroy' || 'apply' }}"
+          failed=()
+
+          IFS=',' read -ra template_list <<< "${TEMPLATES}"
+          for template in "${template_list[@]}"; do
+            template="$(echo "${template}" | tr -d '[:space:]')"
+            [[ -z "${template}" ]] && continue
+
+            workdir="${templates_root}/data-plane/${template}"
+            if [[ ! -d "${workdir}" ]]; then
+              echo "::warning::Template directory not found: ${workdir} — skipping"
+              continue
+            fi
+
+            echo "::group::${action}: ${template}"
+            if terraform -chdir="${workdir}" init -backend=false; then
+              if [[ "${action}" == "apply" ]]; then
+                terraform -chdir="${workdir}" apply -auto-approve -input=false || failed+=("${template}")
+              else
+                terraform -chdir="${workdir}" destroy -auto-approve -input=false || failed+=("${template}")
+              fi
+            else
+              echo "::error::terraform init failed for ${template}"
+              failed+=("${template}")
+            fi
+            echo "::endgroup::"
+          done
+
+          if [[ ${#failed[@]} -gt 0 ]]; then
+            echo "::error::Failed templates: ${failed[*]}"
+            exit 1
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          action="${{ inputs.destroy == true && 'Destroyed' || 'Deployed' }}"
+          echo "### ${action} use cases" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Variable | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Use cases | \`${{ inputs.use_cases }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Environment | \`${{ inputs.env_label }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Team | \`${{ inputs.team_label }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Region | \`${{ inputs.aws_region }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Triggered by | \`${{ github.actor }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "To verify: \`tsh ls env=${{ inputs.env_label }},team=${{ inputs.team_label }}\`" >> "$GITHUB_STEP_SUMMARY"

@@ -47,10 +47,10 @@ data "aws_ami" "linux" {
 
 module "network" {
   source             = "../../modules/network"
-  cidr_vpc           = "10.0.0.0/16"
-  cidr_subnet        = "10.0.1.0/24"
-  cidr_public_subnet = "10.0.0.0/24"
   env                = var.env
+  cidr_vpc           = var.cidr_vpc
+  cidr_subnet        = var.cidr_subnet
+  cidr_public_subnet = var.cidr_public_subnet
 }
 
 module "grafana_app" {

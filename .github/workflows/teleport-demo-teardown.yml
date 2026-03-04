@@ -1,0 +1,174 @@
+# teleport-demo-teardown.yml
+#
+# Scheduled safety net: destroys all demo stacks that were deployed via the
+# teleport-demo-deploy.yml workflow and still have resources running.
+#
+# RUNS: Every Monday at 08:00 UTC (4am EST) — before the work week starts.
+# Can also be triggered manually from the Actions tab at any time.
+#
+# WHY: SEs routinely forget to destroy demo environments after calls.
+# This prevents runaway AWS costs and keeps the account clean.
+#
+# BEHAVIOR:
+# - Runs terraform destroy on all data-plane templates for the dev environment.
+# - Skips templates that have no state / resources (destroy is idempotent).
+# - Posts a summary to the GitHub Actions job summary and optionally to Slack.
+#
+# REQUIRED SECRETS: Same as teleport-demo-deploy.yml
+#   AWS_ROLE_ARN, TELEPORT_PROXY, TELEPORT_IDENTITY
+#
+# OPTIONAL SECRETS:
+#   SLACK_WEBHOOK_URL - If set, posts teardown summary to Slack.
+
+name: Scheduled Demo Teardown
+
+on:
+  # Every Monday at 08:00 UTC.
+  schedule:
+    - cron: "0 8 * * 1"
+
+  # Allow manual trigger from the Actions tab (e.g., "clean up after a call").
+  workflow_dispatch:
+    inputs:
+      env_label:
+        description: "Environment to tear down"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+          - all
+
+      aws_region:
+        description: "AWS region where demos were deployed"
+        required: true
+        default: "us-east-2"
+        type: choice
+        options:
+          - us-east-1
+          - us-east-2
+          - us-west-2
+          - eu-west-1
+          - ap-southeast-1
+
+env:
+  TF_IN_AUTOMATION: "1"
+  # Scheduled run always targets dev in us-east-2.
+  # Manual runs use the inputs above.
+  TARGET_ENV: ${{ inputs.env_label || 'dev' }}
+  TARGET_REGION: ${{ inputs.aws_region || 'us-east-2' }}
+
+jobs:
+  teardown:
+    name: Teardown ${{ inputs.env_label || 'dev' }} demos
+    runs-on: ubuntu-latest
+    concurrency:
+      group: teleport-demo-teardown-${{ inputs.env_label || 'dev' }}
+      cancel-in-progress: false
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.TARGET_REGION }}
+
+      - name: Write Teleport identity file
+        run: |
+          echo "${{ secrets.TELEPORT_IDENTITY }}" | base64 -d > /tmp/teleport-identity
+          echo "TELEPORT_IDENTITY_FILE=/tmp/teleport-identity" >> "$GITHUB_ENV"
+
+      - name: Destroy all data-plane templates
+        id: teardown
+        run: |
+          templates_root="templates/teleport-terraform"
+          destroyed=()
+          skipped=()
+          failed=()
+
+          for dir in "${templates_root}"/data-plane/*/; do
+            template="$(basename "${dir}")"
+            workdir="${templates_root}/data-plane/${template}"
+
+            echo "::group::destroy: ${template}"
+
+            if ! terraform -chdir="${workdir}" init -backend=false -input=false; then
+              echo "::warning::init failed for ${template} — skipping"
+              skipped+=("${template}")
+              echo "::endgroup::"
+              continue
+            fi
+
+            # -refresh=false skips reading current state for resources that
+            # were never applied — makes destroy fast for clean templates.
+            if terraform -chdir="${workdir}" destroy \
+                -auto-approve \
+                -input=false \
+                -var="env=${{ env.TARGET_ENV }}" \
+                -var="region=${{ env.TARGET_REGION }}" \
+                -var="proxy_address=${{ secrets.TELEPORT_PROXY }}" \
+                -var="user=teardown-bot@github-actions" \
+                2>&1 | tee /tmp/destroy-output.txt; then
+              destroyed+=("${template}")
+            else
+              # If destroy failed because there is no state (resources never
+              # applied), that's fine — treat it as skipped.
+              if grep -q "No changes\|nothing to do\|no state" /tmp/destroy-output.txt; then
+                skipped+=("${template}")
+              else
+                failed+=("${template}")
+              fi
+            fi
+
+            echo "::endgroup::"
+          done
+
+          # Write results for use in summary and Slack notification steps.
+          echo "destroyed=${destroyed[*]}" >> "$GITHUB_OUTPUT"
+          echo "skipped=${skipped[*]}" >> "$GITHUB_OUTPUT"
+          echo "failed=${failed[*]}" >> "$GITHUB_OUTPUT"
+
+          if [[ ${#failed[@]} -gt 0 ]]; then
+            echo "::error::Destroy failed for: ${failed[*]}"
+            exit 1
+          fi
+
+      - name: Job summary
+        if: always()
+        run: |
+          echo "### Scheduled Demo Teardown — ${{ env.TARGET_ENV }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Region:** \`${{ env.TARGET_REGION }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Triggered by:** ${{ github.event_name == 'schedule' && 'scheduled cron' || github.actor }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Result | Templates |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Destroyed | \`${{ steps.teardown.outputs.destroyed }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Skipped (no state) | \`${{ steps.teardown.outputs.skipped }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Failed | \`${{ steps.teardown.outputs.failed }}\` |" >> "$GITHUB_STEP_SUMMARY"
+
+      # Optional: post to Slack if SLACK_WEBHOOK_URL secret is set.
+      - name: Notify Slack
+        if: always() && secrets.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "Teleport demo teardown (${{ env.TARGET_ENV }}) complete.\nDestroyed: ${{ steps.teardown.outputs.destroyed }}\nFailed: ${{ steps.teardown.outputs.failed || 'none' }}"
+            }

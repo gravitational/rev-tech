@@ -68,9 +68,9 @@ module "network" {
   name_prefix        = "${local.user_prefix}-${var.env}"
   tags               = local.resource_tags
   env                = var.env
-  cidr_vpc           = "10.0.0.0/16"
-  cidr_subnet        = "10.0.1.0/24" # private
-  cidr_public_subnet = "10.0.0.0/24" # public
+  cidr_vpc           = var.cidr_vpc
+  cidr_subnet        = var.cidr_subnet
+  cidr_public_subnet = var.cidr_public_subnet
 
   # RDS-related flags left at defaults:
   # create_secondary_subnet = false
@@ -79,7 +79,7 @@ module "network" {
 }
 
 # ---------------------------------------------------------------------------
-# SSH nodes: sources config for ssh nodes teleport will be installed on 
+# SSH nodes: sources config for ssh nodes teleport will be installed on
 # ---------------------------------------------------------------------------
 
 module "ssh_nodes" {

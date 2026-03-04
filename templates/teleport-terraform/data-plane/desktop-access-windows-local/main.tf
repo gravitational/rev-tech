@@ -28,6 +28,14 @@ provider "teleport" {
   addr = "${var.proxy_address}:443"
 }
 
+locals {
+  user_prefix = lower(split("@", var.user)[0])
+  resource_tags = {
+    "teleport.dev/creator" = var.user
+    "env"                  = var.env
+    "Example"              = "desktop-access-windows-local"
+  }
+}
 
 data "aws_ami" "linux" {
   most_recent = true
@@ -61,10 +69,12 @@ data "aws_ami" "windows_server" {
 
 module "network" {
   source             = "../../modules/network"
-  cidr_vpc           = "10.0.0.0/16"
-  cidr_subnet        = "10.0.1.0/24"
-  cidr_public_subnet = "10.0.0.0/24"
+  name_prefix        = "${local.user_prefix}-${var.env}"
+  tags               = local.resource_tags
   env                = var.env
+  cidr_vpc           = var.cidr_vpc
+  cidr_subnet        = var.cidr_subnet
+  cidr_public_subnet = var.cidr_public_subnet
 }
 
 module "windows_instance" {

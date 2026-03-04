@@ -438,6 +438,25 @@ resource "kubectl_manifest" "role_dev_reviewer" {
   })
 }
 
+resource "kubectl_manifest" "role_prod_reviewer" {
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportRoleV7"
+    metadata = {
+      name      = "prod-reviewer"
+      namespace = data.kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      allow = {
+        review_requests = {
+          roles            = ["prod-readonly-access", "prod-access"]
+          preview_as_roles = ["prod-readonly-access", "prod-access"]
+        }
+      }
+    }
+  })
+}
+
 # Access Lists
 resource "kubectl_manifest" "access_list_everyone" {
   yaml_body = yamlencode({
@@ -499,7 +518,7 @@ resource "kubectl_manifest" "access_list_engineers" {
         { name = "admin", description = "Platform team admin" }
       ]
       grants = {
-        roles = ["platform-dev-access", "dev-reviewer", "prod-requester"]
+        roles = ["platform-dev-access", "dev-reviewer", "prod-requester", "prod-reviewer"]
       }
     }
   })

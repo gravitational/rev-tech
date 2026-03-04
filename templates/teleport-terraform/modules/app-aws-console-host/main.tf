@@ -59,20 +59,26 @@ resource "random_string" "token" {
 resource "teleport_provision_token" "app_host" {
   version = "v2"
   metadata = {
-    expires = timeadd(timestamp(), "1h")
+    expires = timeadd(timestamp(), "8h")
   }
   spec = {
     roles = ["App", "Node"]
     name  = random_string.token.result
   }
+  # timestamp() changes on every plan, causing perpetual drift noise.
+  # The token only needs to live long enough for the instance to boot and register.
+  lifecycle {
+    ignore_changes = [metadata]
+  }
 }
 
 resource "aws_instance" "app_host" {
-  ami                         = var.ami_id
-  instance_type               = var.instance_type
-  subnet_id                   = var.subnet_id
-  vpc_security_group_ids      = var.security_group_ids
-  associate_public_ip_address = true
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = var.subnet_id
+  vpc_security_group_ids = var.security_group_ids
+  # Teleport nodes register via outbound reverse tunnel — no public IP needed.
+  associate_public_ip_address = false
   iam_instance_profile        = aws_iam_instance_profile.app_host.name
 
   user_data = templatefile("${path.module}/userdata.tpl", {
