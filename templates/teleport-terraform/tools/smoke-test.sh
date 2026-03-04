@@ -127,19 +127,22 @@ if [[ ${skip_verify} -eq 0 ]]; then
   verify_interval="${verify_interval_arg:-${TF_SMOKE_VERIFY_INTERVAL_SECONDS:-10}}"
   case "${template_dir}" in
     application-access-aws-console|*/application-access-aws-console)
-      apps_out=$(tsh apps ls env=${env_label} --format=names || true)
-      if ! grep -q '^awsconsole-a$' <<< "${apps_out}"; then
-        echo "expected awsconsole-a app in env=${env_label}" >&2
-        tsh apps ls env=${env_label} || true
+      expected_apps_json=$(cd "${workdir}" && terraform output -json apps 2>/dev/null || echo "[]")
+      expected_apps=$(echo "${expected_apps_json}" | tr -d '[]"' | tr ',' '\n' | sed '/^[[:space:]]*$/d' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+      if [[ -z "${expected_apps}" ]]; then
+        echo "no expected apps returned by terraform output 'apps'" >&2
         exit 1
       fi
-      if [[ "${TF_VAR_enable_app_b:-false}" == "true" ]]; then
-        if ! grep -q '^awsconsole-b$' <<< "${apps_out}"; then
-          echo "expected awsconsole-b app in env=${env_label} when TF_VAR_enable_app_b=true" >&2
-          tsh apps ls env=${env_label} || true
+
+      apps_out=$(tsh apps ls env=${env_label},team=${team_label} --format=names || true)
+      while IFS= read -r expected_app; do
+        [[ -z "${expected_app}" ]] && continue
+        if ! grep -qx "${expected_app}" <<< "${apps_out}"; then
+          echo "expected app ${expected_app} in env=${env_label},team=${team_label}" >&2
+          tsh apps ls env=${env_label},team=${team_label} || true
           exit 1
         fi
-      fi
+      done <<< "${expected_apps}"
       ;;
     application-access-*|*/application-access-*)
       tsh apps ls env=${env_label},team=${team_label}
