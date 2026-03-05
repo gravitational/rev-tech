@@ -1,4 +1,4 @@
-# client-versions
+# get-client-versions
 
 Extracts `tsh` client version information from a Teleport cluster's audit log by
 querying `cert.create` and `user.login` events over a configurable time window.
@@ -77,7 +77,7 @@ Replace `18.6.4` with your cluster version. Run `go mod tidy` afterwards.
 ## Usage
 
 ```
-go run main.go --proxy <host:port> [--days <n>]
+go run main.go --proxy <host:port> [--days <n>] [--verbose]
 ```
 
 ### Flags
@@ -86,6 +86,7 @@ go run main.go --proxy <host:port> [--days <n>]
 |------|---------|-------------|
 | `--proxy` | *(required)* | Teleport proxy address, e.g. `teleport.example.com:443` |
 | `--days` | `90` | Number of days to look back in the audit log |
+| `--verbose` | `false` | Print each matching event to stdout as it is found |
 
 ### Examples
 
@@ -98,18 +99,33 @@ go run main.go --proxy teleport.example.com:443
 Search the last 30 days and save the event log to a file:
 
 ```bash
-go run main.go --proxy teleport.example.com:443 --days 30 > events.txt
+go run main.go --proxy teleport.example.com:443 --days 30 --verbose > events.txt
 ```
 
 ## Output
 
-Raw events are printed to stdout in the form:
+By default, only the per-user summary is printed to stdout. Pass `--verbose` to
+also print each matching event as it is found.
+
+Progress is printed to stderr while scanning, including the date of the most
+recently seen event so you can gauge how far through the time window the scan
+has progressed:
+
+```
+Searching audit events from 2025-12-05 to 2026-03-05...
+  page 1     scanned 500    matched 12      latest event date 2025-12-09
+  page 2     scanned 1000   matched 24      latest event date 2025-12-18
+  ...
+Done.
+```
+
+In verbose mode, matching events are printed to stdout as they are found:
 
 ```
 event=cert.create     time=2026-02-10T17:49:23Z  user=alice  user_agent=tsh/18.6.6 grpc-go/1.75.0
 ```
 
-The per-user summary is printed to stderr at the end:
+The per-user summary is always printed to stdout at the end:
 
 ```
 --- Latest tsh version per user ---
