@@ -54,7 +54,7 @@ services:
       type: directory
       path: /opt/machine-id/ssh-mux
     # enable_resumption: true          # SSH session resumption (default: true)
-    # proxy_command: ["fdpass-teleport"]  # custom ProxyCommand binary path
+    proxy_command: ['/usr/local/bin/fdpass-teleport']
     # proxy_templates_path: /etc/tbot/proxy-templates.yaml
     # relay_server: relay.example.com:443
 ```
