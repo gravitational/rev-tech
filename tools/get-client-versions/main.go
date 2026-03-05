@@ -33,9 +33,33 @@ type latestVersion struct {
 	source  string
 }
 
+func printRecord(r record) {
+	fmt.Printf("event=%-15s time=%-30s user=%-30s user_agent=%s\n",
+		r.eventType,
+		r.time.Format(time.RFC3339),
+		r.user,
+		r.userAgent,
+	)
+}
+
+func updateLatest(m map[string]latestVersion, user, userAgent string, t time.Time, source string) {
+	// Extract just the tsh/x.y.z token from the user agent string.
+	version := userAgent
+	for _, part := range strings.Fields(userAgent) {
+		if strings.HasPrefix(part, "tsh/") {
+			version = part
+			break
+		}
+	}
+	if cur, ok := m[user]; !ok || t.After(cur.time) {
+		m[user] = latestVersion{version: version, time: t, source: source}
+	}
+}
+
 func main() {
 	proxy := flag.String("proxy", "", "Teleport proxy address (e.g. proxy.example.com:443)")
 	days := flag.Int("days", 90, "Number of days to look back in the audit log")
+	verbose := flag.Bool("verbose", false, "Print each matching event as it is found")
 	flag.Parse()
 
 	if *proxy == "" {
@@ -65,11 +89,12 @@ func main() {
 		from.Format(time.DateOnly), to.Format(time.DateOnly))
 
 	var (
-		nextKey string
-		records []record
-		latest  = map[string]latestVersion{}
-		total   int
-		page    int
+		nextKey     string
+		records     []record
+		latest      = map[string]latestVersion{}
+		total       int
+		page        int
+		lastEvtTime time.Time
 	)
 
 	for {
@@ -89,7 +114,11 @@ func main() {
 
 		page++
 		total += len(evts)
-		fmt.Fprintf(os.Stderr, "  page %-4d  scanned %-6d  matched %-6d\n", page, total, len(records))
+		if len(evts) > 0 {
+			lastEvtTime = evts[len(evts)-1].GetTime()
+		}
+		fmt.Fprintf(os.Stderr, "  page %-4d  scanned %-6d  matched %-6d  latest event date %s\n",
+			page, total, len(records), lastEvtTime.Format(time.DateOnly))
 
 		for _, evt := range evts {
 			switch e := evt.(type) {
@@ -103,12 +132,16 @@ func main() {
 				if e.ClientMetadata.UserAgent == "" {
 					continue
 				}
-				records = append(records, record{
+				r := record{
 					eventType: "cert.create",
 					time:      e.GetTime(),
 					user:      e.Identity.User,
 					userAgent: e.ClientMetadata.UserAgent,
-				})
+				}
+				records = append(records, r)
+				if *verbose {
+					printRecord(r)
+				}
 				if strings.HasPrefix(e.ClientMetadata.UserAgent, "tsh/") {
 					updateLatest(latest, e.Identity.User, e.ClientMetadata.UserAgent, e.GetTime(), "cert.create")
 				}
@@ -117,12 +150,16 @@ func main() {
 				if e.ClientMetadata.UserAgent == "" {
 					continue
 				}
-				records = append(records, record{
+				r := record{
 					eventType: "user.login",
 					time:      e.GetTime(),
 					user:      e.User,
 					userAgent: e.ClientMetadata.UserAgent,
-				})
+				}
+				records = append(records, r)
+				if *verbose {
+					printRecord(r)
+				}
 				if strings.HasPrefix(e.ClientMetadata.UserAgent, "tsh/") {
 					updateLatest(latest, e.User, e.ClientMetadata.UserAgent, e.GetTime(), "user.login")
 				}
@@ -136,21 +173,10 @@ func main() {
 	}
 
 	fmt.Fprintf(os.Stderr, "Done.\n\n")
-
-	for _, r := range records {
-		fmt.Printf("event=%-15s time=%-30s user=%-30s user_agent=%s\n",
-			r.eventType,
-			r.time.Format(time.RFC3339),
-			r.user,
-			r.userAgent,
-		)
-	}
-
 	fmt.Fprintf(os.Stderr, "%d records total.\n", len(records))
 
 	if len(latest) > 0 {
-		fmt.Fprintf(os.Stderr, "\n--- Latest tsh version per user ---\n")
-		// Collect and sort users for deterministic output.
+		fmt.Println("\n--- Latest tsh version per user ---")
 		users := make([]string, 0, len(latest))
 		for u := range latest {
 			users = append(users, u)
@@ -158,22 +184,8 @@ func main() {
 		sort.Strings(users)
 		for _, u := range users {
 			l := latest[u]
-			fmt.Fprintf(os.Stderr, "  %-30s  %-20s  last seen %-30s  via %s\n",
+			fmt.Printf("  %-30s  %-20s  last seen %-30s  via %s\n",
 				u, l.version, l.time.Format(time.RFC3339), l.source)
 		}
-	}
-}
-
-func updateLatest(m map[string]latestVersion, user, userAgent string, t time.Time, source string) {
-	// Extract just the tsh/x.y.z token from the user agent string.
-	version := userAgent
-	for _, part := range strings.Fields(userAgent) {
-		if strings.HasPrefix(part, "tsh/") {
-			version = part
-			break
-		}
-	}
-	if cur, ok := m[user]; !ok || t.After(cur.time) {
-		m[user] = latestVersion{version: version, time: t, source: source}
 	}
 }
