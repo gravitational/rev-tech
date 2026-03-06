@@ -1,71 +1,86 @@
-# Postgres Self-Hosted Demo
+# Database Access — PostgreSQL (Self-Managed)
 
-This example demonstrates deploying a self-hosted PostgreSQL database on EC2 and integrating it with Teleport's Database Access via certificate-based authentication.
+Deploys a self-hosted PostgreSQL instance on EC2 with mutual TLS and registers it with Teleport Database Access.
 
-It mirrors the official [Teleport self-hosted Postgres guide](https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/postgres-self-hosted/) and is modularized for reuse.
+**Use case:** Show passwordless, certificate-based database access with full session recording for a self-managed relational database.
 
-## Overview
+Mirrors the official [Self-Hosted PostgreSQL guide](https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/postgres-self-hosted/).
 
-- Launches a PostgreSQL 15 EC2 instance with TLS enabled
-- Installs and configures Teleport on the instance
-- Registers the database with Teleport using the `teleport_database` resource
-- Applies `env` + `team` labels for RBAC targeting
-- Uses a custom CA to sign the Postgres server certificate
-- Provides Teleport access to roles like `reader` and `writer` using CN-matching
+---
 
-## Files
+## What It Deploys
 
-- `main.tf`: Terraform configuration for deploying the EC2 instance and registering it with Teleport
-- `userdata.tpl`: Cloud-init script for configuring PostgreSQL and Teleport on boot
+- 1 EC2 instance running PostgreSQL 15 on Amazon Linux 2023
+- Custom CA and server TLS certificate for mTLS connectivity
+- Teleport agent with `db_service` and `ssh_service`
+- Dynamic database registration (`demo-postgres`) with `env` + `team` labels
 
-## Requirements
+---
 
-- Terraform CLI
-- AWS credentials
-- Teleport Enterprise proxy running and accessible
-- `teleport_db_ca.pem` exported from your Teleport cluster via `/webapi/auth/export`
-
-## Inputs
-
-Update `main.tf` with values appropriate to your environment:
-
-- `ami_id`: Valid Amazon Linux 2023 or RHEL-based AMI that supports PostgreSQL 15
-- `subnet_id`: Subnet to deploy the instance into
-- `security_group_ids`: Security group(s) allowing outbound to Teleport Proxy (443) and SSH (22)
-- `proxy_address`: Your Teleport Proxy domain (e.g., `teleport.example.com`)
-- `teleport_db_ca`: The Teleport CA used for database access
-
-## Usage
+## Deploy
 
 ```bash
-export TF_VAR_user="engineer@example.com"
-export TF_VAR_proxy_address="teleport.example.com"
-export TF_VAR_teleport_version="18.6.4"
-export TF_VAR_region="us-east-2"
-export TF_VAR_env="dev"
-export TF_VAR_team="platform"
-```
+tsh login --proxy=myorg.teleport.sh
+eval $(tctl terraform env)
 
-Or:
+export TF_VAR_user=you@company.com
+export TF_VAR_proxy_address=myorg.teleport.sh
+export TF_VAR_teleport_version=18.6.4
+export TF_VAR_env=dev
+export TF_VAR_team=platform
+export TF_VAR_region=us-east-2
 
-```bash
-cp terraform.tfvars.example terraform.tfvars
-```
-
-```bash
+cd data-plane/database-access-postgres-self-managed
 terraform init
 terraform apply
 ```
 
-Access:
+Allow 3–5 minutes for the instance to boot, configure PostgreSQL, and register.
+
+---
+
+## Access
 
 ```bash
-tsh db ls env=dev,team=platform
+tsh db ls env=dev,team=platform        # demo-postgres
 tsh db connect demo-postgres --db-user=reader
 ```
 
-Tear down:
+To connect as a writer:
+
+```bash
+tsh db connect demo-postgres --db-user=writer
+```
+
+---
+
+## Demo Points
+
+- **No database password** — Teleport issues short-lived X.509 certificates; PostgreSQL validates the Teleport DB CA using `cert` auth, not a password
+- **Role-based access** — `reader` and `writer` database users are mapped from Teleport roles using certificate CN matching; the user never sees a credential
+- **Session recording** — every query is captured in the Teleport audit log tied to the Teleport username, not a shared DB account
+- **Credential-free** — certificates are generated on-demand and expire when the session ends; there is nothing to rotate or leak
+
+---
+
+## Teardown
 
 ```bash
 terraform destroy
 ```
+
+---
+
+## Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `user` | Your email — used for tagging | **required** |
+| `proxy_address` | Teleport proxy hostname | **required** |
+| `teleport_version` | Teleport version to install | **required** |
+| `env` | Environment label | **required** |
+| `team` | Team label | `"platform"` |
+| `region` | AWS region | **required** |
+| `cidr_vpc` | VPC CIDR | `"10.0.0.0/16"` |
+| `cidr_subnet` | Private subnet CIDR | `"10.0.1.0/24"` |
+| `cidr_public_subnet` | Public subnet CIDR (NAT) | `"10.0.0.0/24"` |

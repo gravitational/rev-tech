@@ -1,70 +1,85 @@
 # Machine ID + MCP (stdio)
 
-This template deploys a Teleport Application Service running a stdio-based MCP server and provisions a Machine ID bot for automated access.
+Deploys a Teleport Application Service running a stdio-based MCP server and provisions a Machine ID bot for automated, certificate-based access by AI clients.
 
-It follows the official [MCP stdio enrollment guide](https://goteleport.com/docs/enroll-resources/mcp-access/enrolling-mcp-servers/stdio/).
+**Use case:** Show how AI agents (Claude Desktop, Cursor, etc.) access internal MCP tools through Teleport with no long-lived credentials, RBAC enforcement, and full audit logging.
+
+Follows the official [MCP stdio enrollment guide](https://goteleport.com/docs/enroll-resources/mcp-access/enrolling-mcp-servers/stdio/).
 
 ---
 
 ## What It Deploys
 
-- 1 EC2 instance running Teleport Application Service with an MCP stdio server
-- MCP app registered with `env` + `team` labels for RBAC targeting
-- A Machine ID bot and role scoped to MCP access (`mcp.tools = ["*"]`) and matching labels
+- 1 EC2 instance (t3.small) running Teleport Application Service with an MCP stdio server
+- MCP app registered as `mcp-everything-<env>` with `env` + `team` labels
+- Machine ID bot and role scoped to MCP access (`mcp.tools = ["*"]`) and matching labels
 - Shared VPC/subnet/security group baseline
 
 ---
 
-## Usage
-
-1. Authenticate to your Teleport cluster:
+## Deploy
 
 ```bash
-tsh login --proxy=teleport.example.com --auth=example
+tsh login --proxy=myorg.teleport.sh
 eval $(tctl terraform env)
-```
 
-2. Set variables (preferred) or use a tfvars file:
+export TF_VAR_user=you@company.com
+export TF_VAR_proxy_address=myorg.teleport.sh
+export TF_VAR_teleport_version=18.6.4
+export TF_VAR_env=dev
+export TF_VAR_team=platform
+export TF_VAR_region=us-east-2
 
-```bash
-export TF_VAR_user="engineer@example.com"
-export TF_VAR_proxy_address="teleport.example.com"
-export TF_VAR_teleport_version="18.6.4"
-export TF_VAR_region="us-east-2"
-export TF_VAR_env="dev"
-export TF_VAR_team="platform"
-```
-
-Or:
-
-```bash
-cp terraform.tfvars.example terraform.tfvars
-```
-
-3. Deploy:
-
-```bash
+cd data-plane/machine-id-mcp
 terraform init
 terraform apply
 ```
 
-4. Access MCP servers:
-
-```bash
-tsh mcp ls
-tsh mcp config mcp-everything-dev
-```
-
-Use the `tsh mcp config` output to configure your MCP client (Claude Desktop, Cursor, etc.).
+Allow 3–5 minutes for the instance to boot and the MCP server to register.
 
 ---
 
-## Notes
+## Access
 
-- The MCP app is created as a dynamic `teleport_app` resource named `mcp-everything-<env>`.
-- The Application Service host discovers MCP apps via `app_service.resources` label matching.
-- The MCP server is launched via `docker run -i --rm mcp/everything` on the Application Service host.
-- MCP stdio enrollment requires Teleport v18.1.0+.
-- The Machine ID bot token is exposed as a Terraform output for automated clients.
-- To use the bot, configure `tbot` with the token and grant access using `app_labels` and `mcp.tools`.
-- Bot names are generated as `<prefix>-<4 char suffix>` (default `mcp-bot-xxxx`) to avoid backend collisions from reusing static bot names across rapid destroy/apply cycles.
+```bash
+tsh mcp ls                              # mcp-everything-dev
+tsh mcp config mcp-everything-dev
+```
+
+Copy the `tsh mcp config` output into your MCP client configuration (Claude Desktop, Cursor, etc.) to connect.
+
+---
+
+## Demo Points
+
+- **No long-lived credentials** — the Machine ID bot receives short-lived certificates issued by Teleport; the AI client never holds a static API key or password
+- **Tool-level RBAC** — the bot role grants access only to specific MCP tool patterns (`mcp.tools = ["*"]` scoped to matching labels); access can be narrowed to individual tools
+- **Full audit trail** — every MCP tool call is logged in Teleport's audit log with the bot identity, enabling compliance and incident response
+- **Revocable access** — removing the bot from the role immediately cuts off the AI client's access to the MCP server
+- **Requires Teleport v18.1.0+**
+
+---
+
+## Teardown
+
+```bash
+terraform destroy
+```
+
+---
+
+## Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `user` | Your email — used for tagging | **required** |
+| `proxy_address` | Teleport proxy hostname | **required** |
+| `teleport_version` | Teleport version to install | **required** |
+| `env` | Environment label | **required** |
+| `team` | Team label | `"platform"` |
+| `region` | AWS region | **required** |
+| `instance_type` | EC2 instance type | `"t3.small"` |
+| `bot_name_prefix` | Prefix for the Machine ID bot name | `"mcp-bot"` |
+| `cidr_vpc` | VPC CIDR | `"10.0.0.0/16"` |
+| `cidr_subnet` | Private subnet CIDR | `"10.0.1.0/24"` |
+| `cidr_public_subnet` | Public subnet CIDR (NAT) | `"10.0.0.0/24"` |

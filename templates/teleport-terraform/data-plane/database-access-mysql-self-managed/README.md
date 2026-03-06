@@ -1,67 +1,86 @@
-# MySQL Self-Hosted (Teleport)
+# Database Access — MySQL (Self-Managed)
 
-This example provisions a self-hosted MySQL database on EC2, sets up TLS, and uses the Teleport Database Service to register the database dynamically.
+Deploys a self-hosted MySQL instance on EC2 with mutual TLS and registers it with Teleport Database Access.
 
-It mirrors the official [Teleport self-hosted MySQL guide](https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/mysql-self-hosted/) and is modularized for reuse.
+**Use case:** Show passwordless, certificate-based database access with full session recording for a self-managed relational database.
+
+Mirrors the official [Self-Hosted MySQL guide](https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/mysql-self-hosted/).
 
 ---
 
 ## What It Deploys
 
 - 1 EC2 instance running MySQL (MariaDB) on Ubuntu 22.04
-- A custom CA and server TLS certificate for encrypted MySQL access
+- Custom CA and server TLS certificate for mTLS connectivity
 - Teleport agent with `db_service` and `ssh_service`
-- Teleport dynamic discovery enabled via label matching: `env = dev`, `team = platform`
+- Dynamic database registration (`demo-mysql`) with `env` + `team` labels
 
 ---
 
-## Usage
-
-1. Authenticate to your Teleport cluster:
+## Deploy
 
 ```bash
-tsh login --proxy=teleport.example.com --auth=example
+tsh login --proxy=myorg.teleport.sh
 eval $(tctl terraform env)
-```
 
-2. Set variables (preferred) or use a tfvars file:
+export TF_VAR_user=you@company.com
+export TF_VAR_proxy_address=myorg.teleport.sh
+export TF_VAR_teleport_version=18.6.4
+export TF_VAR_env=dev
+export TF_VAR_team=platform
+export TF_VAR_region=us-east-2
 
-```bash
-export TF_VAR_user="engineer@example.com"
-export TF_VAR_proxy_address="teleport.example.com"
-export TF_VAR_teleport_version="18.6.4"
-export TF_VAR_region="us-east-2"
-export TF_VAR_env="dev"
-export TF_VAR_team="platform"
-```
-
-Or:
-
-```bash
-cp terraform.tfvars.example terraform.tfvars
-```
-
-3. Deploy:
-```bash
+cd data-plane/database-access-mysql-self-managed
 terraform init
 terraform apply
 ```
 
-4. Access:
+Allow 3–5 minutes for the instance to boot, configure MySQL, and register.
+
+---
+
+## Access
+
 ```bash
-tsh db ls env=dev,team=platform
+tsh db ls env=dev,team=platform        # demo-mysql
 tsh db connect demo-mysql --db-user=alice
 ```
 
-5. Tear down:
+To connect as a different user:
+
+```bash
+tsh db connect demo-mysql --db-user=bob
+```
+
+---
+
+## Demo Points
+
+- **No database password** — Teleport issues short-lived X.509 certificates; MySQL validates the Teleport DB CA, not a password
+- **Role-based access** — `alice` and `bob` database users are mapped from Teleport roles using certificate CN matching; the user never sees a credential
+- **Session recording** — every query is captured in the Teleport audit log tied to the Teleport username, not a shared DB account
+- **Credential-free** — certificates are generated on-demand and expire when the session ends; there is nothing to rotate or leak
+
+---
+
+## Teardown
+
 ```bash
 terraform destroy
 ```
 
 ---
 
-## Notes
-- Teleport connects to MySQL using mutual TLS
-- Users `alice` and `bob` are created with Teleport cert CN mapping
-- `demo-mysql` is registered with the `teleport_database` resource
-- Customize with your own CA or plug into SSM for secrets
+## Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `user` | Your email — used for tagging | **required** |
+| `proxy_address` | Teleport proxy hostname | **required** |
+| `teleport_version` | Teleport version to install | **required** |
+| `env` | Environment label | **required** |
+| `team` | Team label | `"platform"` |
+| `region` | AWS region | **required** |
+| `cidr_vpc` | VPC CIDR | `"10.0.0.0/16"` |
+| `cidr_subnet` | Private subnet CIDR | `"10.0.1.0/24"` |
+| `cidr_public_subnet` | Public subnet CIDR (NAT) | `"10.0.0.0/24"` |
