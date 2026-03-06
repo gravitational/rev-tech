@@ -3,8 +3,14 @@
 # Manual one-click demo deployment workflow for Solutions Engineers.
 #
 # USAGE: GitHub → Actions tab → "Deploy Teleport Demo" → "Run workflow"
-# Fill in the inputs and click Run. The workflow provisions the selected
-# use cases in AWS and registers them with your Teleport Cloud cluster.
+# Pick a profile and environment, then click Run. The workflow provisions
+# all use cases in that profile against your Teleport Cloud cluster.
+#
+# PROFILES:
+#   dev-demo           — SSH, DB, App, K8s, MCP, access requests (recommended starting point)
+#   full-platform      — All of the above + Windows, AWS Console, RDS
+#   windows-mongodb-ssh — Windows Desktop + MongoDB + SSH
+#   cloud-native-apps  — EKS + App access
 #
 # REQUIRED SECRETS (Settings → Secrets and variables → Actions):
 #   AWS_ROLE_ARN         - IAM role ARN to assume via OIDC (recommended) or
@@ -36,11 +42,16 @@ name: Deploy Teleport Demo
 on:
   workflow_dispatch:
     inputs:
-      use_cases:
-        description: "Use cases to deploy (comma-separated). Leave blank for all."
-        required: false
-        default: "server-access-ssh-getting-started"
-        type: string
+      profile:
+        description: "Profile to deploy"
+        required: true
+        default: "dev-demo"
+        type: choice
+        options:
+          - dev-demo
+          - full-platform
+          - windows-mongodb-ssh
+          - cloud-native-apps
 
       env_label:
         description: "Environment label applied to all Teleport resources (env= label)"
@@ -105,10 +116,9 @@ env:
 
 jobs:
   deploy:
-    name: ${{ inputs.destroy == true && 'Destroy' || 'Deploy' }} — ${{ inputs.use_cases }} (${{ inputs.env_label }})
+    name: ${{ inputs.destroy == true && 'Destroy' || 'Deploy' }} — ${{ inputs.profile }} (${{ inputs.env_label }})
     runs-on: ubuntu-latest
-    # Limit concurrency per env label so two SEs don't stomp each other's
-    # dev/stage/prod deployment in the same account.
+    # Limit concurrency per env label so two SEs don't stomp each other's deployment.
     concurrency:
       group: teleport-demo-${{ inputs.env_label }}
       cancel-in-progress: false
@@ -140,84 +150,44 @@ jobs:
       # TF_TELEPORT_JOIN_METHOD=github + TF_TELEPORT_JOIN_TOKEN are set in the env block above.
       # No identity file or tbot step needed.
 
-      - name: Determine templates to deploy
-        id: templates
+      - name: Deploy / Destroy profile
         run: |
-          templates_root="templates/teleport-terraform"
-          input_list="${{ inputs.use_cases }}"
-
-          if [[ -z "${input_list}" ]]; then
-            # Deploy all data-plane templates.
-            templates=$(find "${templates_root}/data-plane" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | tr '\n' ',')
-          else
-            templates="${input_list}"
-          fi
-
-          echo "list=${templates}" >> "$GITHUB_OUTPUT"
-          echo "Templates selected: ${templates}"
-
-      - name: Deploy / Destroy templates
-        env:
-          TEMPLATES: ${{ steps.templates.outputs.list }}
-        run: |
-          templates_root="templates/teleport-terraform"
+          profile="${{ inputs.profile }}"
+          workdir="templates/teleport-terraform/profiles/${profile}"
           action="${{ inputs.destroy == true && 'destroy' || 'apply' }}"
-          failed=()
 
-          IFS=',' read -ra template_list <<< "${TEMPLATES}"
-          for template in "${template_list[@]}"; do
-            template="$(echo "${template}" | tr -d '[:space:]')"
-            [[ -z "${template}" ]] && continue
-
-            workdir="${templates_root}/data-plane/${template}"
-            if [[ ! -d "${workdir}" ]]; then
-              echo "::warning::Template directory not found: ${workdir} — skipping"
-              continue
-            fi
-
-            echo "::group::${action}: ${template}"
-
-            # Inject a temporary S3 backend block if TF_STATE_BUCKET is configured.
-            # Terraform merges terraform{} blocks across files, so this adds the backend
-            # without modifying the template itself. The file lives only in the runner workspace.
-            if [[ -n "${TF_STATE_BUCKET}" ]]; then
-              printf 'terraform {\n  backend "s3" {}\n}\n' > "${workdir}/backend_override.tf"
-              init_args="-backend-config=bucket=${TF_STATE_BUCKET} -backend-config=key=teleport-demo/${{ inputs.env_label }}/${template}/terraform.tfstate -backend-config=region=${{ inputs.aws_region }}"
-            else
-              echo "::warning::TF_STATE_BUCKET not set — state is local and ephemeral; teardown automation will not work for this run"
-              init_args="-backend=false"
-            fi
-
-            if terraform -chdir="${workdir}" init -input=false ${init_args}; then
-              if [[ "${action}" == "apply" ]]; then
-                terraform -chdir="${workdir}" apply -auto-approve -input=false || failed+=("${template}")
-              else
-                terraform -chdir="${workdir}" destroy -auto-approve -input=false || failed+=("${template}")
-              fi
-            else
-              echo "::error::terraform init failed for ${template}"
-              failed+=("${template}")
-            fi
-            echo "::endgroup::"
-          done
-
-          if [[ ${#failed[@]} -gt 0 ]]; then
-            echo "::error::Failed templates: ${failed[*]}"
+          if [[ ! -d "${workdir}" ]]; then
+            echo "::error::Profile directory not found: ${workdir}"
             exit 1
           fi
+
+          # Inject a temporary S3 backend block if TF_STATE_BUCKET is configured.
+          # Terraform merges terraform{} blocks across files, so this adds the backend
+          # without modifying the template itself. The file lives only in the runner workspace.
+          if [[ -n "${TF_STATE_BUCKET}" ]]; then
+            printf 'terraform {\n  backend "s3" {}\n}\n' > "${workdir}/backend_override.tf"
+            init_args="-backend-config=bucket=${TF_STATE_BUCKET} -backend-config=key=teleport-demo/${{ inputs.env_label }}/${{ inputs.profile }}/terraform.tfstate -backend-config=region=${{ inputs.aws_region }}"
+          else
+            echo "::warning::TF_STATE_BUCKET not set — state is local and ephemeral; teardown automation will not work for this run"
+            init_args="-backend=false"
+          fi
+
+          terraform -chdir="${workdir}" init -input=false ${init_args}
+          terraform -chdir="${workdir}" "${action}" -auto-approve -input=false
 
       - name: Summary
         if: always()
         run: |
           action="${{ inputs.destroy == true && 'Destroyed' || 'Deployed' }}"
-          echo "### ${action} use cases" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ${action}: ${{ inputs.profile }}" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Variable | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Use cases | \`${{ inputs.use_cases }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Profile | \`${{ inputs.profile }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Environment | \`${{ inputs.env_label }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Team | \`${{ inputs.team_label }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Region | \`${{ inputs.aws_region }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Teleport version | \`${{ inputs.teleport_version }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Triggered by | \`${{ github.actor }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "To verify: \`tsh ls env=${{ inputs.env_label }},team=${{ inputs.team_label }}\`" >> "$GITHUB_STEP_SUMMARY"

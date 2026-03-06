@@ -14,16 +14,23 @@ output "connection_guide" {
     2. List databases:
        tsh db ls env=${var.env},team=${var.team}
 
-    3. Connect (no password — Teleport issues a short-lived cert; auto-user created on first connect):
-       tsh db connect rds-mysql-${var.env} --db-user=alice
+    3. Connect — use YOUR Teleport username as db-user (not reader/writer).
+       Teleport creates a MySQL user for you on first connect and assigns
+       the db_roles from your Teleport role (reader, writer, dbadmin):
+       tsh db connect rds-mysql-${var.env} --db-user=<your-teleport-username>
 
-    4. Connect as a different role:
-       tsh db connect rds-mysql-${var.env} --db-user=bob
+       Example (replace with actual login):
+       tsh db connect rds-mysql-${var.env} --db-user=dlg@example.com
+
+    4. Run a query:
+       show databases;
+       select user, host from mysql.user;
 
     ──────────────────────────────────────────────────────
     Database: rds-mysql-${var.env}
     RDS endpoint: (see rds_endpoint output)
-    Auto-user provisioning: enabled — Teleport creates DB users on first connect
+    Auth: IAM auth via teleport-admin — no passwords, auto user provisioning
+    MySQL roles available: reader, writer, dbadmin
     ──────────────────────────────────────────────────────
   EOT
 }

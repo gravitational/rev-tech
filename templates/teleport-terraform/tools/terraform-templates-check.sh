@@ -51,6 +51,28 @@ template_dirs="$(
     | grep -v '/modules$'
 )"
 
+# Completeness check — every template must have README.md and outputs.tf.
+# Modules are excluded (they're building blocks, not standalone templates).
+echo "==> completeness check (README.md + outputs.tf per template)"
+completeness_failed=0
+while IFS= read -r dir; do
+  [[ -z "${dir}" ]] && continue
+  name="${dir##*/}"
+  missing=()
+  [[ ! -f "${dir}/README.md" ]] && missing+=("README.md")
+  [[ ! -f "${dir}/outputs.tf" ]] && missing+=("outputs.tf")
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "::error::${name}: missing ${missing[*]}"
+    completeness_failed=1
+  else
+    echo "-- ${name}: ok"
+  fi
+done <<< "${template_dirs}"
+if [[ ${completeness_failed} -ne 0 ]]; then
+  echo "completeness check failed — every template needs README.md and outputs.tf" >&2
+  exit 1
+fi
+
 # Validate each template folder.
 echo "==> terraform validate (per template)"
 while IFS= read -r dir; do

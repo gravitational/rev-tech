@@ -4,6 +4,7 @@ output "connection_guide" {
     ──────────────────────────────────────────────────────
     Profile: Windows + MongoDB + SSH
     Cluster: ${var.proxy_address}  |  env=${var.env}  |  team=${var.team}
+    Teleport: ${var.teleport_version}
     ──────────────────────────────────────────────────────
 
     1. Login:

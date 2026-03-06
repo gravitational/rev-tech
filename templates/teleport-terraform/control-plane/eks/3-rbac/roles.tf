@@ -195,6 +195,7 @@ resource "kubectl_manifest" "role_dev_auto_access" {
         }
         db_names = ["{{external.db_names}}", "*"]
         db_roles = ["{{external.db_roles}}", "reader", "writer", "dbadmin"]
+        db_users = ["{{email.local(external.username)}}", "{{email.local(external.email)}}"]
         node_labels = {
           env  = ["dev"]
           team = [var.dev_team]
@@ -238,7 +239,7 @@ resource "kubectl_manifest" "role_platform_dev_access" {
           team = ["*"]
         }
         db_names       = ["{{external.db_names}}", "*"]
-        db_users       = ["{{external.db_users}}", "reader", "writer"]
+        db_users       = ["{{external.db_users}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}", "reader", "writer"]
         desktop_groups = ["Administrators"]
         impersonate = {
           roles = ["Db"]
@@ -279,7 +280,8 @@ resource "kubectl_manifest" "role_platform_dev_access" {
         windows_desktop_logins = ["{{external.windows_logins}}", "{{email.local(external.username)}}"]
       }
       options = {
-        create_db_user                 = false
+        create_db_user                 = true
+        create_db_user_mode            = "keep"
         create_desktop_user            = false
         create_host_user_mode          = "keep"
         create_host_user_default_shell = "/bin/bash"
@@ -315,7 +317,7 @@ resource "kubectl_manifest" "role_prod_access" {
           team = [var.prod_team]
         }
         db_names       = ["{{external.db_names}}", "*"]
-        db_users       = ["{{external.db_users}}", "reader", "writer"]
+        db_users       = ["{{external.db_users}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}", "reader", "writer"]
         desktop_groups = ["Administrators"]
         impersonate = {
           roles = ["Db"]
@@ -356,7 +358,8 @@ resource "kubectl_manifest" "role_prod_access" {
         windows_desktop_logins = ["{{external.windows_logins}}", "{{email.local(external.username)}}", "Administrator"]
       }
       options = {
-        create_db_user                 = false
+        create_db_user                 = true
+        create_db_user_mode            = "keep"
         create_desktop_user            = false
         create_host_user_mode          = "keep"
         create_host_user_default_shell = "/bin/bash"
@@ -388,6 +391,7 @@ resource "kubectl_manifest" "role_prod_auto_access" {
         }
         db_names = ["{{external.db_names}}", "*"]
         db_roles = ["{{external.db_roles}}", "reader", "writer", "dbadmin"]
+        db_users = ["{{email.local(external.username)}}", "{{email.local(external.email)}}"]
         node_labels = {
           env  = ["prod"]
           team = [var.prod_team]

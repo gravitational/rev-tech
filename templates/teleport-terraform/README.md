@@ -56,15 +56,15 @@ terraform init && terraform apply
 | `application-access-grafana` | Grafana behind Teleport app service with JWT identity injection | ✅ |
 | `application-access-httpbin` | HTTPBin for inspecting Teleport-injected headers in real time | ✅ |
 | `application-access-aws-console` | AWS Console federation with per-role IAM assume via EC2 instance profile | ✅ |
-| `application-access-demo-panel` | Flask identity panel — shows the logged-in user's Teleport identity, roles, and traits | — |
+| `application-access-demo-panel` | Flask identity panel — shows the logged-in user's Teleport identity, roles, and traits | ✅ |
 | `database-access-postgres-self-managed` | Self-hosted PostgreSQL with TLS cert auth (no passwords) | ✅ |
 | `database-access-mysql-self-managed` | Self-hosted MySQL with TLS cert auth | ✅ |
 | `database-access-mongodb-self-managed` | Self-hosted MongoDB with TLS cert auth | ✅ |
 | `database-access-cassandra-self-managed` | Self-hosted Cassandra with TLS cert auth | ✅ |
-| `database-access-rds-mysql` | RDS MySQL with IAM authentication and auto user provisioning | — |
+| `database-access-rds-mysql` | RDS MySQL with IAM authentication and auto user provisioning | ✅ |
 | `desktop-access-windows-local` | Windows Server via browser-based RDP (no AD, local users) | ✅ |
 | `machine-id-ansible` | Machine ID bot + Ansible host — certificate-based automation, no static keys | ✅ |
-| `machine-id-mcp` | MCP stdio server + Machine ID bot — Claude/AI access via Teleport with full audit | — |
+| `machine-id-mcp` | MCP stdio server + Machine ID bot — Claude/AI access via Teleport with full audit | ✅ |
 | `kubernetes-access-eks-autodiscovery` | EKS auto-discovery agent — tag a cluster, it enrolls automatically | — |
 
 ### Profiles
@@ -147,7 +147,38 @@ pre-commit run --all-files   # baseline check
 
 ### GitHub Actions Deployment
 
-Deploy any profile without local Terraform setup: go to **Actions → Deploy Teleport Demo → Run workflow** and fill in the form. Requires `AWS_ROLE_ARN` and `TELEPORT_IDENTITY` secrets. See [`.github/workflows/teleport-demo-deploy.yml`](../../../.github/workflows/teleport-demo-deploy.yml).
+Deploy a full profile without local Terraform setup — useful for spinning up a demo environment from anywhere.
+
+**One-time setup** (run against your Teleport cluster):
+```bash
+# Create the CI bot with access to the Terraform provider
+tctl bots add github-ci --roles=terraform-provider
+
+# Create the GitHub join token (see docs/github-actions-setup.md for full YAML)
+tctl create github-join-token.yaml
+```
+
+**Required secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Description |
+|---|---|
+| `AWS_ROLE_ARN` | IAM role ARN to assume via OIDC. See [GitHub OIDC docs](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services). |
+| `TELEPORT_PROXY` | Your Teleport Cloud proxy hostname (e.g., `myorg.teleport.sh`) |
+| `TF_STATE_BUCKET` | S3 bucket for Terraform state. Required for scheduled teardown to work. |
+
+**Optional secrets:**
+
+| Secret | Description |
+|---|---|
+| `SLACK_WEBHOOK_URL` | If set, the teardown workflow posts a summary to Slack after each run. |
+
+**Deploy:** Actions → **Deploy Teleport Demo** → Run workflow → pick a profile and environment.
+
+**Destroy:** Re-run the deploy workflow with the **Destroy** checkbox checked, or trigger **Scheduled Demo Teardown** manually to clean up all profiles at once.
+
+**Scheduled teardown:** Runs every Monday at 08:00 UTC and destroys any profiles that still have resources running. Requires `TF_STATE_BUCKET` to locate the state files.
+
+Note: workflows are only triggerable from the default branch (`main`).
 
 ---
 

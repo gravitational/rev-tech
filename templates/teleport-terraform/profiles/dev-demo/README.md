@@ -44,14 +44,6 @@ terraform init
 terraform apply
 ```
 
-Or copy the example vars file:
-
-```bash
-cp terraform.tfvars.example terraform.tfvars
-# edit terraform.tfvars, then:
-terraform init && terraform apply
-```
-
 Allow 3–5 minutes for all instances to boot and register. Then verify:
 
 ```bash

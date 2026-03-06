@@ -1,6 +1,6 @@
 # teleport-demo-teardown.yml
 #
-# Scheduled safety net: destroys all demo stacks that were deployed via the
+# Scheduled safety net: destroys all demo profiles that were deployed via the
 # teleport-demo-deploy.yml workflow and still have resources running.
 #
 # RUNS: Every Monday at 08:00 UTC (4am EST) — before the work week starts.
@@ -10,17 +10,14 @@
 # This prevents runaway AWS costs and keeps the account clean.
 #
 # BEHAVIOR:
-# - Runs terraform destroy on all data-plane templates for the dev environment.
-# - Skips templates that have no state / resources (destroy is idempotent).
+# - Runs terraform destroy on all profiles for the target environment.
+# - Skips profiles that have no state / resources (destroy is idempotent).
 # - Posts a summary to the GitHub Actions job summary and optionally to Slack.
 #
 # REQUIRED SECRETS: Same as teleport-demo-deploy.yml
-#   AWS_ROLE_ARN, TELEPORT_PROXY, TELEPORT_IDENTITY
+#   AWS_ROLE_ARN, TELEPORT_PROXY, TF_STATE_BUCKET
 #
 # OPTIONAL SECRETS:
-#   TF_STATE_BUCKET   - S3 bucket used for Terraform state (set in the deploy workflow).
-#                       Must be set for teardown to find and destroy previously deployed resources.
-#                       Without it, teardown has no state and is a no-op.
 #   SLACK_WEBHOOK_URL - If set, posts teardown summary to Slack.
 
 name: Scheduled Demo Teardown
@@ -63,6 +60,12 @@ env:
   TARGET_ENV: ${{ inputs.env_label || 'dev' }}
   TARGET_REGION: ${{ inputs.aws_region || 'us-east-2' }}
   TF_VAR_proxy_address: ${{ secrets.TELEPORT_PROXY }}
+  TF_VAR_env: ${{ inputs.env_label || 'dev' }}
+  TF_VAR_region: ${{ inputs.aws_region || 'us-east-2' }}
+  TF_VAR_team: "platform"
+  TF_VAR_user: "teardown-bot@github-actions"
+  # teleport_version is required by profiles but unused during destroy.
+  TF_VAR_teleport_version: "18.6.4"
   TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
   # Slack — exposed as env so it can be checked in if: conditions (secrets cannot be).
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -101,7 +104,7 @@ jobs:
       # Teleport auth is handled by the Terraform provider natively via GitHub OIDC.
       # TF_TELEPORT_JOIN_METHOD=github + TF_TELEPORT_JOIN_TOKEN are set in the env block above.
 
-      - name: Destroy all data-plane templates
+      - name: Destroy all profiles
         id: teardown
         run: |
           templates_root="templates/teleport-terraform"
@@ -109,26 +112,30 @@ jobs:
           skipped=()
           failed=()
 
-          for dir in "${templates_root}"/data-plane/*/; do
-            template="$(basename "${dir}")"
-            workdir="${templates_root}/data-plane/${template}"
+          for dir in "${templates_root}"/profiles/*/; do
+            profile="$(basename "${dir}")"
+            workdir="${templates_root}/profiles/${profile}"
 
-            echo "::group::destroy: ${template}"
+            # Skip non-Terraform directories (e.g., a profiles/README.md would not match
+            # the glob, but guard against any stray non-module dirs just in case).
+            [[ ! -f "${workdir}/main.tf" ]] && continue
+
+            echo "::group::destroy: ${profile}"
 
             # Inject S3 backend if TF_STATE_BUCKET is configured (matches deploy workflow).
             if [[ -n "${TF_STATE_BUCKET}" ]]; then
               printf 'terraform {\n  backend "s3" {}\n}\n' > "${workdir}/backend_override.tf"
-              init_args="-backend-config=bucket=${TF_STATE_BUCKET} -backend-config=key=teleport-demo/${TARGET_ENV}/${template}/terraform.tfstate -backend-config=region=${TARGET_REGION}"
+              init_args="-backend-config=bucket=${TF_STATE_BUCKET} -backend-config=key=teleport-demo/${TARGET_ENV}/${profile}/terraform.tfstate -backend-config=region=${TARGET_REGION}"
             else
-              echo "::warning::TF_STATE_BUCKET not set — no state to destroy for ${template}; skipping"
-              skipped+=("${template}")
+              echo "::warning::TF_STATE_BUCKET not set — no state to destroy for ${profile}; skipping"
+              skipped+=("${profile}")
               echo "::endgroup::"
               continue
             fi
 
             if ! terraform -chdir="${workdir}" init -input=false ${init_args}; then
-              echo "::warning::init failed for ${template} — skipping"
-              skipped+=("${template}")
+              echo "::warning::init failed for ${profile} — skipping"
+              skipped+=("${profile}")
               echo "::endgroup::"
               continue
             fi
@@ -136,19 +143,15 @@ jobs:
             if terraform -chdir="${workdir}" destroy \
                 -auto-approve \
                 -input=false \
-                -var="env=${TARGET_ENV}" \
-                -var="region=${TARGET_REGION}" \
-                -var="proxy_address=${TF_VAR_proxy_address}" \
-                -var="user=teardown-bot@github-actions" \
                 2>&1 | tee /tmp/destroy-output.txt; then
-              destroyed+=("${template}")
+              destroyed+=("${profile}")
             else
               # If destroy failed because there is no state (resources never
               # applied), that's fine — treat it as skipped.
               if grep -q "No changes\|nothing to do\|no state" /tmp/destroy-output.txt; then
-                skipped+=("${template}")
+                skipped+=("${profile}")
               else
-                failed+=("${template}")
+                failed+=("${profile}")
               fi
             fi
 
@@ -173,7 +176,7 @@ jobs:
           echo "**Region:** \`${{ env.TARGET_REGION }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "**Triggered by:** ${{ github.event_name == 'schedule' && 'scheduled cron' || github.actor }}" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Result | Templates |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Result | Profiles |" >> "$GITHUB_STEP_SUMMARY"
           echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
           echo "| Destroyed | \`${{ steps.teardown.outputs.destroyed }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Skipped (no state) | \`${{ steps.teardown.outputs.skipped }}\` |" >> "$GITHUB_STEP_SUMMARY"

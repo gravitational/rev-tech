@@ -34,6 +34,7 @@ variable "region" {
 variable "demo_panel_app_repo" {
   description = "Git URL for the demo panel Flask app"
   type        = string
+  default     = "https://github.com/tenaciousdlg/app-demo-panel"
 }
 
 variable "console_role_arns" {
