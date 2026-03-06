@@ -66,6 +66,10 @@ env:
   TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
   # Slack — exposed as env so it can be checked in if: conditions (secrets cannot be).
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  # Teleport Terraform provider — native GitHub OIDC join.
+  TF_TELEPORT_JOIN_METHOD: github
+  TF_TELEPORT_JOIN_TOKEN: github-ci
+  TF_TELEPORT_ADDR: ${{ secrets.TELEPORT_PROXY }}:443
 
 jobs:
   teardown:
@@ -94,10 +98,8 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.TARGET_REGION }}
 
-      - name: Write Teleport identity file
-        run: |
-          echo "${{ secrets.TELEPORT_IDENTITY }}" | base64 -d > /tmp/teleport-identity
-          echo "TELEPORT_IDENTITY_FILE=/tmp/teleport-identity" >> "$GITHUB_ENV"
+      # Teleport auth is handled by the Terraform provider natively via GitHub OIDC.
+      # TF_TELEPORT_JOIN_METHOD=github + TF_TELEPORT_JOIN_TOKEN are set in the env block above.
 
       - name: Destroy all data-plane templates
         id: teardown
