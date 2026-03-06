@@ -1,24 +1,30 @@
 output "connection_guide" {
-  description = "Quick-reference access instructions for the demo"
+  description = "Quick-reference tsh commands and next steps for the demo"
   value       = <<-EOT
     ──────────────────────────────────────────────────────
-    Template: Desktop Access — Windows
+    Template: Machine ID — Ansible Automation
     Cluster: ${var.proxy_address}  |  env=${var.env}  |  team=${var.team}
     ──────────────────────────────────────────────────────
 
-    Windows Desktop Access is web UI only — no tsh command, no RDP client.
+    Allow 3–5 minutes after apply for the Ansible host to register.
 
     1. Login:
        tsh login --proxy=${var.proxy_address}:443
 
-    2. Open the Teleport Web UI and navigate to Windows Desktops:
-       https://${var.proxy_address}/web/desktops
+    2. Find the Ansible host and SSH in:
+       tsh ls env=${var.env}
+       tsh ssh ec2-user@<ansible-host>
 
-    3. Click Connect on the listed Windows desktop — RDP session opens in the browser.
+    3. On the host — build inventory from live Teleport node names and run playbook:
+       tsh ls env=${var.env} --format=json | jq -r '.[].spec.hostname' > ~/ansible/hosts
+       cd ~/ansible && ansible-playbook -i hosts playbook.yaml
+
+    4. Every Ansible-initiated SSH session appears in the Teleport audit log:
+       tsh recordings ls
 
     ──────────────────────────────────────────────────────
-    Windows host: ${var.env}-windows (accessible via Web UI only)
-    Desktop service: Linux agent bridging RDP to Teleport
+    Bot scope: nodes with labels env=${var.env}, team=${var.team}
+    SSH config: /opt/machine-id/ssh_config (on the Ansible host)
     ──────────────────────────────────────────────────────
   EOT
 }

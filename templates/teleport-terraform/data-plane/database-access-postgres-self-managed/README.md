@@ -13,7 +13,7 @@ Mirrors the official [Self-Hosted PostgreSQL guide](https://goteleport.com/docs/
 - 1 EC2 instance running PostgreSQL 15 on Amazon Linux 2023
 - Custom CA and server TLS certificate for mTLS connectivity
 - Teleport agent with `db_service` and `ssh_service`
-- Dynamic database registration (`demo-postgres`) with `env` + `team` labels
+- Dynamic database registration (`postgres-<env>`) with `env` + `team` labels
 
 ---
 
@@ -42,14 +42,14 @@ Allow 3–5 minutes for the instance to boot, configure PostgreSQL, and register
 ## Access
 
 ```bash
-tsh db ls env=dev,team=platform        # demo-postgres
-tsh db connect demo-postgres --db-user=reader
+tsh db ls env=dev,team=platform        # postgres-dev
+tsh db connect postgres-dev --db-user=reader
 ```
 
 To connect as a writer:
 
 ```bash
-tsh db connect demo-postgres --db-user=writer
+tsh db connect postgres-dev --db-user=writer
 ```
 
 ---

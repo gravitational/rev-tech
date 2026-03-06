@@ -1,24 +1,34 @@
 output "connection_guide" {
-  description = "Quick-reference access instructions for the demo"
+  description = "Quick-reference tsh commands and next steps for the demo"
   value       = <<-EOT
     ──────────────────────────────────────────────────────
-    Template: Desktop Access — Windows
+    Template: Database Access — RDS MySQL
     Cluster: ${var.proxy_address}  |  env=${var.env}  |  team=${var.team}
     ──────────────────────────────────────────────────────
 
-    Windows Desktop Access is web UI only — no tsh command, no RDP client.
+    Allow 3–5 minutes after apply for the RDS instance and agent to register.
 
     1. Login:
        tsh login --proxy=${var.proxy_address}:443
 
-    2. Open the Teleport Web UI and navigate to Windows Desktops:
-       https://${var.proxy_address}/web/desktops
+    2. List databases:
+       tsh db ls env=${var.env},team=${var.team}
 
-    3. Click Connect on the listed Windows desktop — RDP session opens in the browser.
+    3. Connect (no password — Teleport issues a short-lived cert; auto-user created on first connect):
+       tsh db connect rds-mysql-${var.env} --db-user=alice
+
+    4. Connect as a different role:
+       tsh db connect rds-mysql-${var.env} --db-user=bob
 
     ──────────────────────────────────────────────────────
-    Windows host: ${var.env}-windows (accessible via Web UI only)
-    Desktop service: Linux agent bridging RDP to Teleport
+    Database: rds-mysql-${var.env}
+    RDS endpoint: (see rds_endpoint output)
+    Auto-user provisioning: enabled — Teleport creates DB users on first connect
     ──────────────────────────────────────────────────────
   EOT
+}
+
+output "rds_endpoint" {
+  description = "RDS instance endpoint"
+  value       = module.rds_mysql.rds_endpoint
 }

@@ -1,15 +1,38 @@
-output "host_instance_id" {
-  description = "ID of the shared AWS console app host"
-  value       = module.aws_console_host.instance_id
-}
+output "connection_guide" {
+  description = "Quick-reference tsh commands and trust policy setup for the demo"
+  value       = <<-EOT
+    ──────────────────────────────────────────────────────
+    Template: Application Access — AWS Console
+    Cluster: ${var.proxy_address}  |  env=${var.env}  |  team=${var.team}
+    ──────────────────────────────────────────────────────
 
-output "host_public_ip" {
-  description = "Public IP of the shared AWS console app host"
-  value       = module.aws_console_host.public_ip
+    App host IAM role (Principal for target role trust policies):
+      ${module.aws_console_host.iam_role_arn}
+
+    1. Login:
+       tsh login --proxy=${var.proxy_address}:443
+
+    2. List console apps:
+       tsh apps ls env=${var.env},team=${var.team}
+
+    3. Open the AWS Console (generates a pre-signed federated session URL):
+       tsh apps login ${var.app_a_name}
+
+    Cross-account trust policy snippet (add to any IAM role this app should assume):
+      Effect:    Allow
+      Principal: ${module.aws_console_host.iam_role_arn}
+      Action:    sts:AssumeRole
+      (Add ExternalId condition for account B if app_b_external_id is set)
+
+    ──────────────────────────────────────────────────────
+    App A: ${var.app_a_name}
+    App B: ${var.enable_app_b ? var.app_b_name : "(disabled — set enable_app_b=true to add)"}
+    ──────────────────────────────────────────────────────
+  EOT
 }
 
 output "host_iam_role_arn" {
-  description = "IAM role ARN assumed by the app host when requesting AWS Console sign-in"
+  description = "IAM role ARN of the app host — add as Principal in target role trust policies"
   value       = module.aws_console_host.iam_role_arn
 }
 
@@ -18,53 +41,7 @@ output "apps" {
   value       = var.enable_app_b ? [var.app_a_name, var.app_b_name] : [var.app_a_name]
 }
 
-output "account_a_trust_policy_json" {
-  description = "Trust policy JSON for account A target roles (informational; applied automatically when manage_account_a_roles=true)"
-  value = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "AllowTeleportAppHostAssume"
-        Effect = "Allow"
-        Principal = {
-          AWS = module.aws_console_host.iam_role_arn
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-}
-
 output "managed_account_a_roles" {
-  description = "Account A roles managed by this stack"
+  description = "Account A roles managed by this stack (empty when manage_account_a_roles=false)"
   value       = var.manage_account_a_roles ? [for role in aws_iam_role.account_a : role.name] : []
-}
-
-output "account_b_trust_policy_json" {
-  description = "Trust policy JSON to attach to target roles in account B when app B is enabled"
-  value = var.enable_app_b ? jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      var.app_b_external_id != null ? {
-        Sid    = "AllowTeleportAppHostAssumeWithExternalId"
-        Effect = "Allow"
-        Principal = {
-          AWS = module.aws_console_host.iam_role_arn
-        }
-        Action = "sts:AssumeRole"
-        Condition = {
-          StringEquals = {
-            "sts:ExternalId" = var.app_b_external_id
-          }
-        }
-        } : {
-        Sid    = "AllowTeleportAppHostAssume"
-        Effect = "Allow"
-        Principal = {
-          AWS = module.aws_console_host.iam_role_arn
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  }) : null
 }

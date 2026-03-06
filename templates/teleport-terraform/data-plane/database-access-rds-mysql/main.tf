@@ -68,17 +68,3 @@ module "rds_mysql" {
   security_group_ids   = [module.network.security_group_id]
   ami_id               = data.aws_ami.linux.id
 }
-
-output "rds_endpoint" {
-  value = module.rds_mysql.rds_endpoint
-}
-
-output "connection_instructions" {
-  value = <<-EOF
-    1. Connect to Teleport cluster: tsh login --proxy=${var.proxy_address}:443
-    2. List available databases: tsh db ls env=${var.env},team=${var.team}
-    3. Connect to database: tsh db connect rds-mysql-${var.env}
-    4. Auto user creation is enabled - users will be created automatically on first connection
-    5. Users are assigned permissions based on their Teleport roles
-  EOF
-}

@@ -1,24 +1,28 @@
 output "connection_guide" {
-  description = "Quick-reference access instructions for the demo"
+  description = "Quick-reference tsh commands and next steps for the demo"
   value       = <<-EOT
     ──────────────────────────────────────────────────────
-    Template: Desktop Access — Windows
+    Template: Database Access — MySQL (Self-Managed)
     Cluster: ${var.proxy_address}  |  env=${var.env}  |  team=${var.team}
     ──────────────────────────────────────────────────────
 
-    Windows Desktop Access is web UI only — no tsh command, no RDP client.
+    Allow 3–5 minutes after apply for the instance to boot and register.
 
     1. Login:
        tsh login --proxy=${var.proxy_address}:443
 
-    2. Open the Teleport Web UI and navigate to Windows Desktops:
-       https://${var.proxy_address}/web/desktops
+    2. List databases:
+       tsh db ls env=${var.env},team=${var.team}
 
-    3. Click Connect on the listed Windows desktop — RDP session opens in the browser.
+    3. Connect as alice (no password — mTLS cert issued by Teleport):
+       tsh db connect mysql-${var.env} --db-user=alice
+
+    4. Connect as bob:
+       tsh db connect mysql-${var.env} --db-user=bob
 
     ──────────────────────────────────────────────────────
-    Windows host: ${var.env}-windows (accessible via Web UI only)
-    Desktop service: Linux agent bridging RDP to Teleport
+    Database: mysql-${var.env}
+    Protocol: MySQL wire protocol, mTLS
     ──────────────────────────────────────────────────────
   EOT
 }

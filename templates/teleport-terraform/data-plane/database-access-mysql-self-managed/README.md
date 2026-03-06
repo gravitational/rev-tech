@@ -13,7 +13,7 @@ Mirrors the official [Self-Hosted MySQL guide](https://goteleport.com/docs/enrol
 - 1 EC2 instance running MySQL (MariaDB) on Ubuntu 22.04
 - Custom CA and server TLS certificate for mTLS connectivity
 - Teleport agent with `db_service` and `ssh_service`
-- Dynamic database registration (`demo-mysql`) with `env` + `team` labels
+- Dynamic database registration (`mysql-<env>`) with `env` + `team` labels
 
 ---
 
@@ -42,14 +42,14 @@ Allow 3–5 minutes for the instance to boot, configure MySQL, and register.
 ## Access
 
 ```bash
-tsh db ls env=dev,team=platform        # demo-mysql
-tsh db connect demo-mysql --db-user=alice
+tsh db ls env=dev,team=platform        # mysql-dev
+tsh db connect mysql-dev --db-user=alice
 ```
 
 To connect as a different user:
 
 ```bash
-tsh db connect demo-mysql --db-user=bob
+tsh db connect mysql-dev --db-user=bob
 ```
 
 ---
