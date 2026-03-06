@@ -1,114 +1,160 @@
-# AWS Console App Access
+# Application Access — AWS Console
 
-Deploy one shared Teleport host running `app_service` + `ssh_service`, with static AWS Console apps in `teleport.yaml`.
+Deploys a Teleport host running `app_service` + `ssh_service` that federates access to the AWS Console using EC2 instance profile credentials and `sts:AssumeRole`. Supports same-account and optional cross-account access.
 
-This template is designed for:
-- Same-account AWS Console access by default (host role in the deployment account).
-- Optional second/cross-account app with optional `external_id`.
+**Tested:** ✅ Confirmed working with `manage_account_a_roles=true`.
 
-## Usage
+---
 
-1. Authenticate to Teleport and export provider env:
+## What It Deploys
+
+- 1 EC2 instance (t3.micro) with an IAM instance profile for `sts:AssumeRole`
+- Teleport App Service hosting one or two AWS Console apps
+- Optional IAM target roles (TeleportReadOnlyAccess, TeleportEC2Access, TeleportAdminAccess)
+- Shared VPC/subnet/security group
+
+---
+
+## How It Works
+
+The EC2 instance profile provides AWS credentials via IMDSv2. Teleport's App Service calls `sts:AssumeRole` on behalf of the user, federating them into an AWS IAM role as a signed-in Console session. The IAM role that gets assumed is determined by Teleport RBAC — different Teleport roles can map to different AWS IAM roles.
+
+No AWS credentials are stored in Teleport. No long-lived credentials are distributed to users.
+
+---
+
+## Deploy
+
+### First Deploy (fresh account — no existing IAM roles)
 
 ```bash
-tsh login --proxy=teleport.example.com --auth=example
+tsh login --proxy=myorg.teleport.sh
 eval $(tctl terraform env)
-```
 
-2. Export `TF_VAR_*` (preferred pattern):
+export TF_VAR_user=you@company.com
+export TF_VAR_proxy_address=myorg.teleport.sh
+export TF_VAR_teleport_version=18.6.4
+export TF_VAR_region=us-east-2
+export TF_VAR_env=dev
+export TF_VAR_team=platform
 
-```bash
-export TF_VAR_user="engineer@example.com"
-export TF_VAR_proxy_address="teleport.example.com"
-export TF_VAR_teleport_version="18.6.8"
-export TF_VAR_region="us-east-2"
+# Required: 12-digit AWS account ID for same-account Console access
+export TF_VAR_app_a_aws_account_id=$(aws sts get-caller-identity --query Account --output text)
 
-# Label strategy
-export TF_VAR_host_env="prod"
-export TF_VAR_team="platform"
-export TF_VAR_env="dev"
+# Create the IAM target roles on first deploy
+export TF_VAR_manage_account_a_roles=true
 
-# Required app A account label
-export TF_VAR_app_a_aws_account_id="<12-digit-account-id>"
-
-# Optional app B
-# export TF_VAR_enable_app_b=true
-# export TF_VAR_app_b_aws_account_id="<12-digit-account-id>"
-# export TF_VAR_app_b_external_id="accountA"
-
-# Optional: disable automatic management of account A IAM roles
-# (this is the default and recommended for shared accounts)
-# export TF_VAR_manage_account_a_roles=false
-
-# Optional: if existing role names differ, override account_a_roles names
-# Optional: if you prefer explicit ARNs, set TF_VAR_assume_role_arns
-```
-
-3. Deploy:
-
-```bash
+cd data-plane/application-access-aws-console
 terraform init
 terraform apply
 ```
 
-4. Verify:
+### Subsequent Deploys or Shared Accounts
+
+If IAM roles already exist (e.g., managed by a separate stack or another team member), keep `manage_account_a_roles=false` (the default) to avoid role trust-policy drift:
 
 ```bash
-tsh ls env=prod,team=platform
-tsh apps ls env=dev
+export TF_VAR_manage_account_a_roles=false
+# Roles are referenced by name from account_a_roles variable
 ```
 
-## IAM Role and Trust Handling
-
-By default (`manage_account_a_roles=false`), this stack does not create IAM roles.
-It assumes existing account A target roles by name from `account_a_roles` and uses those ARNs for host `sts:AssumeRole`.
-
-If you set `manage_account_a_roles=true`, this stack creates and manages account A target roles:
-- `TeleportReadOnlyAccess`
-- `TeleportEC2Access`
-- `TeleportAdminAccess`
-
-It also wires the trust policy automatically to allow the app host IAM role to call `sts:AssumeRole`.
-`TeleportAdminAccess` additionally allows account root by default (`allow_account_root=true`).
-
-For optional account B/cross-account roles, use outputs to configure trust manually:
+### Cross-Account (App B)
 
 ```bash
-terraform output -raw account_a_trust_policy_json
+export TF_VAR_enable_app_b=true
+export TF_VAR_app_b_aws_account_id=<12-digit-account-b-id>
+# Optional: STS external ID for additional trust validation
+export TF_VAR_app_b_external_id=my-external-id
+```
+
+After apply, attach the trust policy output to each account B role manually:
+
+```bash
 terraform output -raw account_b_trust_policy_json
-terraform output -raw host_iam_role_arn
-terraform output managed_account_a_roles
+# Attach this to the target roles in account B
 ```
 
-- `account_a_trust_policy_json`: informational/reference.
-- `account_b_trust_policy_json`: only present when `enable_app_b=true`.
-- `managed_account_a_roles`: roles managed in this stack.
+---
 
-Attach `account_b_trust_policy_json` to each account B target role's trust policy (`sts:AssumeRole`), if app B is enabled.
+## Verify
 
-If enabling `manage_account_a_roles=true` with pre-existing roles, import them before apply:
+```bash
+tsh apps ls env=dev,team=platform
+tsh apps login awsconsole-dev
+tsh apps config awsconsole-dev
+# Open the browser URL from the config output
+```
+
+---
+
+## IAM Role Management
+
+### `manage_account_a_roles=true` (recommended for first deploy)
+
+Creates and manages three IAM roles in account A:
+- `TeleportReadOnlyAccess` — read-only AWS access
+- `TeleportEC2Access` — EC2 management
+- `TeleportAdminAccess` — broad admin access (also allows account root by default)
+
+The instance profile trust policy is wired automatically.
+
+### `manage_account_a_roles=false` (default — recommended for shared accounts)
+
+Does not create IAM roles. References existing roles by name from `account_a_roles`. Safe to run concurrently with other users in the same account.
+
+### Importing Pre-Existing Roles
+
+If switching from `false` to `true` with roles that already exist:
 
 ```bash
 terraform import 'aws_iam_role.account_a["TeleportReadOnlyAccess"]' TeleportReadOnlyAccess
 terraform import 'aws_iam_role.account_a["TeleportEC2Access"]' TeleportEC2Access
 terraform import 'aws_iam_role.account_a["TeleportAdminAccess"]' TeleportAdminAccess
+terraform apply
 ```
+
+---
+
+## Useful Outputs
+
+```bash
+terraform output -raw account_a_trust_policy_json   # reference trust policy for account A
+terraform output -raw host_iam_role_arn             # EC2 instance profile role ARN
+terraform output managed_account_a_roles            # ARNs of roles created by this stack
+```
+
+---
 
 ## Shared Account Policy
 
-This policy is specific to this AWS Console template.
+For shared AWS accounts where multiple SEs deploy:
+- One dedicated IAM-owner deployment manages shared roles (`manage_account_a_roles=true`)
+- All other deployments use `manage_account_a_roles=false` and reference existing role names
+- This prevents concurrent Terraform runs from conflicting on role trust policies
 
-For shared AWS accounts, use this policy:
+---
 
-- One dedicated IAM-owner stack (or team) manages shared roles and trust.
-- All other deployments keep `manage_account_a_roles=false` (default).
-- Other deployments only create app host infrastructure and reference existing role ARNs/names.
+## Teardown
 
-This avoids role trust-policy drift when multiple users run Terraform concurrently in the same account.
+```bash
+terraform destroy
+```
 
-## Notes
+---
 
-- The host uses an EC2 instance profile (IMDSv2 required), so Teleport App Service assumes roles with instance credentials.
-- App B is fully optional.
-- No account IDs are hardcoded in template defaults.
-- Keep RBAC aligned to `env` + `team` labels for consistent SSO + Access List demos.
+## Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `user` | Your email — used for tagging | **required** |
+| `proxy_address` | Teleport proxy hostname | **required** |
+| `teleport_version` | Teleport version | **required** |
+| `app_a_aws_account_id` | 12-digit AWS account ID for same-account Console access | **required** |
+| `region` | AWS region | `"us-east-2"` |
+| `env` | Environment label for app registration | `"dev"` |
+| `host_env` | Environment label for the host node | `"prod"` |
+| `team` | Team label | `"platform"` |
+| `manage_account_a_roles` | Create and manage IAM target roles | `false` |
+| `enable_app_b` | Enable optional cross-account Console app | `false` |
+| `app_b_aws_account_id` | Account B ID (required if `enable_app_b=true`) | `""` |
+| `app_b_external_id` | STS external ID for account B trust | `""` |

@@ -5,7 +5,15 @@ exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&
 hostnamectl set-hostname "${name}"
 
 # Install dependencies
-sudo dnf install -y docker jq
+# docker was removed from the standard AL2023 repos; install Docker CE from the
+# CentOS repo with $releasever pinned to 9 (AL2023 is glibc-compatible with
+# CentOS Stream 9; AL2023's own $releasever resolves to "2023" which has no
+# matching path in Docker's repo).
+dnf install -y jq
+curl -o /etc/yum.repos.d/docker-ce.repo \
+  https://download.docker.com/linux/centos/docker-ce.repo
+sed -i 's/\$releasever/9/g' /etc/yum.repos.d/docker-ce.repo
+dnf install -y docker-ce docker-ce-cli containerd.io --allowerasing
 systemctl enable docker
 systemctl start docker
 

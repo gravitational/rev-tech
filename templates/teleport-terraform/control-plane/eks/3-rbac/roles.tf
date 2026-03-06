@@ -139,8 +139,7 @@ resource "kubectl_manifest" "role_dev_access" {
         ]
         kubernetes_groups = ["{{external.kubernetes_groups}}", "system:masters"]
         kubernetes_labels = {
-          env  = "dev"
-          team = var.dev_team
+          "*" = "*"
         }
         kubernetes_resources = [
           { kind = "*", name = "*", namespace = "dev", verbs = ["*"] }
@@ -164,8 +163,8 @@ resource "kubectl_manifest" "role_dev_access" {
         windows_desktop_logins = ["{{external.windows_logins}}", "{{email.local(external.username)}}"]
       }
       options = {
-        create_db_user                 = false
-        create_desktop_user            = false
+        create_db_user                 = true
+        create_desktop_user            = true
         create_host_user_mode          = "keep"
         create_host_user_default_shell = "/bin/bash"
         desktop_clipboard              = true

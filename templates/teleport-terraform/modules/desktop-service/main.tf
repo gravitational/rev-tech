@@ -43,7 +43,7 @@ resource "aws_instance" "desktop_service" {
   subnet_id     = var.subnet_id
   # Teleport nodes register via outbound reverse tunnel — no public IP needed.
   associate_public_ip_address = false
-  security_groups             = var.security_group_ids
+  vpc_security_group_ids      = var.security_group_ids
 
   user_data = templatefile("${path.module}/userdata.tpl", {
     name                 = "${var.env}-desktop-service"
