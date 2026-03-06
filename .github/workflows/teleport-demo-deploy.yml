@@ -15,6 +15,15 @@
 #   TELEPORT_IDENTITY    - Base64-encoded tbot identity file for the terraform provider
 #                          Generate via: tctl auth sign --format=file --out=identity | base64
 #
+# OPTIONAL SECRETS:
+#   TF_STATE_BUCKET      - S3 bucket name for storing Terraform state.
+#                          If set, state is persisted across runs and the scheduled teardown
+#                          can destroy resources that were deployed by this workflow.
+#                          If not set, state is ephemeral (resources are created but cannot
+#                          be destroyed by a later workflow run — manage teardown manually).
+#                          The OIDC role needs s3:GetObject/PutObject/DeleteObject/ListBucket
+#                          on this bucket.
+#
 # AWS OIDC SETUP (recommended — no long-lived keys):
 #   1. Create an OIDC provider in IAM: https://token.actions.githubusercontent.com
 #   2. Create an IAM role with trust policy allowing this repo to assume it.
@@ -65,9 +74,9 @@ on:
           - ap-southeast-1
 
       teleport_version:
-        description: "Teleport version to install on nodes (e.g., 18.0.0)"
+        description: "Teleport version to install on nodes (e.g., 18.6.4)"
         required: true
-        default: "18.0.0"
+        default: "18.6.4"
         type: string
 
       destroy:
@@ -85,6 +94,9 @@ env:
   TF_VAR_teleport_version: ${{ inputs.teleport_version }}
   # user is derived from the GitHub actor who triggered the workflow.
   TF_VAR_user: ${{ github.actor }}@github-actions
+  # Optional: S3 bucket for persisting Terraform state across runs.
+  # If empty, state is local and ephemeral (teardown automation won't work).
+  TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
 
 jobs:
   deploy:
@@ -164,7 +176,19 @@ jobs:
             fi
 
             echo "::group::${action}: ${template}"
-            if terraform -chdir="${workdir}" init -backend=false; then
+
+            # Inject a temporary S3 backend block if TF_STATE_BUCKET is configured.
+            # Terraform merges terraform{} blocks across files, so this adds the backend
+            # without modifying the template itself. The file lives only in the runner workspace.
+            if [[ -n "${TF_STATE_BUCKET}" ]]; then
+              printf 'terraform {\n  backend "s3" {}\n}\n' > "${workdir}/backend_override.tf"
+              init_args="-backend-config=bucket=${TF_STATE_BUCKET} -backend-config=key=teleport-demo/${{ inputs.env_label }}/${template}/terraform.tfstate -backend-config=region=${{ inputs.aws_region }}"
+            else
+              echo "::warning::TF_STATE_BUCKET not set — state is local and ephemeral; teardown automation will not work for this run"
+              init_args="-backend=false"
+            fi
+
+            if terraform -chdir="${workdir}" init -input=false ${init_args}; then
               if [[ "${action}" == "apply" ]]; then
                 terraform -chdir="${workdir}" apply -auto-approve -input=false || failed+=("${template}")
               else

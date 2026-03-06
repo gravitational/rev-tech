@@ -18,6 +18,9 @@
 #   AWS_ROLE_ARN, TELEPORT_PROXY, TELEPORT_IDENTITY
 #
 # OPTIONAL SECRETS:
+#   TF_STATE_BUCKET   - S3 bucket used for Terraform state (set in the deploy workflow).
+#                       Must be set for teardown to find and destroy previously deployed resources.
+#                       Without it, teardown has no state and is a no-op.
 #   SLACK_WEBHOOK_URL - If set, posts teardown summary to Slack.
 
 name: Scheduled Demo Teardown
@@ -59,6 +62,10 @@ env:
   # Manual runs use the inputs above.
   TARGET_ENV: ${{ inputs.env_label || 'dev' }}
   TARGET_REGION: ${{ inputs.aws_region || 'us-east-2' }}
+  TF_VAR_proxy_address: ${{ secrets.TELEPORT_PROXY }}
+  TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+  # Slack — exposed as env so it can be checked in if: conditions (secrets cannot be).
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
 jobs:
   teardown:
@@ -106,21 +113,30 @@ jobs:
 
             echo "::group::destroy: ${template}"
 
-            if ! terraform -chdir="${workdir}" init -backend=false -input=false; then
+            # Inject S3 backend if TF_STATE_BUCKET is configured (matches deploy workflow).
+            if [[ -n "${TF_STATE_BUCKET}" ]]; then
+              printf 'terraform {\n  backend "s3" {}\n}\n' > "${workdir}/backend_override.tf"
+              init_args="-backend-config=bucket=${TF_STATE_BUCKET} -backend-config=key=teleport-demo/${TARGET_ENV}/${template}/terraform.tfstate -backend-config=region=${TARGET_REGION}"
+            else
+              echo "::warning::TF_STATE_BUCKET not set — no state to destroy for ${template}; skipping"
+              skipped+=("${template}")
+              echo "::endgroup::"
+              continue
+            fi
+
+            if ! terraform -chdir="${workdir}" init -input=false ${init_args}; then
               echo "::warning::init failed for ${template} — skipping"
               skipped+=("${template}")
               echo "::endgroup::"
               continue
             fi
 
-            # -refresh=false skips reading current state for resources that
-            # were never applied — makes destroy fast for clean templates.
             if terraform -chdir="${workdir}" destroy \
                 -auto-approve \
                 -input=false \
-                -var="env=${{ env.TARGET_ENV }}" \
-                -var="region=${{ env.TARGET_REGION }}" \
-                -var="proxy_address=${{ secrets.TELEPORT_PROXY }}" \
+                -var="env=${TARGET_ENV}" \
+                -var="region=${TARGET_REGION}" \
+                -var="proxy_address=${TF_VAR_proxy_address}" \
                 -var="user=teardown-bot@github-actions" \
                 2>&1 | tee /tmp/destroy-output.txt; then
               destroyed+=("${template}")
@@ -163,7 +179,7 @@ jobs:
 
       # Optional: post to Slack if SLACK_WEBHOOK_URL secret is set.
       - name: Notify Slack
-        if: always() && secrets.SLACK_WEBHOOK_URL != ''
+        if: always() && env.SLACK_WEBHOOK_URL != ''
         uses: slackapi/slack-github-action@v2
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
