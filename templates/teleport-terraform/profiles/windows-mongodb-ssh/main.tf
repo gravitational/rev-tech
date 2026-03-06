@@ -138,8 +138,9 @@ data "http" "teleport_db_ca" {
 }
 
 module "mongodb" {
-  source = "../../modules/self-mongodb"
+  source = "../../modules/self-database"
 
+  db_type          = "mongodb"
   env              = var.env
   team             = var.team
   user             = var.user

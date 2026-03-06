@@ -67,14 +67,16 @@ db_service:
         "env": "${env}"
         "team": "${team}"
 ssh_service:
-  enabled: true
+  enabled: "yes"
   labels:
     "env": "${env}"
     "team": "${team}"
 auth_service:
-  enabled: false
+  enabled: "no"
 proxy_service:
-  enabled: false
+  enabled: "no"
+app_service:
+  enabled: "no"
 EOF
 
 systemctl enable teleport

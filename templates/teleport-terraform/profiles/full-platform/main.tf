@@ -150,8 +150,9 @@ module "ssh_nodes" {
 # Database Access: self-hosted PostgreSQL.
 # ---------------------------------------------------------------------------
 module "postgres" {
-  source = "../../modules/self-postgres"
+  source = "../../modules/self-database"
 
+  db_type          = "postgres"
   env              = var.env
   team             = var.team
   user             = var.user
@@ -180,8 +181,9 @@ module "postgres_registration" {
 # Database Access: self-hosted MongoDB.
 # ---------------------------------------------------------------------------
 module "mongodb" {
-  source = "../../modules/self-mongodb"
+  source = "../../modules/self-database"
 
+  db_type          = "mongodb"
   env              = var.env
   team             = var.team
   user             = var.user
@@ -282,6 +284,37 @@ module "httpbin_registration" {
   labels               = { env = var.env, team = var.team, "teleport.dev/app" = "httpbin" }
   rewrite_headers      = ["Host: httpbin-${var.env}.${var.proxy_address}", "Origin: https://httpbin-${var.env}.${var.proxy_address}"]
   insecure_skip_verify = true
+}
+
+module "demo_panel" {
+  source = "../../modules/app-demo-panel"
+
+  env              = var.env
+  team             = var.team
+  user             = var.user
+  proxy_address    = var.proxy_address
+  teleport_version = var.teleport_version
+  app_repo         = var.demo_panel_app_repo
+  ami_id           = data.aws_ami.linux.id
+  instance_type    = "t3.micro"
+  tags             = local.resource_tags
+
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
+}
+
+module "demo_panel_registration" {
+  source        = "../../modules/dynamic-registration"
+  resource_type = "app"
+  name          = "demo-panel-${var.env}"
+  description   = "Teleport Demo Panel — shows identity injected via JWT header"
+  uri           = "http://localhost:5000"
+  public_addr   = "demo-panel-${var.env}.${var.proxy_address}"
+  labels = {
+    env                = var.env
+    team               = var.team
+    "teleport.dev/app" = "demo-panel"
+  }
 }
 
 module "aws_console_host" {

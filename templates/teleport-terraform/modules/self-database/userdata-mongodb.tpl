@@ -157,7 +157,7 @@ mongosh --eval '
 db = db.getSiblingDB("admin");
 db.createUser({
   user: "admin",
-  pwd: "admin123", 
+  pwd: "admin123",
   roles: ["root"]
 });
 '
@@ -176,7 +176,7 @@ db.getSiblingDB("$external").runCommand({
   ]
 });
 
-// Create reader user for Teleport certificate auth  
+// Create reader user for Teleport certificate auth
 db.getSiblingDB("$external").runCommand({
   createUser: "CN=reader",
   roles: [

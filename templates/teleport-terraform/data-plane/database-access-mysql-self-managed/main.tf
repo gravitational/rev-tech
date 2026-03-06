@@ -66,7 +66,8 @@ module "network" {
 }
 
 module "mysql_instance" {
-  source             = "../../modules/self-mysql"
+  source             = "../../modules/self-database"
+  db_type            = "mysql"
   env                = var.env
   team               = var.team
   user               = var.user

@@ -1,5 +1,5 @@
 variable "env" {
-  description = "Environment label (e.g., dev, prod)"
+  description = "Environment name (e.g., dev, prod)"
   type        = string
 }
 
@@ -18,38 +18,39 @@ variable "teleport_version" {
   type        = string
 }
 
-variable "teleport_db_ca" {
-  description = "Teleport DB CA cert from /webapi/auth/export"
+variable "app_repo" {
+  description = "Git URL for the demo panel Flask app (e.g. https://github.com/org/app-demo-panel)"
   type        = string
 }
 
-variable "mongodb_hostname" {
-  description = "Hostname for MongoDB server (used in TLS cert)"
-  default     = "mongodb.example.internal"
-}
-
 variable "ami_id" {
-  description = "AMI ID for the EC2 instance"
+  description = "AMI ID for Amazon Linux 2023"
   type        = string
 }
 
 variable "instance_type" {
-  description = "EC2 instance type (e.g., t3.small)"
+  description = "EC2 instance type"
   type        = string
 }
 
 variable "subnet_id" {
-  description = "Optional: existing subnet ID to use"
+  description = "Subnet ID to launch the instance in"
   type        = string
 }
 
 variable "security_group_ids" {
-  description = "Optional: existing security group IDs"
+  description = "List of security group IDs"
   type        = list(string)
 }
 
 variable "team" {
-  description = "Team label for the MongoDB database"
+  description = "Team label for the demo panel application"
   type        = string
   default     = "platform"
+}
+
+variable "tags" {
+  description = "Additional tags to attach to each instance"
+  type        = map(string)
+  default     = {}
 }

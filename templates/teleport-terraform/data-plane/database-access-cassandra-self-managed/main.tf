@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.99"
     }
+    teleport = {
+      source  = "terraform.releases.teleport.dev/gravitational/teleport"
+      version = "~> 18.0"
+    }
     http = {
       source  = "hashicorp/http"
       version = "~> 3.0"
@@ -12,10 +16,6 @@ terraform {
     random = {
       source  = "hashicorp/random"
       version = "~> 3.0"
-    }
-    teleport = {
-      source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "~> 18.0"
     }
     tls = {
       source  = "hashicorp/tls"
@@ -65,9 +65,10 @@ module "network" {
   cidr_public_subnet = var.cidr_public_subnet
 }
 
-module "mongodb_instance" {
+module "cassandra_instance" {
   source             = "../../modules/self-database"
-  db_type            = "mongodb"
+  db_type            = "cassandra"
+  db_hostname        = "cassandra.dev.internal"
   env                = var.env
   user               = var.user
   team               = var.team
@@ -75,19 +76,19 @@ module "mongodb_instance" {
   teleport_version   = var.teleport_version
   teleport_db_ca     = data.http.teleport_db_ca_cert.response_body
   ami_id             = data.aws_ami.linux.id
-  instance_type      = "t3.small"
+  instance_type      = "t3.medium"
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
 }
 
-module "mongodb_registration" {
+module "cassandra_registration" {
   source        = "../../modules/dynamic-registration"
   resource_type = "database"
-  name          = "mongodb-${var.env}"
-  description   = "Self-hosted MongoDB database in ${var.env}"
-  protocol      = "mongodb"
-  uri           = "localhost:27017"
-  ca_cert_chain = module.mongodb_instance.ca_cert
+  name          = "cassandra-${var.env}"
+  description   = "Self-hosted Cassandra database in ${var.env}"
+  protocol      = "cassandra"
+  uri           = "localhost:9042"
+  ca_cert_chain = module.cassandra_instance.ca_cert
   labels = {
     env  = var.env
     team = var.team

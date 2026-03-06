@@ -1,3 +1,18 @@
+variable "db_type" {
+  description = "Database engine: postgres, mysql, mongodb, or cassandra"
+  type        = string
+  validation {
+    condition     = contains(["postgres", "mysql", "mongodb", "cassandra"], var.db_type)
+    error_message = "db_type must be one of: postgres, mysql, mongodb, cassandra"
+  }
+}
+
+variable "db_hostname" {
+  description = "Hostname for the database server (used in TLS cert SAN)"
+  type        = string
+  default     = "db.example.internal"
+}
+
 variable "env" {
   description = "Environment label (e.g., dev, prod)"
   type        = string
@@ -23,11 +38,6 @@ variable "teleport_db_ca" {
   type        = string
 }
 
-variable "mysql_hostname" {
-  description = "Hostname for MySQL server (used in TLS cert)"
-  default     = "mysql.example.internal"
-}
-
 variable "ami_id" {
   description = "AMI ID for the EC2 instance"
   type        = string
@@ -39,17 +49,17 @@ variable "instance_type" {
 }
 
 variable "subnet_id" {
-  description = "Optional: existing subnet ID to use"
+  description = "Subnet ID to launch the instance in"
   type        = string
 }
 
 variable "security_group_ids" {
-  description = "Optional: existing security group IDs"
+  description = "Security group IDs for the instance"
   type        = list(string)
 }
 
 variable "team" {
-  description = "Team label for the MySQL database"
+  description = "Team label for the database"
   type        = string
   default     = "platform"
 }

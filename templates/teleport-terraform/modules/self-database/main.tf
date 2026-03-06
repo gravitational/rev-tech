@@ -30,7 +30,7 @@ resource "tls_self_signed_cert" "ca_cert" {
     common_name  = "example"
     organization = "example"
   }
-  validity_period_hours = 87600 #10 years
+  validity_period_hours = 87600 # 10 years
   is_ca_certificate     = true
   allowed_uses          = ["cert_signing", "client_auth", "server_auth", "key_encipherment", "digital_signature"]
 }
@@ -43,10 +43,10 @@ resource "tls_private_key" "server_key" {
 resource "tls_cert_request" "server_csr" {
   private_key_pem = tls_private_key.server_key.private_key_pem
   subject {
-    common_name  = var.mysql_hostname
+    common_name  = var.db_hostname
     organization = "example"
   }
-  dns_names = [var.mysql_hostname, "localhost", "127.0.0.1"]
+  dns_names = [var.db_hostname, "localhost", "127.0.0.1"]
 }
 
 resource "tls_locally_signed_cert" "server_cert" {
@@ -62,7 +62,6 @@ resource "random_string" "token" {
   special = false
 }
 
-# https://goteleport.com/docs/reference/terraform-provider/resources/provision_token/
 resource "teleport_provision_token" "db" {
   version = "v2"
   spec = {
@@ -79,7 +78,7 @@ resource "teleport_provision_token" "db" {
   }
 }
 
-resource "aws_instance" "mysql" {
+resource "aws_instance" "db" {
   ami             = var.ami_id
   instance_type   = var.instance_type
   subnet_id       = var.subnet_id
@@ -87,8 +86,8 @@ resource "aws_instance" "mysql" {
   # Teleport nodes register via outbound reverse tunnel — no public IP needed.
   associate_public_ip_address = false
 
-  user_data = templatefile("${path.module}/userdata.tpl", {
-    name             = "${var.env}-mysql"
+  user_data = templatefile("${path.module}/userdata-${var.db_type}.tpl", {
+    name             = "${var.env}-${var.db_type}"
     token            = teleport_provision_token.db.metadata.name
     proxy_address    = var.proxy_address
     teleport_version = var.teleport_version
@@ -113,6 +112,6 @@ resource "aws_instance" "mysql" {
   }
 
   tags = {
-    Name = "${local.user}-${var.env}-mysql"
+    Name = "${local.user}-${var.env}-${var.db_type}"
   }
 }

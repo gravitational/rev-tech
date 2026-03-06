@@ -66,14 +66,15 @@ module "network" {
 }
 
 module "postgres_instance" {
-  source             = "../../modules/self-postgres"
+  source             = "../../modules/self-database"
+  db_type            = "postgres"
+  db_hostname        = "postgres.dev.internal"
   env                = var.env
   user               = var.user
   team               = var.team
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
   teleport_db_ca     = data.http.teleport_db_ca_cert.response_body
-  postgres_hostname  = "postgres.dev.internal"
   ami_id             = data.aws_ami.linux.id
   instance_type      = "t3.small"
   subnet_id          = module.network.subnet_id

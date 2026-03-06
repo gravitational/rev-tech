@@ -31,6 +31,11 @@ variable "region" {
   default     = "us-east-2"
 }
 
+variable "demo_panel_app_repo" {
+  description = "Git URL for the demo panel Flask app"
+  type        = string
+}
+
 variable "console_role_arns" {
   description = "IAM role ARNs the AWS Console app host is allowed to assume"
   type        = list(string)

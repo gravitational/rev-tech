@@ -5,21 +5,13 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.99"
     }
-    http = {
-      source  = "hashicorp/http"
-      version = "~> 3.0"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.0"
-    }
     teleport = {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
       version = "~> 18.0"
     }
-    tls = {
-      source  = "hashicorp/tls"
-      version = "~> 4.0"
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
     }
   }
 }
@@ -53,10 +45,6 @@ data "aws_ami" "linux" {
   }
 }
 
-data "http" "teleport_db_ca_cert" {
-  url = "https://${var.proxy_address}/webapi/auth/export?type=db-client"
-}
-
 module "network" {
   source             = "../../modules/network"
   env                = var.env
@@ -65,31 +53,30 @@ module "network" {
   cidr_public_subnet = var.cidr_public_subnet
 }
 
-module "mongodb_instance" {
-  source             = "../../modules/self-database"
-  db_type            = "mongodb"
+module "demo_panel" {
+  source             = "../../modules/app-demo-panel"
   env                = var.env
   user               = var.user
   team               = var.team
   proxy_address      = var.proxy_address
   teleport_version   = var.teleport_version
-  teleport_db_ca     = data.http.teleport_db_ca_cert.response_body
+  app_repo           = var.app_repo
   ami_id             = data.aws_ami.linux.id
-  instance_type      = "t3.small"
+  instance_type      = "t3.micro"
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
 }
 
-module "mongodb_registration" {
+module "demo_panel_registration" {
   source        = "../../modules/dynamic-registration"
-  resource_type = "database"
-  name          = "mongodb-${var.env}"
-  description   = "Self-hosted MongoDB database in ${var.env}"
-  protocol      = "mongodb"
-  uri           = "localhost:27017"
-  ca_cert_chain = module.mongodb_instance.ca_cert
+  resource_type = "app"
+  name          = "demo-panel-${var.env}"
+  description   = "Teleport Demo Panel — shows identity injected via JWT header"
+  uri           = "http://localhost:5000"
+  public_addr   = "demo-panel-${var.env}.${var.proxy_address}"
   labels = {
-    env  = var.env
-    team = var.team
+    env                = var.env
+    team               = var.team
+    "teleport.dev/app" = "demo-panel"
   }
 }
