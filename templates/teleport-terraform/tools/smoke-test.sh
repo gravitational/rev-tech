@@ -194,7 +194,7 @@ if [[ ${skip_verify} -eq 0 ]]; then
       done <<< "${nodes}"
       ;;
     machine-id-mcp|*/machine-id-mcp)
-      mcp_app_name="mcp-everything-${env_label}"
+      mcp_app_name="mcp-filesystem-${env_label}"
       if ! tctl get "app/${mcp_app_name}" >/dev/null 2>&1; then
         echo "expected MCP app ${mcp_app_name} not found in cluster resources" >&2
         tctl get apps || true

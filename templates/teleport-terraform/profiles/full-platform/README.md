@@ -62,7 +62,7 @@ tsh ls                              # SSH nodes
 tsh db ls                           # postgres-dev, mongodb-dev, rds-mysql-dev (or similar)
 tsh apps ls                         # grafana-dev, httpbin-dev, demo-panel-dev, awsconsole-dev
 # Desktops: web UI only — https://<proxy> → Windows Desktops
-tsh mcp ls                          # mcp-everything-dev
+tsh mcp ls                          # mcp-filesystem-dev
 ```
 
 ---
@@ -121,7 +121,7 @@ Web UI only: open `https://<proxy>` → **Windows Desktops** → **Connect**.
 ```bash
 # Configure Claude Desktop or any MCP client
 tsh mcp ls
-tsh mcp config mcp-everything-dev
+tsh mcp config mcp-filesystem-dev
 # Paste output into Claude Desktop settings
 ```
 

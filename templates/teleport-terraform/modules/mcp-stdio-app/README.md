@@ -18,7 +18,7 @@ module "mcp_stdio_app" {
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
 
-  app_name        = "mcp-everything"
+  app_name        = "mcp-filesystem"
   app_description = "MCP stdio demo server"
   mcp_command     = "docker"
   mcp_args        = ["run", "-i", "--rm", "mcp/everything"]

@@ -1,6 +1,6 @@
 output "mcp_app_name" {
   description = "Name of the MCP app resource in Teleport"
-  value       = "mcp-everything-${var.env}"
+  value       = "mcp-filesystem-${var.env}"
 }
 
 output "bot_name" {

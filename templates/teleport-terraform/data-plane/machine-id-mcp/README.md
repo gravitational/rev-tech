@@ -11,7 +11,7 @@ Follows the official [MCP stdio enrollment guide](https://goteleport.com/docs/en
 ## What It Deploys
 
 - 1 EC2 instance (t3.small) running Teleport Application Service with an MCP stdio server
-- MCP app registered as `mcp-everything-<env>` with `env` + `team` labels
+- MCP app registered as `mcp-filesystem-<env>` with `env` + `team` labels
 - Machine ID bot and role scoped to MCP access (`mcp.tools = ["*"]`) and matching labels
 - Shared VPC/subnet/security group baseline
 
@@ -42,8 +42,8 @@ Allow 3–5 minutes for the instance to boot and the MCP server to register.
 ## Access
 
 ```bash
-tsh mcp ls                              # mcp-everything-dev
-tsh mcp config mcp-everything-dev
+tsh mcp ls                              # mcp-filesystem-dev
+tsh mcp config mcp-filesystem-dev
 ```
 
 Copy the `tsh mcp config` output into your MCP client configuration (Claude Desktop, Cursor, etc.) to connect.

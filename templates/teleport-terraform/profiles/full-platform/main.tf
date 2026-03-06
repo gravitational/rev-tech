@@ -398,8 +398,8 @@ module "mcp_app" {
   teleport_version = var.teleport_version
   ami_id           = data.aws_ami.linux.id
   instance_type    = "t3.small"
-  app_name         = "mcp-everything"
-  app_description  = "MCP stdio demo server"
+  app_name         = "mcp-filesystem"
+  app_description  = "MCP filesystem demo server"
   tags             = local.resource_tags
 
   subnet_id          = module.network.subnet_id
@@ -409,15 +409,15 @@ module "mcp_app" {
 module "mcp_registration" {
   source        = "../../modules/dynamic-registration"
   resource_type = "app"
-  name          = "mcp-everything-${var.env}"
-  description   = "MCP stdio demo server"
+  name          = "mcp-filesystem-${var.env}"
+  description   = "MCP filesystem demo server"
   labels = {
     env                              = var.env
     team                             = var.team
     "teleport.internal/app-sub-kind" = "mcp"
   }
   mcp_command          = "docker"
-  mcp_args             = ["run", "-i", "--rm", "mcp/everything"]
+  mcp_args             = ["run", "-i", "--rm", "-v", "/demo-files:/demo-files:ro", "mcp/filesystem", "/demo-files"]
   mcp_run_as_host_user = "docker"
 }
 

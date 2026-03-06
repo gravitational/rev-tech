@@ -374,7 +374,7 @@ module "desktop_service" {
 # Demonstrates AI-driven infrastructure access — Claude (or any MCP client)
 # can run tools against live infrastructure through Teleport, with full
 # audit logging and RBAC just like a human user.
-# Usage: tsh mcp config mcp-everything-<env> → paste into Claude Desktop
+# Usage: tsh mcp config mcp-filesystem-<env> → paste into Claude Desktop
 # ---------------------------------------------------------------------------
 resource "random_string" "bot_suffix" {
   length  = 4
@@ -392,8 +392,8 @@ module "mcp_app" {
   teleport_version = var.teleport_version
   ami_id           = data.aws_ami.linux.id
   instance_type    = "t3.small"
-  app_name         = "mcp-everything"
-  app_description  = "MCP stdio demo server"
+  app_name         = "mcp-filesystem"
+  app_description  = "MCP filesystem demo server"
   tags             = local.resource_tags
 
   subnet_id          = module.network.subnet_id
@@ -403,15 +403,15 @@ module "mcp_app" {
 module "mcp_registration" {
   source        = "../../modules/dynamic-registration"
   resource_type = "app"
-  name          = "mcp-everything-${var.env}"
-  description   = "MCP stdio demo server"
+  name          = "mcp-filesystem-${var.env}"
+  description   = "MCP filesystem demo server"
   labels = {
     env                              = var.env
     team                             = var.team
     "teleport.internal/app-sub-kind" = "mcp"
   }
   mcp_command          = "docker"
-  mcp_args             = ["run", "-i", "--rm", "mcp/everything"]
+  mcp_args             = ["run", "-i", "--rm", "-v", "/demo-files:/demo-files:ro", "mcp/filesystem", "/demo-files"]
   mcp_run_as_host_user = "docker"
 }
 

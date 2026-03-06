@@ -73,8 +73,8 @@ module "mcp_stdio_app" {
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
 
-  app_name        = "mcp-everything"
-  app_description = "MCP stdio demo server"
+  app_name        = "mcp-filesystem"
+  app_description = "MCP filesystem demo server"
   team            = var.team
 }
 
@@ -82,8 +82,8 @@ module "mcp_registration" {
   source = "../../modules/dynamic-registration"
 
   resource_type = "app"
-  name          = "mcp-everything-${var.env}"
-  description   = "MCP stdio demo server"
+  name          = "mcp-filesystem-${var.env}"
+  description   = "MCP filesystem demo server"
   labels = {
     env                              = var.env
     team                             = var.team
@@ -91,7 +91,7 @@ module "mcp_registration" {
   }
 
   mcp_command          = "docker"
-  mcp_args             = ["run", "-i", "--rm", "mcp/everything"]
+  mcp_args             = ["run", "-i", "--rm", "-v", "/demo-files:/demo-files:ro", "mcp/filesystem", "/demo-files"]
   mcp_run_as_host_user = "docker"
 }
 

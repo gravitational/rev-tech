@@ -57,7 +57,7 @@ Allow 3–5 minutes for all instances to boot and register. Then verify:
 ```bash
 tsh ls                              # dev nodes appear
 tsh db ls                           # postgres-dev, mongodb-dev
-tsh apps ls                         # grafana-dev, httpbin-dev, mcp-everything-dev
+tsh apps ls                         # grafana-dev, httpbin-dev, mcp-filesystem-dev
 ```
 
 ---
@@ -166,7 +166,7 @@ ansible-playbook -i hosts playbook.yaml
 
 ```bash
 tsh mcp ls
-tsh mcp config mcp-everything-dev
+tsh mcp config mcp-filesystem-dev
 # Paste the output into Claude Desktop, Cursor, or any MCP client
 # Claude can now run tools against live infrastructure through Teleport
 ```
