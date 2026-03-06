@@ -18,7 +18,7 @@ The Flask app lives in a standalone repo (set via `app_repo`) and is cloned at i
 
 ## Prerequisites
 
-You need a hosted Flask app repo (e.g., `https://github.com/your-org/app-demo-panel`) with:
+The demo app lives at [`https://github.com/tenaciousdlg/app-demo-panel`](https://github.com/tenaciousdlg/app-demo-panel) and is cloned automatically at instance boot. To use a custom app it must provide:
 - `app.py` — Flask app that reads `Teleport-Jwt-Assertion` header
 - `requirements.txt` — `flask>=3.0,<4` and `gunicorn>=22,<24`
 
@@ -33,7 +33,6 @@ eval $(tctl terraform env)
 export TF_VAR_user=you@company.com
 export TF_VAR_proxy_address=myorg.teleport.sh
 export TF_VAR_teleport_version=18.6.4
-export TF_VAR_app_repo=https://github.com/your-org/app-demo-panel
 export TF_VAR_env=dev
 export TF_VAR_team=platform
 export TF_VAR_region=us-east-2
@@ -86,7 +85,7 @@ terraform destroy
 | `user` | Your email — used for tagging | **required** |
 | `proxy_address` | Teleport proxy hostname | **required** |
 | `teleport_version` | Teleport version to install | **required** |
-| `app_repo` | Git URL for the Flask demo panel app | **required** |
+| `app_repo` | Git URL for the Flask demo panel app | `"https://github.com/tenaciousdlg/app-demo-panel"` |
 | `env` | Environment label | **required** |
 | `team` | Team label | `"platform"` |
 | `region` | AWS region | **required** |

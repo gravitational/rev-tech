@@ -26,6 +26,7 @@ variable "teleport_version" {
 variable "app_repo" {
   description = "Git URL for the demo panel Flask app"
   type        = string
+  default     = "https://github.com/tenaciousdlg/app-demo-panel"
 }
 
 variable "team" {
