@@ -16,7 +16,7 @@ control-plane/eks/
 
 ## Quick Start
 
-### 1) Deploy EKS
+### 1) Deploy EKS (this step takes ~16 mins to apply)
 
 ```bash
 cd control-plane/eks/1-cluster
@@ -88,6 +88,48 @@ Ensure apps, DBs, nodes, and desktops are labeled with the same keys to align wi
 - Teleport: Integrations → SCIM → create integration, select your SAML connector, copy Base URL + Client ID/Secret.
 - Okta: Provisioning → SCIM → paste Base URL + Client ID/Secret, enable Group Push/Assignments.
 - Access Lists: `spec.title` **must** equal Okta group `displayName` (case‑sensitive).
+
+## Teardown
+
+Destroy in reverse layer order: `4-plugins` → `3-rbac` → `2-teleport` → `1-cluster`.
+
+### 2-teleport: CRD finalizer hang
+
+`terraform destroy` will hang on Teleport CRD deletion. The operator is already gone so
+nothing can service the finalizers. While the destroy is hanging (or before running it),
+strip the finalizers in a separate terminal:
+
+```bash
+kubectl get crds -o name | grep teleport \
+  | xargs -I{} kubectl patch {} -p '{"metadata":{"finalizers":[]}}' --type=merge
+```
+
+The destroy will complete immediately after.
+
+### 1-cluster: straggler security groups
+
+If any EC2 instances were manually added to the VPC (e.g. a Windows Desktop Service host
+added outside of a data-plane Terraform module), their security groups will not be in
+Terraform state and will block VPC deletion.
+
+Symptoms: `aws_vpc.this` stuck destroying for 30+ minutes with no ENIs or load balancers present.
+
+Fix: find and delete the orphaned security group(s):
+
+```bash
+VPC_ID="<your-vpc-id>"
+REGION="us-east-2"
+
+aws ec2 describe-security-groups --region $REGION \
+  --filters "Name=vpc-id,Values=$VPC_ID" \
+  --query "SecurityGroups[?GroupName!='default'].[GroupId,GroupName]" \
+  --output table
+
+# Delete each non-default SG found
+aws ec2 delete-security-group --region $REGION --group-id <sg-id>
+```
+
+Then re-run `terraform destroy`.
 
 ## Teleport Updates
 

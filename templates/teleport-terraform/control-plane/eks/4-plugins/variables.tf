@@ -21,14 +21,8 @@ variable "slack_bot_token" {
   sensitive   = true
 }
 
-variable "slack_signing_secret" {
-  description = "Slack app signing secret (from App Credentials page)"
-  type        = string
-  sensitive   = true
-}
-
 variable "slack_channel_id" {
-  description = "Slack channel ID for access request notifications (e.g. C01234ABCDE)"
+  description = "Slack channel ID for access request notifications (right-click channel → Copy Link, or channel About tab)"
   type        = string
 }
 

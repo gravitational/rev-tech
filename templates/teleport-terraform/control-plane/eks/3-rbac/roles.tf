@@ -16,7 +16,7 @@ resource "kubectl_manifest" "saml_connector_okta" {
       attributes_to_roles = [
         { name = "groups", value = "Everyone", roles = ["base-user"] }
       ]
-      display                 = "okta dlg"
+      display                 = "okta integrator"
       entity_descriptor_url   = var.okta_metadata_url
       service_provider_issuer = "https://${var.proxy_address}/sso/saml/metadata"
     }
@@ -178,6 +178,46 @@ resource "kubectl_manifest" "role_dev_access" {
   })
 }
 
+resource "kubectl_manifest" "role_dev_auto_access" {
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportRoleV7"
+    metadata = {
+      name        = "dev-auto-access"
+      namespace   = data.kubernetes_namespace.teleport_cluster.metadata[0].name
+      description = "Development access with auto user provisioning for RDS databases"
+    }
+    spec = {
+      allow = {
+        db_labels = {
+          env                      = ["dev"]
+          team                     = [var.dev_team]
+          "teleport.dev/db-access" = ["auto"]
+        }
+        db_names = ["{{external.db_names}}", "*"]
+        db_roles = ["{{external.db_roles}}", "reader", "writer", "dbadmin"]
+        node_labels = {
+          env  = ["dev"]
+          team = [var.dev_team]
+        }
+        logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}"]
+        rules = [
+          { resources = ["event"], verbs = ["list", "read"] },
+          { resources = ["session"], verbs = ["read", "list"] }
+        ]
+      }
+      options = {
+        create_db_user                 = true
+        create_db_user_mode            = "keep"
+        create_host_user_mode          = "keep"
+        create_host_user_default_shell = "/bin/bash"
+        max_session_ttl                = "8h0m0s"
+        enhanced_recording             = ["command", "network"]
+      }
+    }
+  })
+}
+
 resource "kubectl_manifest" "role_platform_dev_access" {
   yaml_body = yamlencode({
     apiVersion = "resources.teleport.dev/v1"
@@ -201,6 +241,10 @@ resource "kubectl_manifest" "role_platform_dev_access" {
         db_names       = ["{{external.db_names}}", "*"]
         db_users       = ["{{external.db_users}}", "reader", "writer"]
         desktop_groups = ["Administrators"]
+        impersonate = {
+          roles = ["Db"]
+          users = ["Db"]
+        }
         join_sessions = [
           {
             kinds = ["k8s", "ssh"]
@@ -217,7 +261,7 @@ resource "kubectl_manifest" "role_platform_dev_access" {
         kubernetes_resources = [
           { kind = "*", name = "*", namespace = "dev", verbs = ["*"] }
         ]
-        logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}"]
+        logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}", "ubuntu", "ec2-user"]
         mcp = {
           tools = ["*"]
         }
@@ -322,7 +366,46 @@ resource "kubectl_manifest" "role_prod_access" {
         max_session_ttl                = "2h0m0s"
         pin_source_ip                  = false
         enhanced_recording             = ["command", "network"]
-        require_session_mfa            = "session"
+      }
+    }
+  })
+}
+
+resource "kubectl_manifest" "role_prod_auto_access" {
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportRoleV7"
+    metadata = {
+      name        = "prod-auto-access"
+      namespace   = data.kubernetes_namespace.teleport_cluster.metadata[0].name
+      description = "Production access with auto user provisioning for RDS databases (requires approval)"
+    }
+    spec = {
+      allow = {
+        db_labels = {
+          env                      = ["prod"]
+          team                     = [var.prod_team]
+          "teleport.dev/db-access" = ["auto"]
+        }
+        db_names = ["{{external.db_names}}", "*"]
+        db_roles = ["{{external.db_roles}}", "reader", "writer", "dbadmin"]
+        node_labels = {
+          env  = ["prod"]
+          team = [var.prod_team]
+        }
+        logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}", "ubuntu", "ec2-user"]
+        rules = [
+          { resources = ["event"], verbs = ["list", "read"] },
+          { resources = ["session"], verbs = ["read", "list"] }
+        ]
+      }
+      options = {
+        create_db_user                 = true
+        create_db_user_mode            = "keep"
+        create_host_user_mode          = "keep"
+        create_host_user_default_shell = "/bin/bash"
+        max_session_ttl                = "2h0m0s"
+        enhanced_recording             = ["command", "network"]
       }
     }
   })
@@ -392,8 +475,8 @@ resource "kubectl_manifest" "role_prod_requester" {
     spec = {
       allow = {
         request = {
-          roles           = ["prod-readonly-access", "prod-access"]
-          search_as_roles = ["prod-readonly-access", "prod-access"]
+          roles           = ["prod-readonly-access", "prod-access", "prod-auto-access"]
+          search_as_roles = ["prod-readonly-access", "prod-access", "prod-auto-access"]
         }
       }
     }
@@ -411,8 +494,27 @@ resource "kubectl_manifest" "role_dev_requester" {
     spec = {
       allow = {
         request = {
-          roles           = ["platform-dev-access", "prod-readonly-access", "prod-access"]
-          search_as_roles = ["platform-dev-access", "prod-readonly-access", "prod-access"]
+          roles           = ["prod-readonly-access"]
+          search_as_roles = ["prod-readonly-access"]
+        }
+      }
+    }
+  })
+}
+
+resource "kubectl_manifest" "role_senior_dev_requester" {
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportRoleV7"
+    metadata = {
+      name      = "senior-dev-requester"
+      namespace = data.kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      allow = {
+        request = {
+          roles           = ["prod-readonly-access", "prod-access", "prod-auto-access"]
+          search_as_roles = ["prod-readonly-access", "prod-access", "prod-auto-access"]
         }
       }
     }
@@ -449,8 +551,8 @@ resource "kubectl_manifest" "role_prod_reviewer" {
     spec = {
       allow = {
         review_requests = {
-          roles            = ["prod-readonly-access", "prod-access"]
-          preview_as_roles = ["prod-readonly-access", "prod-access"]
+          roles            = ["prod-readonly-access", "prod-access", "prod-auto-access"]
+          preview_as_roles = ["prod-readonly-access", "prod-access", "prod-auto-access"]
         }
       }
     }
@@ -496,7 +598,29 @@ resource "kubectl_manifest" "access_list_devs" {
         { name = "admin", description = "Platform team admin" }
       ]
       grants = {
-        roles = ["dev-access", "dev-requester"]
+        roles = ["dev-access", "dev-auto-access", "dev-requester"]
+      }
+    }
+  })
+}
+
+resource "kubectl_manifest" "access_list_senior_devs" {
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportAccessList"
+    metadata = {
+      name      = "senior-devs"
+      namespace = data.kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      title       = "senior-devs"
+      description = "Senior devs: cross-team dev access + prod request capability"
+      type        = "scim"
+      owners = [
+        { name = "admin", description = "Platform team admin" }
+      ]
+      grants = {
+        roles = ["platform-dev-access", "dev-auto-access", "senior-dev-requester"]
       }
     }
   })
@@ -518,7 +642,7 @@ resource "kubectl_manifest" "access_list_engineers" {
         { name = "admin", description = "Platform team admin" }
       ]
       grants = {
-        roles = ["platform-dev-access", "dev-reviewer", "prod-requester", "prod-reviewer"]
+        roles = ["platform-dev-access", "dev-auto-access", "prod-readonly-access", "dev-reviewer", "prod-requester", "prod-reviewer", "terraform-provider", "editor", "auditor"]
       }
     }
   })

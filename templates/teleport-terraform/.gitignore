@@ -15,3 +15,6 @@ crash.*.log
 # CLI configuration traces
 terraform.rc
 .terraformrc
+
+# Teleport license files
+*license.pem

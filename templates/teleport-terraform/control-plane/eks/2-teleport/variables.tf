@@ -1,4 +1,4 @@
-# 2-kubernetes-config/variables.tf
+# 2-teleport/variables.tf
 
 variable "region" {
   description = "AWS region"
@@ -37,29 +37,6 @@ variable "user" {
 variable "teleport_version" {
   description = "Teleport version to deploy (e.g. 18.0.0)"
   type        = string
-}
-
-variable "okta_metadata_url" {
-  description = "Okta SAML metadata URL"
-  type        = string
-}
-
-variable "okta_preview_metadata_url" {
-  description = "Okta preview SAML metadata URL (optional)"
-  type        = string
-  default     = ""
-}
-
-variable "enable_okta_preview" {
-  description = "Whether to enable the Okta preview SAML connector"
-  type        = bool
-  default     = false
-}
-
-variable "enable_access_lists" {
-  description = "Whether to enable access lists (may not be available in all Teleport versions)"
-  type        = bool
-  default     = false
 }
 
 variable "use_dns_validation" {

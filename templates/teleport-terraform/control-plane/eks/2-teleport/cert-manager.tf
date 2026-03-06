@@ -11,6 +11,11 @@ resource "helm_release" "cert_manager" {
   create_namespace = true
   wait             = true
   timeout          = 300
+
+  depends_on = [
+    aws_iam_role_policy_attachment.cert_manager_route53
+  ]
+
   set {
     name  = "crds.enabled"
     value = "true"
@@ -23,28 +28,20 @@ resource "helm_release" "cert_manager" {
     name  = "prometheus.enabled"
     value = "true"
   }
-}
 
-resource "kubernetes_annotations" "cert_manager_sa" {
-  count       = var.domain_name != "" ? 1 : 0
-  api_version = "v1"
-  kind        = "ServiceAccount"
-  metadata {
-    name      = "cert-manager"
-    namespace = "cert-manager"
+  # Annotate the SA before the pod starts so IRSA credentials are available immediately.
+  # Without this, the pod would start with the node role and fail Route53 DNS challenges.
+  dynamic "set" {
+    for_each = length(aws_iam_role.cert_manager) > 0 ? [aws_iam_role.cert_manager[0].arn] : []
+    content {
+      name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+      value = set.value
+    }
   }
-  annotations = {
-    "eks.amazonaws.com/role-arn" = aws_iam_role.cert_manager[0].arn
-  }
-  depends_on = [
-    helm_release.cert_manager,
-    aws_iam_role_policy_attachment.cert_manager_route53
-  ]
-  force = true
 }
 
 resource "time_sleep" "wait_for_cert_manager" {
-  depends_on      = [kubernetes_annotations.cert_manager_sa]
+  depends_on      = [helm_release.cert_manager]
   create_duration = "90s"
 }
 
