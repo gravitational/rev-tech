@@ -133,14 +133,15 @@ data "http" "teleport_db_ca" {
 module "ssh_nodes" {
   source = "../../modules/ssh-node"
 
-  env           = var.env
-  team          = var.team
-  user          = var.user
-  proxy_address = var.proxy_address
-  tags          = local.resource_tags
-  agent_count   = 2
-  ami_id        = data.aws_ami.linux.id
-  instance_type = "t3.micro"
+  env              = var.env
+  team             = var.team
+  user             = var.user
+  proxy_address    = var.proxy_address
+  teleport_version = var.teleport_version
+  tags             = local.resource_tags
+  agent_count      = 2
+  ami_id           = data.aws_ami.linux.id
+  instance_type    = "t3.micro"
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]

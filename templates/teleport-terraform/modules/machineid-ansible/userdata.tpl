@@ -1,6 +1,5 @@
 #!/bin/bash
-#cloud-config
-set -euo pipefail
+set -euxo pipefail
 
 hostnamectl set-hostname "${env}-ansible"
 
@@ -12,7 +11,7 @@ pip3 install ansible
 
 # Install Teleport client/agent binaries from the cluster install script.
 # This avoids client/server feature skew during Machine ID onboarding.
-curl "https://${proxy_address}/scripts/install.sh" | bash
+curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 echo "${node_token}" > /tmp/token
 
 # Write teleport.yaml
@@ -28,18 +27,18 @@ teleport:
     format:
       output: text
 ssh_service:
-  enabled: true
+  enabled: "yes"
   labels:
     env: ${env}
     team: ${team}
   enhanced_recording:
     enabled: true
 auth_service:
-  enabled: false
+  enabled: "no"
 proxy_service:
-  enabled: false
+  enabled: "no"
 db_service:
-  enabled: false
+  enabled: "no"
 EOF
 
 systemctl enable teleport

@@ -1,8 +1,9 @@
 #!/bin/bash
 set -euxo pipefail
+
 hostnamectl set-hostname "${name}"
-dnf install nginx -y 
-curl "https://${proxy_address}/scripts/install.sh" | bash
+dnf install nginx -y
+curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 echo "${token}" > /tmp/token
 
 cat<<EOF >/etc/teleport.yaml
@@ -17,7 +18,7 @@ teleport:
     format:
       output: text
 ssh_service:
-  enabled: true
+  enabled: "yes"
   enhanced_recording:
     # Enable or disable enhanced auditing for this node. Default value: false.
     enabled: true
@@ -35,9 +36,9 @@ ssh_service:
       command: ["/bin/sh", "-c", "df -hTP / | awk '{print \$6}' | egrep '^[0-9][0-9]'"]
       period: "2m0s"
 proxy_service:
-  enabled: false
+  enabled: "no"
 auth_service:
-  enabled: false
+  enabled: "no"
 EOF
 
 systemctl enable teleport

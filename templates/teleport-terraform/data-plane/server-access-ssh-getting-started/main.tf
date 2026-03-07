@@ -86,10 +86,11 @@ module "ssh_nodes" {
   # Resolves to: templates/teleport-terraform/modules/ssh-node
   source = "../../modules/ssh-node"
 
-  env           = var.env # "dev" default in variables.tf
-  proxy_address = var.proxy_address
-  team          = var.team
-  user          = var.user
+  env              = var.env # "dev" default in variables.tf
+  proxy_address    = var.proxy_address
+  teleport_version = var.teleport_version
+  team             = var.team
+  user             = var.user
 
   tags          = local.resource_tags
   agent_count   = var.agent_count # "3" default in variables.tf

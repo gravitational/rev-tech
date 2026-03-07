@@ -29,9 +29,10 @@ terraform {
 }
 
 locals {
-  user       = lower(split("@", var.user)[0])
-  name       = "${local.user}-kube-discovery-${var.env}"
-  group_name = "${var.env}-${var.team}"
+  user              = lower(split("@", var.user)[0])
+  name              = "${local.user}-kube-discovery-${var.env}"
+  group_name        = "${var.env}-${var.team}"
+  discovery_regions = var.discovery_regions != null ? var.discovery_regions : [var.region]
 }
 
 # ---------------------------------------------------------------------------
@@ -45,11 +46,11 @@ resource "random_string" "token" {
 resource "teleport_provision_token" "agent" {
   version = "v2"
   spec = {
-    roles = ["Kube", "Discovery"]
+    roles = ["Node", "Kube", "Discovery"]
     name  = random_string.token.result
   }
   metadata = {
-    expires = timeadd(timestamp(), "8h")
+    expires = timeadd(timestamp(), "24h")
   }
   lifecycle {
     ignore_changes = [metadata]
@@ -115,6 +116,11 @@ resource "aws_iam_role_policy" "eks_discovery" {
   })
 }
 
+resource "aws_iam_role_policy_attachment" "ssm" {
+  role       = aws_iam_role.agent.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_instance_profile" "agent" {
   name = local.name
   role = aws_iam_role.agent.name
@@ -139,22 +145,27 @@ resource "aws_instance" "agent" {
   }
 
   root_block_device {
-    encrypted = true
+    volume_size = 30 # required for AMZN Linux 2023 AMI EBS size
+    volume_type = "gp3"
+    encrypted   = true
   }
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    teleport_version = var.teleport_version
-    proxy_address    = var.proxy_address
-    token            = random_string.token.result
-    region           = var.region
-    env              = var.env
-    team             = var.team
-    discovery_group  = local.group_name
-    eks_tag_key      = var.eks_tag_key
-    eks_tag_value    = var.eks_tag_value
+    teleport_version  = var.teleport_version
+    proxy_address     = var.proxy_address
+    token             = teleport_provision_token.agent.metadata.name
+    env               = var.env
+    team              = var.team
+    discovery_group   = local.group_name
+    eks_tag_key       = var.eks_tag_key
+    eks_tag_value     = var.eks_tag_value
+    discovery_regions = local.discovery_regions
   })
 
   tags = merge(var.tags, {
     Name = local.name
   })
+
+  # Ensure the provision token exists in Teleport before the instance boots.
+  depends_on = [teleport_provision_token.agent]
 }

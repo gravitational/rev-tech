@@ -110,13 +110,14 @@ PYEOF
 # Install Teleport before starting Cassandra so SSH is available for debugging
 # if Cassandra fails to start.
 curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
+echo "${token}" > /tmp/token
 
 cat > /etc/teleport.yaml <<EOF
 version: v3
 teleport:
   data_dir: "/var/lib/teleport"
   proxy_server: "${proxy_address}:443"
-  auth_token: "${token}"
+  auth_token: /tmp/token
   log:
     output: stderr
     severity: INFO

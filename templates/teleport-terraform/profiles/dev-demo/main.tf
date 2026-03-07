@@ -160,14 +160,15 @@ data "http" "teleport_db_ca" {
 module "ssh_nodes_dev" {
   source = "../../modules/ssh-node"
 
-  env           = var.env
-  team          = var.team
-  user          = var.user
-  proxy_address = var.proxy_address
-  tags          = local.resource_tags
-  agent_count   = 2
-  ami_id        = data.aws_ami.linux.id
-  instance_type = "t3.micro"
+  env              = var.env
+  team             = var.team
+  user             = var.user
+  proxy_address    = var.proxy_address
+  teleport_version = var.teleport_version
+  tags             = local.resource_tags
+  agent_count      = 2
+  ami_id           = data.aws_ami.linux.id
+  instance_type    = "t3.micro"
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -186,14 +187,15 @@ module "ssh_nodes_dev" {
 module "ssh_node_prod" {
   source = "../../modules/ssh-node"
 
-  env           = var.prod_env
-  team          = var.team
-  user          = var.user
-  proxy_address = var.proxy_address
-  tags          = local.resource_tags
-  agent_count   = 1
-  ami_id        = data.aws_ami.linux.id
-  instance_type = "t3.micro"
+  env              = var.prod_env
+  team             = var.team
+  user             = var.user
+  proxy_address    = var.proxy_address
+  teleport_version = var.teleport_version
+  tags             = local.resource_tags
+  agent_count      = 1
+  ami_id           = data.aws_ami.linux.id
+  instance_type    = "t3.micro"
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]

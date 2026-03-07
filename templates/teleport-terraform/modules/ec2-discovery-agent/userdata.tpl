@@ -3,7 +3,13 @@ set -euxo pipefail
 
 hostnamectl set-hostname "teleport-ec2-discovery-${env}"
 
-curl "https://${proxy_address}/scripts/install.sh" | bash
+# NAT gateway routes may take a moment to propagate after instance boot.
+until curl -sf --connect-timeout 5 "https://${proxy_address}/webapi/ping" >/dev/null 2>&1; do
+  echo "Waiting for network connectivity..."
+  sleep 10
+done
+
+curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 
 echo "${token}" > /tmp/token
 

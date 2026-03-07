@@ -144,7 +144,8 @@ resource "kubectl_manifest" "role_dev_access" {
         kubernetes_resources = [
           { kind = "*", name = "*", namespace = "dev", verbs = ["*"] }
         ]
-        logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}"]
+        host_groups = ["wheel"]
+        logins      = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}"]
         mcp = {
           tools = ["*"]
         }
@@ -200,7 +201,8 @@ resource "kubectl_manifest" "role_dev_auto_access" {
           env  = ["dev"]
           team = [var.dev_team]
         }
-        logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}"]
+        host_groups = ["wheel"]
+        logins      = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}"]
         rules = [
           { resources = ["event"], verbs = ["list", "read"] },
           { resources = ["session"], verbs = ["read", "list"] }
@@ -261,7 +263,8 @@ resource "kubectl_manifest" "role_platform_dev_access" {
         kubernetes_resources = [
           { kind = "*", name = "*", namespace = "dev", verbs = ["*"] }
         ]
-        logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}", "ubuntu", "ec2-user"]
+        host_groups = ["wheel"]
+        logins      = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}", "ubuntu", "ec2-user"]
         mcp = {
           tools = ["*"]
         }
@@ -339,7 +342,8 @@ resource "kubectl_manifest" "role_prod_access" {
         kubernetes_resources = [
           { kind = "*", name = "*", namespace = "prod", verbs = ["*"] }
         ]
-        logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}", "ubuntu", "ec2-user"]
+        host_groups = ["wheel"]
+        logins      = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}", "ubuntu", "ec2-user"]
         mcp = {
           tools = ["*"]
         }
@@ -396,7 +400,8 @@ resource "kubectl_manifest" "role_prod_auto_access" {
           env  = ["prod"]
           team = [var.prod_team]
         }
-        logins = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}", "ubuntu", "ec2-user"]
+        host_groups = ["wheel"]
+        logins      = ["{{external.logins}}", "{{email.local(external.username)}}", "{{email.local(external.email)}}", "ubuntu", "ec2-user"]
         rules = [
           { resources = ["event"], verbs = ["list", "read"] },
           { resources = ["session"], verbs = ["read", "list"] }

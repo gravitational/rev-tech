@@ -9,7 +9,7 @@ dnf update -y
 dnf install -y mariadb105 jq nmap-ncat
 
 ########################################################
-# Teleport Installation 
+# Teleport Installation
 ########################################################
 curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 
@@ -108,12 +108,13 @@ fi
 #########################################################
 # Teleport Configuration
 #########################################################
+echo "${token}" > /tmp/token
 cat <<EOF > /etc/teleport.yaml
 version: v3
 teleport:
   data_dir: "/var/lib/teleport"
   proxy_server: "${proxy_address}:443"
-  auth_token: "${token}"
+  auth_token: /tmp/token
   log:
     output: stderr
     severity: INFO

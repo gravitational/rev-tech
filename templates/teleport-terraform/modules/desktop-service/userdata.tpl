@@ -10,8 +10,8 @@ WINDOWS_HOST_NAME=$(echo "${windows_internal_dns}" | awk -F. '{print $1}')
 # Install Teleport
 echo "${token}" > /tmp/token
 
-# installs teleport enterprise edition 
-# update for versions >17.3 
+# installs teleport enterprise edition
+# update for versions >17.3
 curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 
 # Log installed version for debugging
@@ -29,19 +29,19 @@ teleport:
     format:
       output: json
 app_service:
-  enabled: false
+  enabled: "no"
 auth_service:
-  enabled: false
+  enabled: "no"
 db_service:
-  enabled: false
+  enabled: "no"
 discovery_service:
-  enabled: true
+  enabled: "yes"
 kubernetes_service:
-  enabled: false
+  enabled: "no"
 proxy_service:
-  enabled: false
+  enabled: "no"
 ssh_service:
-  enabled: true
+  enabled: "yes"
   commands:
   - name: hostname
     command: [hostname]
@@ -52,7 +52,7 @@ ssh_service:
   enhanced_recording:
     enabled: "false"
 windows_desktop_service:
-  enabled: yes
+  enabled: "yes"
   show_desktop_wallpaper: true
   static_hosts:
   - name: $WINDOWS_HOST_NAME
@@ -64,8 +64,8 @@ windows_desktop_service:
 EOF
 
 # Sets teleport service to start at boot and brings it up
-systemctl enable teleport;
-systemctl restart teleport;
+systemctl enable teleport
+systemctl restart teleport
 
 # Log setup complete
 echo "[INFO] Teleport windows_desktop_service setup complete."

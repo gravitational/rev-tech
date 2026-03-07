@@ -24,8 +24,20 @@ variable "teleport_version" {
 }
 
 variable "region" {
-  description = "AWS region; passed to the discovery service so it knows where to scan"
+  description = "AWS region to deploy the agent into"
   type        = string
+}
+
+variable "discovery_regions" {
+  description = <<-EOT
+    AWS regions the discovery service will scan for EKS clusters.
+    Defaults to [var.region] (same region as the agent).
+    Set to multiple regions to discover cross-region clusters:
+      discovery_regions = ["us-west-2", "eu-west-2"]
+    Set to ["*"] to scan all regions.
+  EOT
+  type        = list(string)
+  default     = null
 }
 
 variable "ami_id" {

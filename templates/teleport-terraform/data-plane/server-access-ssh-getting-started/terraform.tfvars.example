@@ -1,6 +1,7 @@
-user          = "engineer@example.com"
-proxy_address = "teleport.example.com"
-region        = "us-east-2"
+user             = "engineer@example.com"
+proxy_address    = "teleport.example.com"
+teleport_version = "18.0.0"
+region           = "us-east-2"
 env           = "dev"
 team          = "platform"
 agent_count   = 3

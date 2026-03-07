@@ -43,6 +43,17 @@ variable "eks_tag_value" {
   default     = "enabled"
 }
 
+variable "discovery_regions" {
+  description = <<-EOT
+    AWS regions to scan for EKS clusters. Defaults to [var.region] (agent's region).
+    Expand to discover cross-region clusters, e.g.:
+      ["us-west-2", "eu-west-2"]   — specific regions
+      ["*"]                         — all regions
+  EOT
+  type        = list(string)
+  default     = null
+}
+
 variable "cidr_vpc" {
   description = "CIDR block for the VPC"
   type        = string

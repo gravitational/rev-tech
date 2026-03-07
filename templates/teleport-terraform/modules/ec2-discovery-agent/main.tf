@@ -165,19 +165,22 @@ resource "aws_instance" "agent" {
   }
 
   root_block_device {
-    encrypted = true
+    volume_size = 30 # required for AMZN Linux 2023 AMI EBS size
+    volume_type = "gp3"
+    encrypted   = true
   }
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    proxy_address   = var.proxy_address
-    token           = random_string.agent_token.result
-    region          = var.region
-    env             = var.env
-    team            = var.team
-    discovery_group = local.group_name
-    join_token_name = local.token_name
-    ec2_tag_key     = var.ec2_tag_key
-    ec2_tag_value   = var.ec2_tag_value
+    proxy_address    = var.proxy_address
+    teleport_version = var.teleport_version
+    token            = teleport_provision_token.agent.metadata.name
+    region           = var.region
+    env              = var.env
+    team             = var.team
+    discovery_group  = local.group_name
+    join_token_name  = local.token_name
+    ec2_tag_key      = var.ec2_tag_key
+    ec2_tag_value    = var.ec2_tag_value
   })
 
   tags = merge(var.tags, {

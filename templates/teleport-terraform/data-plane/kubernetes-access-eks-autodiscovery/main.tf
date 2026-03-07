@@ -100,8 +100,9 @@ module "kube_agent" {
   instance_type    = "t3.small"
   tags             = local.resource_tags
 
-  eks_tag_key   = var.eks_tag_key
-  eks_tag_value = var.eks_tag_value
+  eks_tag_key       = var.eks_tag_key
+  eks_tag_value     = var.eks_tag_value
+  discovery_regions = var.discovery_regions
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
