@@ -25,6 +25,13 @@ teleport:
     format:
       output: text
 
+ssh_service:
+  enabled: "yes"
+  labels:
+    env: ${env}
+    team: ${team}
+    role: ec2-discovery-agent
+
 discovery_service:
   enabled: true
   # discovery_group identifies this agent's set of discovered resources in Teleport.
@@ -42,9 +49,9 @@ discovery_service:
         "${ec2_tag_key}": "${ec2_tag_value}"
 
 proxy_service:
-  enabled: false
+  enabled: "no"
 auth_service:
-  enabled: false
+  enabled: "no"
 EOF
 
 systemctl enable teleport

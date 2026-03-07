@@ -56,7 +56,7 @@ resource "random_string" "agent_token" {
 resource "teleport_provision_token" "agent" {
   version = "v2"
   spec = {
-    roles = ["Discovery"]
+    roles = ["Node", "Discovery"]
     name  = random_string.agent_token.result
   }
   metadata = {

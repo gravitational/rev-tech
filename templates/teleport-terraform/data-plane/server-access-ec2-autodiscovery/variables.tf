@@ -40,13 +40,13 @@ variable "target_count" {
 variable "ec2_tag_key" {
   description = "AWS tag key used to select EC2 instances for auto-discovery"
   type        = string
-  default     = "teleport-discovery"
+  default     = "env"
 }
 
 variable "ec2_tag_value" {
   description = "AWS tag value used to select EC2 instances for auto-discovery"
   type        = string
-  default     = "enabled"
+  default     = "dev"
 }
 
 variable "cidr_vpc" {
