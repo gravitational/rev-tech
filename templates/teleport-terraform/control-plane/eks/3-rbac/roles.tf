@@ -650,7 +650,7 @@ resource "kubectl_manifest" "access_list_engineers" {
         { name = "admin", description = "Platform team admin" }
       ]
       grants = {
-        roles = ["platform-dev-access", "dev-auto-access", "prod-readonly-access", "dev-reviewer", "prod-requester", "prod-reviewer", "terraform-provider", "editor", "auditor"]
+        roles = ["platform-dev-access", "dev-auto-access", "prod-readonly-access", "dev-reviewer", "prod-requester", "prod-reviewer", "editor", "auditor"]
       }
     }
   })
