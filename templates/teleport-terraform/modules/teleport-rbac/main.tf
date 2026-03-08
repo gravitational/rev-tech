@@ -8,6 +8,10 @@
 # No variables — all role definitions are static. Label values are the
 # canonical demo defaults: dev/dev and prod/platform.
 # Provider must be configured by the calling root module.
+#
+# Numeric enums used below (Terraform provider uses proto enum ints):
+#   create_host_user_mode / create_db_user_mode:  0 = off  1 = keep  2 = drop
+#   require_session_mfa:  0 = no  1 = yes
 ##################################################################################
 
 terraform {
@@ -60,8 +64,15 @@ resource "teleport_role" "dev_access" {
 
   spec = {
     options = {
-      max_session_ttl    = "8h0m0s"
-      enhanced_recording = ["command", "network"]
+      max_session_ttl                = "8h0m0s"
+      enhanced_recording             = ["command", "network"]
+      create_host_user_mode          = 1
+      create_host_user_default_shell = "/bin/bash"
+      create_db_user                 = true
+      create_desktop_user            = true
+      desktop_clipboard              = true
+      desktop_directory_sharing      = true
+      pin_source_ip                  = false
     }
 
     allow = {
@@ -69,15 +80,24 @@ resource "teleport_role" "dev_access" {
         env  = ["dev"]
         team = ["dev"]
       }
+      aws_role_arns = ["{{external.aws_role_arns}}"]
       db_labels = {
-        env  = ["dev"]
-        team = ["dev"]
+        env                      = ["dev"]
+        team                     = ["dev"]
+        "teleport.dev/db-access" = ["mapped"]
       }
+      db_names       = ["{{external.db_names}}", "*"]
+      db_users       = ["{{external.db_users}}", "reader", "writer"]
+      desktop_groups = ["Administrators"]
+      host_groups    = ["wheel"]
       logins = [
         "{{email.local(external.username)}}",
         "{{email.local(external.email)}}",
         "ubuntu", "ec2-user"
       ]
+      mcp = {
+        tools = ["*"]
+      }
       node_labels = {
         env  = ["dev"]
         team = ["dev"]
@@ -90,6 +110,7 @@ resource "teleport_role" "dev_access" {
         env  = ["dev"]
         team = ["dev"]
       }
+      windows_desktop_logins = ["{{email.local(external.username)}}"]
     }
   }
 }
@@ -108,15 +129,24 @@ resource "teleport_role" "dev_auto_access" {
 
   spec = {
     options = {
-      max_session_ttl    = "8h0m0s"
-      enhanced_recording = ["command", "network"]
+      max_session_ttl                = "8h0m0s"
+      enhanced_recording             = ["command", "network"]
+      create_db_user                 = true
+      create_db_user_mode            = 1
+      create_host_user_mode          = 1
+      create_host_user_default_shell = "/bin/bash"
     }
 
     allow = {
       db_labels = {
-        env  = ["dev"]
-        team = ["dev"]
+        env                      = ["dev"]
+        team                     = ["dev"]
+        "teleport.dev/db-access" = ["auto"]
       }
+      db_names    = ["{{external.db_names}}", "*"]
+      db_roles    = ["{{external.db_roles}}", "reader", "writer", "dbadmin"]
+      db_users    = ["{{email.local(external.username)}}", "{{email.local(external.email)}}"]
+      host_groups = ["wheel"]
       logins = [
         "{{email.local(external.username)}}",
         "{{email.local(external.email)}}"
@@ -147,8 +177,16 @@ resource "teleport_role" "platform_dev_access" {
 
   spec = {
     options = {
-      max_session_ttl    = "8h0m0s"
-      enhanced_recording = ["command", "network"]
+      max_session_ttl                = "8h0m0s"
+      enhanced_recording             = ["command", "network"]
+      create_host_user_mode          = 1
+      create_host_user_default_shell = "/bin/bash"
+      create_db_user                 = true
+      create_db_user_mode            = 1
+      create_desktop_user            = false
+      desktop_clipboard              = true
+      desktop_directory_sharing      = true
+      pin_source_ip                  = false
     }
 
     allow = {
@@ -156,15 +194,28 @@ resource "teleport_role" "platform_dev_access" {
         env  = ["dev"]
         team = ["*"]
       }
+      aws_role_arns = ["{{external.aws_role_arns}}"]
       db_labels = {
         env  = ["dev"]
         team = ["*"]
       }
+      db_names = ["{{external.db_names}}", "*"]
+      db_users = [
+        "{{external.db_users}}",
+        "{{email.local(external.username)}}",
+        "{{email.local(external.email)}}",
+        "reader", "writer"
+      ]
+      desktop_groups = ["Administrators"]
+      host_groups    = ["wheel"]
       logins = [
         "{{email.local(external.username)}}",
         "{{email.local(external.email)}}",
         "ubuntu", "ec2-user"
       ]
+      mcp = {
+        tools = ["*"]
+      }
       node_labels = {
         env  = ["dev"]
         team = ["*"]
@@ -177,6 +228,7 @@ resource "teleport_role" "platform_dev_access" {
         env  = ["dev"]
         team = ["*"]
       }
+      windows_desktop_logins = ["{{email.local(external.username)}}"]
     }
   }
 }
@@ -195,8 +247,11 @@ resource "teleport_role" "prod_readonly_access" {
 
   spec = {
     options = {
-      max_session_ttl    = "4h0m0s"
-      enhanced_recording = ["command", "network"]
+      max_session_ttl       = "4h0m0s"
+      enhanced_recording    = ["command", "network"]
+      create_host_user_mode = 0
+      create_db_user        = false
+      create_db_user_mode   = 0
     }
 
     allow = {
@@ -208,7 +263,12 @@ resource "teleport_role" "prod_readonly_access" {
         env  = ["prod"]
         team = ["platform"]
       }
-      logins = ["readonly", "{{external.readonly_login}}"]
+      db_names = ["*"]
+      db_users = ["reader", "reporting", "{{external.readonly_db_user}}"]
+      logins   = ["readonly", "{{external.readonly_login}}"]
+      mcp = {
+        tools = ["*"]
+      }
       node_labels = {
         env  = ["prod"]
         team = ["platform"]
@@ -239,9 +299,17 @@ resource "teleport_role" "prod_access" {
 
   spec = {
     options = {
-      max_session_ttl     = "2h0m0s"
-      require_session_mfa = 1
-      enhanced_recording  = ["command", "network"]
+      max_session_ttl                = "2h0m0s"
+      require_session_mfa            = 1
+      enhanced_recording             = ["command", "network"]
+      create_host_user_mode          = 1
+      create_host_user_default_shell = "/bin/bash"
+      create_db_user                 = true
+      create_db_user_mode            = 1
+      create_desktop_user            = false
+      desktop_clipboard              = true
+      desktop_directory_sharing      = true
+      pin_source_ip                  = false
     }
 
     allow = {
@@ -249,16 +317,29 @@ resource "teleport_role" "prod_access" {
         env  = ["prod"]
         team = ["platform"]
       }
+      aws_role_arns = ["{{external.aws_role_arns}}"]
       db_labels = {
         env  = ["prod"]
         team = ["platform"]
       }
+      db_names = ["{{external.db_names}}", "*"]
+      db_users = [
+        "{{external.db_users}}",
+        "{{email.local(external.username)}}",
+        "{{email.local(external.email)}}",
+        "reader", "writer"
+      ]
+      desktop_groups = ["Administrators"]
+      host_groups    = ["wheel"]
       logins = [
         "{{external.logins}}",
         "{{email.local(external.username)}}",
         "{{email.local(external.email)}}",
         "ubuntu", "ec2-user"
       ]
+      mcp = {
+        tools = ["*"]
+      }
       node_labels = {
         env  = ["prod"]
         team = ["platform"]
@@ -271,6 +352,7 @@ resource "teleport_role" "prod_access" {
         env  = ["prod"]
         team = ["platform"]
       }
+      windows_desktop_logins = ["{{email.local(external.username)}}", "Administrator"]
     }
   }
 }
@@ -289,16 +371,26 @@ resource "teleport_role" "prod_auto_access" {
 
   spec = {
     options = {
-      max_session_ttl    = "2h0m0s"
-      enhanced_recording = ["command", "network"]
+      max_session_ttl                = "2h0m0s"
+      enhanced_recording             = ["command", "network"]
+      create_db_user                 = true
+      create_db_user_mode            = 1
+      create_host_user_mode          = 1
+      create_host_user_default_shell = "/bin/bash"
     }
 
     allow = {
       db_labels = {
-        env  = ["prod"]
-        team = ["platform"]
+        env                      = ["prod"]
+        team                     = ["platform"]
+        "teleport.dev/db-access" = ["auto"]
       }
+      db_names    = ["{{external.db_names}}", "*"]
+      db_roles    = ["{{external.db_roles}}", "reader", "writer", "dbadmin"]
+      db_users    = ["{{email.local(external.username)}}", "{{email.local(external.email)}}"]
+      host_groups = ["wheel"]
       logins = [
+        "{{external.logins}}",
         "{{email.local(external.username)}}",
         "{{email.local(external.email)}}",
         "ubuntu", "ec2-user"
