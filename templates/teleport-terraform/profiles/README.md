@@ -36,21 +36,6 @@ Profiles compose multiple data-plane use cases into a single Terraform root modu
 
 ---
 
-### `windows-mongodb-ssh` — Traditional Enterprise
-
-**Archetype:** Financial services / healthcare / legacy enterprise shops.
-**Use when:** Prospect runs Windows desktops, MongoDB, and Linux SSH servers.
-**Cost:** ~$2–4/day.
-
-**Includes:**
-- 2 Linux SSH nodes
-- Self-hosted MongoDB (TLS cert auth, no passwords)
-- Windows Server + Desktop Service (browser-based RDP)
-
-**Deploy:** See [windows-mongodb-ssh/README.md](windows-mongodb-ssh/README.md).
-
----
-
 ### `cloud-native-apps` — Modern Cloud Shop
 
 **Archetype:** SaaS companies and tech-forward enterprises running containerized apps and AWS services.
@@ -93,7 +78,7 @@ cd profiles/<profile-name>
 # Required
 export TF_VAR_proxy_address=myorg.teleport.sh
 export TF_VAR_user=you@company.com
-export TF_VAR_teleport_version=18.6.4
+export TF_VAR_teleport_version=18.7.1
 
 # Optional overrides
 export TF_VAR_env=dev

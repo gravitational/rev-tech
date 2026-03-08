@@ -36,10 +36,10 @@ eval $(tctl terraform env)
 
 export TF_VAR_proxy_address=myorg.teleport.sh
 export TF_VAR_user=you@company.com
-export TF_VAR_teleport_version=18.6.4
+export TF_VAR_teleport_version=18.7.1
 
-# Required for Demo Panel
-export TF_VAR_demo_panel_app_repo=https://github.com/your-org/app-demo-panel
+# Optional — demo panel defaults to https://github.com/tenaciousdlg/app-demo-panel
+# export TF_VAR_demo_panel_app_repo=https://github.com/your-org/app-demo-panel
 
 # Optional
 export TF_VAR_env=dev
@@ -154,7 +154,7 @@ terraform destroy
 | `proxy_address` | Teleport proxy hostname | **required** |
 | `user` | Your email — used for tagging and resource naming | **required** |
 | `teleport_version` | Teleport version to install on all nodes | **required** |
-| `demo_panel_app_repo` | Git URL for the Flask demo panel app | **required** |
+| `demo_panel_app_repo` | Git URL for the Flask demo panel app | `https://github.com/tenaciousdlg/app-demo-panel` |
 | `env` | Environment label | `"dev"` |
 | `team` | Team label | `"platform"` |
 | `region` | AWS region | `"us-east-2"` |

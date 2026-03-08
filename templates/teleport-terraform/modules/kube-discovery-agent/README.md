@@ -55,6 +55,7 @@ module "kube_agent" {
 | `tags` | Extra AWS tags | `map(string)` | `{}` |
 | `eks_tag_key` | AWS tag key to filter EKS clusters | `string` | `"teleport-discovery"` |
 | `eks_tag_value` | AWS tag value to filter EKS clusters | `string` | `"enabled"` |
+| `discovery_regions` | AWS regions to scan for EKS clusters. `null` (default) scans the same region as the agent (`var.region`). | `list(string)` | `null` |
 
 ## Outputs
 

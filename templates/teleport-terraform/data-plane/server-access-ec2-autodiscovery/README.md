@@ -8,7 +8,7 @@ Demonstrates Teleport's EC2 auto-discovery using SSM + IAM joining. A Discovery 
 
 ## What It Deploys
 
-- 1 EC2 instance running Teleport `discovery_service` (the agent)
+- 1 EC2 instance running Teleport `discovery_service` + `ssh_service` (the agent registers as both a Discovery agent and an SSH node itself)
 - N bare Amazon Linux 2023 instances (default 2) — no Teleport pre-installed
 - IAM role for targets with `AmazonSSMManagedInstanceCore` (SSM agent receives installer)
 - IAM join token (no secret — targets authenticate via their instance IAM role)
@@ -18,7 +18,7 @@ Demonstrates Teleport's EC2 auto-discovery using SSM + IAM joining. A Discovery 
 
 ## How It Works
 
-1. Terraform creates target EC2 instances tagged with `teleport-discovery=enabled`
+1. Terraform creates target EC2 instances tagged with `env=dev` (default discovery filter)
 2. The Discovery agent finds tagged instances via the AWS API (~30 second poll interval)
 3. The agent sends the Teleport installer script to each target via SSM
 4. Targets install Teleport and join the cluster using IAM joining — no token secret needed
@@ -36,7 +36,7 @@ eval $(tctl terraform env)
 
 export TF_VAR_user=you@company.com
 export TF_VAR_proxy_address=myorg.teleport.sh
-export TF_VAR_teleport_version=18.6.4
+export TF_VAR_teleport_version=18.7.1
 export TF_VAR_env=dev
 export TF_VAR_team=platform
 export TF_VAR_region=us-east-2
@@ -70,10 +70,10 @@ To show live enrollment during a demo:
 Or use the AWS CLI:
 
 ```bash
-# Tag an existing instance
+# Tag an existing instance with the discovery key/value (default: env=dev)
 aws ec2 create-tags \
   --resources i-0123456789abcdef0 \
-  --tags Key=teleport-discovery,Value=enabled
+  --tags Key=env,Value=dev
 
 # Watch it enroll
 watch -n 5 tsh ls
@@ -100,8 +100,8 @@ terraform destroy
 | `team` | Team label | `"platform"` |
 | `region` | AWS region (must match where target instances run) | `"us-east-2"` |
 | `target_count` | Number of bare EC2 instances to create as targets | `2` |
-| `ec2_tag_key` | AWS tag key used to select instances for discovery | `"teleport-discovery"` |
-| `ec2_tag_value` | AWS tag value used to select instances for discovery | `"enabled"` |
+| `ec2_tag_key` | AWS tag key used to select instances for discovery | `"env"` |
+| `ec2_tag_value` | AWS tag value used to select instances for discovery | `"dev"` |
 | `cidr_vpc` | VPC CIDR | `"10.0.0.0/16"` |
 | `cidr_subnet` | Private subnet CIDR | `"10.0.1.0/24"` |
 | `cidr_public_subnet` | Public subnet CIDR (NAT) | `"10.0.0.0/24"` |

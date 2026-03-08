@@ -4,7 +4,7 @@ Provisions an EC2 instance running a Flask identity panel behind Teleport Applic
 
 **Use case:** Show prospects what Teleport injects into every request — the user's Teleport identity flows through to internal apps with no extra login.
 
-The Flask app lives in a separate standalone repo (e.g., `https://github.com/your-org/app-demo-panel`) and is cloned at instance boot via `app_repo`. This keeps application code and infrastructure lifecycle separate.
+The Flask app lives in a separate standalone repo and is cloned at instance boot via `app_repo`. The reference implementation is at [`https://github.com/tenaciousdlg/app-demo-panel`](https://github.com/tenaciousdlg/app-demo-panel) — callers that use it as-is (data-plane and profiles) default to that repo. This keeps application code and infrastructure lifecycle separate.
 
 ---
 
