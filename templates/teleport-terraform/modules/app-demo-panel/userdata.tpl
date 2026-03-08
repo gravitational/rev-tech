@@ -49,7 +49,7 @@ teleport:
     format:
       output: text
 app_service:
-  enabled: true
+  enabled: "yes"
   resources:
     - labels:
         "teleport.dev/app": "demo-panel"
@@ -61,9 +61,9 @@ ssh_service:
     "env": "${env}"
     "team": "${team}"
 auth_service:
-  enabled: false
+  enabled: "no"
 proxy_service:
-  enabled: false
+  enabled: "no"
 EOF
 
 systemctl enable teleport

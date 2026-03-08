@@ -65,14 +65,14 @@ teleport:
     format:
       output: text
 app_service:
-  enabled: true
+  enabled: "yes"
   resources:
     - labels:
         "teleport.dev/app": "grafana"
         "env": "${env}"
         "team": "${team}"
 ssh_service:
-  enabled: true
+  enabled: "yes"
   labels:
     env: "${env}"
     team: "${team}"
@@ -84,9 +84,9 @@ ssh_service:
       command: ["/usr/bin/uptime"]
       period: "30s"
 auth_service:
-  enabled: false
+  enabled: "no"
 proxy_service:
-  enabled: false
+  enabled: "no"
 EOF_TEL
 
 echo "${token}" > /tmp/token

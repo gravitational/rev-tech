@@ -22,7 +22,7 @@ teleport:
     format:
       output: text
 app_service:
-  enabled: true
+  enabled: "yes"
   apps:
     - name: "${app_a_name}"
       uri: "${app_a_uri}"
@@ -47,14 +47,14 @@ app_service:
 %{ endif ~}
 %{ endif ~}
 ssh_service:
-  enabled: true
+  enabled: "yes"
   labels:
     env: "${host_env}"
     team: "${host_team}"
 auth_service:
-  enabled: false
+  enabled: "no"
 proxy_service:
-  enabled: false
+  enabled: "no"
 EOF_TEL
 
 echo "${token}" >/tmp/token

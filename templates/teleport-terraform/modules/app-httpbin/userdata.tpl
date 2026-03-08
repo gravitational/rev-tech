@@ -28,18 +28,18 @@ teleport:
     format:
       output: text
 app_service:
-  enabled: true
+  enabled: "yes"
   resources:
     - labels:
         "teleport.dev/app": "httpbin"
         "env": "${env}"
         "team": "${team}"
 ssh_service:
-  enabled: false
+  enabled: "no"
 auth_service:
-  enabled: false
+  enabled: "no"
 proxy_service:
-  enabled: false
+  enabled: "no"
 EOF_TEL
 
 # Write token to disk

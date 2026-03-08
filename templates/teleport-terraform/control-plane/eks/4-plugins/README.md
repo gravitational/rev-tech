@@ -7,56 +7,49 @@ Deploys the [Teleport Slack plugin](https://goteleport.com/docs/access-controls/
 - Layers 1-cluster, 2-teleport, and 3-rbac must be applied.
 - A Slack app with:
   - **Bot Token Scopes**: `chat:write`, `users:read`, `users:read.email`
-  - **Interactivity** enabled (request URL: `https://<proxy>:443/slack/actions`)
+  - Bot invited to the notification channel: `/invite @<bot>`
 
 ## Deploy
 
 ```bash
 export TF_VAR_proxy_address=myorg.teleport.sh
 export TF_VAR_slack_bot_token=xoxb-...
-export TF_VAR_slack_signing_secret=abc123...
 export TF_VAR_slack_channel_id=C01234ABCDE
 terraform init && terraform apply
 ```
 
-## Bootstrap (one-time after first apply)
+No manual bootstrap required. Terraform creates a `TeleportBotV1` (Machine ID) and a kubernetes join `TeleportProvisionToken`. The Helm chart's built-in tbot sidecar authenticates to Teleport using the pod's ServiceAccount JWT and continuously renews credentials automatically.
 
-The plugin authenticates to Teleport using an identity file. Generate it once:
+## Verify
 
 ```bash
-# 1. Sign a long-lived identity for the plugin service account
-tctl auth sign --format=file \
-  --user=slack-plugin-service \
-  --out=plugin-identity \
-  --ttl=8760h   # 1 year; rotate annually
+# tbot (credential renewal) logs
+kubectl logs -n teleport-plugins \
+  -l app=tbot-slack-plugin --tail=50
 
-# 2. Upload the identity file as a Kubernetes secret
-kubectl create secret generic teleport-plugin-slack-identity \
-  --from-file=auth_id=plugin-identity \
-  -n teleport-plugins
-
-# 3. Restart the plugin to load the secret
-kubectl rollout restart deployment/teleport-plugin-slack -n teleport-plugins
-
-# Verify
-kubectl get pods -n teleport-plugins
-kubectl logs -n teleport-plugins -l app.kubernetes.io/name=teleport-plugin-slack
+# Plugin logs
+kubectl logs -n teleport-plugins \
+  -l app.kubernetes.io/name=teleport-plugin-slack --tail=50
 ```
 
 ## Demo Flow
 
-### Request side (user with `dev-requester` role)
+### Request side
 
 ```bash
 tsh login --proxy=myorg.teleport.sh:443
 
-# Request prod-readonly access for a time-boxed incident investigation
+# Bob (dev-requester): can only request prod-readonly-access
 tsh request create \
   --roles=prod-readonly-access \
-  --reason="Investigating prod latency spike (INC-4231)" \
-  --max-duration=4h
+  --reason="Investigating prod latency spike (INC-4231)"
 
-# Watch the request status
+# Alice (senior-dev-requester): can also request prod-access / prod-auto-access
+tsh request create \
+  --roles=prod-access \
+  --reason="Hotfix deployment needs prod DB access"
+
+# Watch request status
 tsh request ls
 ```
 
@@ -76,7 +69,7 @@ tsh request review --approve --reason="Confirmed incident, approved" <request-id
 # Activate the elevated role
 tsh login --request-id=<request-id>
 
-# Now has prod-readonly access for up to 4h
+# Now has prod access for up to the approved duration
 tsh ssh ec2-user@<prod-node>
 tsh db connect rds-mysql-prod
 
@@ -88,12 +81,16 @@ tsh logout
 
 | Role | Can request | Can review |
 |------|-------------|------------|
-| `dev-requester` | `platform-dev-access`, `prod-readonly-access`, `prod-access` | — |
-| `prod-requester` | `prod-readonly-access`, `prod-access` | — |
+| `dev-requester` | `prod-readonly-access` | — |
+| `senior-dev-requester` | `prod-readonly-access`, `prod-access`, `prod-auto-access` | — |
+| `prod-requester` | `prod-readonly-access`, `prod-access`, `prod-auto-access` | — |
 | `dev-reviewer` | — | `dev-access`, `platform-dev-access` |
-| `prod-reviewer` | — | `prod-readonly-access`, `prod-access` |
+| `prod-reviewer` | — | `prod-readonly-access`, `prod-access`, `prod-auto-access` |
 
-Engineers access list receives: `platform-dev-access`, `dev-reviewer`, `prod-requester`, `prod-reviewer`.
+Access list grants:
+- `devs`: `dev-requester`
+- `senior-devs`: `senior-dev-requester`
+- `engineers`: `prod-requester`, `prod-reviewer`, `dev-reviewer`
 
 ## Inputs
 
@@ -104,7 +101,6 @@ Engineers access list receives: `platform-dev-access`, `dev-reviewer`, `prod-req
 | `teleport_namespace` | Namespace where Teleport is installed | `teleport-cluster` |
 | `plugin_namespace` | Namespace for the Slack plugin | `teleport-plugins` |
 | `slack_bot_token` | Slack Bot User OAuth Token (`xoxb-...`) | required |
-| `slack_signing_secret` | Slack app signing secret | required |
 | `slack_channel_id` | Slack channel ID for notifications | required |
 | `plugin_chart_version` | Helm chart version (empty = latest) | `""` |
 
@@ -112,6 +108,5 @@ Engineers access list receives: `platform-dev-access`, `dev-reviewer`, `prod-req
 
 | Name | Description |
 |------|-------------|
-| `plugin_service_user` | Teleport user name for the plugin |
 | `plugin_namespace` | Kubernetes namespace |
-| `bootstrap_commands` | Full bootstrap and demo flow reference |
+| `tbot_status` | Commands to verify tbot and plugin health, plus demo flow reference |
