@@ -238,7 +238,8 @@ resource "teleport_role" "platform_dev_access" {
       }
       rules = [
         { resources = ["event"], verbs = ["list", "read"] },
-        { resources = ["session"], verbs = ["read", "list"] }
+        { resources = ["session"], verbs = ["read", "list"] },
+        { resources = ["access_graph"], verbs = ["list", "read"] }
       ]
       windows_desktop_labels = {
         env  = ["dev"]

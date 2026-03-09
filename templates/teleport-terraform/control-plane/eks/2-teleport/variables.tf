@@ -50,3 +50,9 @@ variable "certificate_duration" {
   type        = string
   default     = "2160h" # 90 days
 }
+
+variable "access_graph_enabled" {
+  description = "Enable Access Graph integration. Deploy 5-access-graph first, then re-apply this layer with this set to true."
+  type        = bool
+  default     = false
+}

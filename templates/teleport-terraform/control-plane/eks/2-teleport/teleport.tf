@@ -29,6 +29,29 @@ resource "kubernetes_service_account" "teleport_operator" {
   }
 }
 
+locals {
+  # Conditional Access Graph config — populated when var.access_graph_enabled = true.
+  # The ConfigMap teleport-access-graph-ca is created by 5-access-graph and mounted
+  # at /var/run/access-graph so the auth service can verify the gRPC TLS certificate.
+  access_graph_auth_config = var.access_graph_enabled ? {
+    teleportConfig = {
+      access_graph = {
+        enabled  = true
+        endpoint = "teleport-access-graph.teleport-access-graph.svc.cluster.local:443"
+        ca       = "/var/run/access-graph/ca.pem"
+      }
+    }
+  } : {}
+
+  access_graph_extra_volumes = var.access_graph_enabled ? [
+    { name = "tag-ca", configMap = { name = "teleport-access-graph-ca" } }
+  ] : []
+
+  access_graph_extra_volume_mounts = var.access_graph_enabled ? [
+    { name = "tag-ca", mountPath = "/var/run/access-graph" }
+  ] : []
+}
+
 resource "helm_release" "teleport_cluster" {
   name       = "teleport-cluster"
   namespace  = kubernetes_namespace.teleport_cluster.metadata[0].name
@@ -45,10 +68,9 @@ resource "helm_release" "teleport_cluster" {
       tls               = { existingSecretName = "teleport-tls" }
       enterprise        = fileexists("${path.module}/../../license.pem")
       labels            = { env = var.env, team = var.team }
-      operator          = { enabled = true }
       authentication    = { type = "saml" }
       serviceAccount    = { create = false, name = "teleport-cluster" }
-      auth              = { serviceAccount = { create = false, name = "teleport-cluster" } }
+      auth              = merge({ serviceAccount = { create = false, name = "teleport-cluster" } }, local.access_graph_auth_config)
       proxy             = { serviceAccount = { create = false, name = "teleport-cluster-proxy" } }
       operator          = { enabled = true, serviceAccount = { create = false, name = "teleport-cluster-operator" } }
       chartMode         = "aws"
@@ -60,6 +82,8 @@ resource "helm_release" "teleport_cluster" {
         dynamoAutoScaling      = false
         sessionRecordingBucket = aws_s3_bucket.session_recordings.bucket
       }
+      extraVolumes      = local.access_graph_extra_volumes
+      extraVolumeMounts = local.access_graph_extra_volume_mounts
     })
   ]
   depends_on = [
