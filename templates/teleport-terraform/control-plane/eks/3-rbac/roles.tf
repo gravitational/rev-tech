@@ -655,3 +655,32 @@ resource "kubectl_manifest" "access_list_engineers" {
     }
   })
 }
+
+##################################################################################
+# AGENT MANAGED UPDATES
+##################################################################################
+resource "kubectl_manifest" "autoupdate_config" {
+  yaml_body = yamlencode({
+    apiVersion = "resources.teleport.dev/v1"
+    kind       = "TeleportAutoupdateConfigV1"
+    metadata = {
+      name      = "autoupdate-config"
+      namespace = data.kubernetes_namespace.teleport_cluster.metadata[0].name
+    }
+    spec = {
+      agents = {
+        mode     = var.autoupdate_mode
+        strategy = "halt-on-error"
+        schedules = {
+          regular = [
+            {
+              name       = "default"
+              days       = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+              start_hour = 2
+            }
+          ]
+        }
+      }
+    }
+  })
+}

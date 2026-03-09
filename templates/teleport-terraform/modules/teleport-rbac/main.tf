@@ -95,6 +95,14 @@ resource "teleport_role" "dev_access" {
         "{{email.local(external.email)}}",
         "ubuntu", "ec2-user"
       ]
+      join_sessions = [
+        {
+          name  = "Join dev sessions"
+          roles = ["dev-access", "platform-dev-access"]
+          kinds = ["k8s", "ssh"]
+          modes = ["moderator", "observer"]
+        }
+      ]
       mcp = {
         tools = ["*"]
       }
@@ -208,6 +216,14 @@ resource "teleport_role" "platform_dev_access" {
       ]
       desktop_groups = ["Administrators"]
       host_groups    = ["wheel"]
+      join_sessions = [
+        {
+          name  = "Join dev sessions"
+          roles = ["dev-access", "platform-dev-access"]
+          kinds = ["k8s", "ssh"]
+          modes = ["moderator", "observer"]
+        }
+      ]
       logins = [
         "{{email.local(external.username)}}",
         "{{email.local(external.email)}}",
@@ -331,6 +347,14 @@ resource "teleport_role" "prod_access" {
       ]
       desktop_groups = ["Administrators"]
       host_groups    = ["wheel"]
+      join_sessions = [
+        {
+          name  = "Join prod sessions"
+          roles = ["*"]
+          kinds = ["k8s", "ssh"]
+          modes = ["moderator", "observer"]
+        }
+      ]
       logins = [
         "{{external.logins}}",
         "{{email.local(external.username)}}",
