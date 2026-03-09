@@ -7,8 +7,8 @@ This template configures a Teleport Cloud tenant using the Teleport Terraform pr
 ```
 control-plane/cloud/
 ├── 1-cluster/   # no-op for SaaS
-├── 2-teleport/  # SAML connector + auth preference + base roles
-└── 3-rbac/      # roles and access lists scoped by env/team
+├── 2-teleport/  # SAML connector + auth preference
+└── 3-rbac/      # roles and access lists
 ```
 
 ## Prerequisites
@@ -16,74 +16,57 @@ control-plane/cloud/
 - Teleport Cloud tenant
 - `tctl` available for generating Terraform credentials
 - Terraform v1.6+
+- Okta SAML app configured with your tenant's ACS URL
 
 ## Usage
 
-### 1) (No-op) cluster layer
+### 1) No-op cluster layer
+
+Nothing to provision for SaaS — skip this directory.
+
+### 2) SAML connector + auth preference
 
 ```bash
-cd control-plane/cloud/1-cluster
-```
-
-### 2) Teleport configuration
-
-```bash
-cd ../2-teleport
+cd control-plane/cloud/2-teleport
 export TF_VAR_proxy_address="your-tenant.teleport.sh"
 export TF_VAR_okta_metadata_url="https://your-okta.okta.com/app/.../metadata"
 
-# Authenticate Terraform to Teleport
-# (uses Teleport credentials from tctl)
 eval $(tctl terraform env)
-
 terraform init
 terraform apply
 ```
+
+This creates the Okta SAML connector and sets SAML as the cluster auth method.
+All authenticated users receive `base-user` via the connector's `attributes_to_roles`.
 
 ### 3) RBAC
 
 ```bash
 cd ../3-rbac
 export TF_VAR_proxy_address="your-tenant.teleport.sh"
-export TF_VAR_dev_team="dev"
-export TF_VAR_prod_team="platform"
 
-# Authenticate Terraform to Teleport
-# (uses Teleport credentials from tctl)
 eval $(tctl terraform env)
-
 terraform init
+```
+
+Copy the example vars file and populate your user lists:
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+# edit terraform.tfvars — add emails for devs, senior_devs, engineers
 terraform apply
 ```
 
 ## RBAC Model
 
-- **dev access**: `dev-access` with `env=dev`, `team=dev`
-- **platform dev access**: `platform-dev-access` with `env=dev`, `team=*`
-- **prod access**: `prod-readonly-access` and `prod-access` with `env=prod`, `team=platform`
+Three-tier persona model — roles are managed by `modules/teleport-rbac` and access list membership is Terraform-managed (no SCIM required):
 
-Access lists are SCIM‑managed and must match Okta group displayNames exactly:
+| Access list | Grants |
+|---|---|
+| `devs` | `dev-access`, `dev-auto-access`, `dev-requester` |
+| `senior-devs` | `platform-dev-access`, `dev-auto-access`, `senior-dev-requester` |
+| `engineers` | `platform-dev-access`, `dev-auto-access`, `prod-readonly-access`, `dev-reviewer`, `prod-requester`, `prod-reviewer`, `editor`, `auditor` |
 
-- `Everyone` → `base-user`
-- `devs` → `dev-access`, `dev-requester`
-- `engineers` → `platform-dev-access`, `dev-reviewer`, `prod-requester`
+`base-user` is assigned automatically to all authenticated users by the SAML connector.
 
-Request/review roles (`dev-requester`, `prod-requester`, `dev-reviewer`) handle elevation and approvals.
-
-Ensure resources in your tenant are labeled with `env` and `team` to match these roles.
-
-## SCIM Checklist
-
-- Enable SCIM in Teleport and associate it with your SAML connector.
-- In Okta, configure SCIM provisioning with the Teleport SCIM base URL and client credentials.
-- Ensure Okta group `displayName` values match Access List titles exactly:
-  - `Everyone`
-  - `devs`
-  - `engineers`
-- Apply the `3-rbac` layer to create roles and SCIM Access Lists.
-
-## SCIM/Okta Wiring (Minimal)
-
-- Teleport: Integrations → SCIM → create integration, select your SAML connector, copy Base URL + Client ID/Secret.
-- Okta: Provisioning → SCIM → paste Base URL + Client ID/Secret, enable Group Push/Assignments.
-- Access Lists: `spec.title` **must** equal Okta group `displayName` (case‑sensitive).
+Resources must be labeled `env=dev`/`team=dev` (dev tier) or `env=prod`/`team=platform` (prod tier) to match the role label matchers.

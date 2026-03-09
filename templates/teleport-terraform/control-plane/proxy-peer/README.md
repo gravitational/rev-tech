@@ -1,12 +1,6 @@
-# Proxy‑Peer Control Plane (Linux)
+# Proxy-Peer Control Plane (Self-Hosted)
 
-Self‑hosted Teleport cluster with proxy peering enabled. This is an advanced demo that pairs a single auth/proxy node with one or more proxy peers.
-
-Guides used:
-- Self‑Hosted Demo Cluster
-- Proxy Peering Architecture
-- Proxy Peering Migration
-- Networking / public_addr
+Self-hosted Teleport cluster with proxy peering enabled. Pairs a single auth/proxy node with one or more proxy peers for horizontal scaling of user-facing connections.
 
 ## Layout
 
@@ -14,14 +8,16 @@ Guides used:
 control-plane/proxy-peer/
 ├── 1-cluster/   # networking, IAM, and S3
 ├── 2-teleport/  # auth/proxy + peer instances, DNS
-├── 3-rbac/      # Teleport roles aligned to env/team
+└── 3-rbac/      # SAML connector, roles, and access lists
 ```
 
 ## Prerequisites
 
 - AWS CLI configured (`aws sts get-caller-identity` works)
 - Terraform v1.6+
-- Optional: Teleport Enterprise license file (set `TF_VAR_license_path` if needed)
+- Route 53 hosted zone for your domain
+- Okta SAML app configured with your cluster's ACS URL
+- Optional: Teleport Enterprise license file
 
 ## Usage
 
@@ -47,58 +43,51 @@ export TF_VAR_env="dev"
 export TF_VAR_team="platform"
 export TF_VAR_parent_domain="example.com"
 export TF_VAR_proxy_address="teleport.example.com"
-export TF_VAR_license_path="../../license.pem" # optional
-export TF_VAR_teleport_version="18.4.1"
+export TF_VAR_teleport_version="18.7.1"
 export TF_VAR_proxy_count=1
+# export TF_VAR_license_path="../../license.pem"  # Enterprise only
 terraform init
 terraform apply
 ```
 
-### 3) RBAC (env/team)
+The auth/proxy node writes the initial admin invite link to S3 — check the Terraform output for the exact `tctl` command.
+
+### 3) RBAC
 
 ```bash
 cd ../3-rbac
 export TF_VAR_proxy_address="teleport.example.com"
 export TF_VAR_okta_metadata_url="https://your-okta.okta.com/app/.../metadata"
-export TF_VAR_dev_team="dev"
-export TF_VAR_prod_team="platform"
+
 eval $(tctl terraform env)
 terraform init
+```
+
+Copy the example vars file and populate your user lists:
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+# edit terraform.tfvars — add emails for devs, senior_devs, engineers
 terraform apply
 ```
 
-## Notes
-
-- The auth/proxy node writes the initial user invite link to S3; see the output for the exact command.
-- Only a single proxy `public_addr` should be configured; multiple values can cause redirects to the first address.
-- This is a demo deployment; not for production use.
+This layer creates the Okta SAML connector, auth preference, all 12 demo roles, and static access lists with the members you specified.
 
 ## RBAC Model
 
-- **dev access**: `dev-access` with `env=dev`, `team=dev`
-- **platform dev access**: `platform-dev-access` with `env=dev`, `team=*`
-- **prod access**: `prod-readonly-access` and `prod-access` with `env=prod`, `team=platform`
+Three-tier persona model — roles are managed by `modules/teleport-rbac` and access list membership is Terraform-managed (no SCIM required):
 
-Access lists are SCIM‑managed and must match Okta group displayNames exactly:
+| Access list | Grants |
+|---|---|
+| `devs` | `dev-access`, `dev-auto-access`, `dev-requester` |
+| `senior-devs` | `platform-dev-access`, `dev-auto-access`, `senior-dev-requester` |
+| `engineers` | `platform-dev-access`, `dev-auto-access`, `prod-readonly-access`, `dev-reviewer`, `prod-requester`, `prod-reviewer`, `editor`, `auditor` |
 
-- `Everyone` → `base-user`
-- `devs` → `dev-access`, `dev-requester`
-- `engineers` → `platform-dev-access`, `dev-reviewer`, `prod-requester`
+`base-user` is assigned automatically to all authenticated users via the SAML connector's `attributes_to_roles` (Everyone → base-user).
 
-Request/review roles (`dev-requester`, `prod-requester`, `dev-reviewer`) handle elevation and approvals.
+Resources must be labeled `env=dev`/`team=dev` (dev tier) or `env=prod`/`team=platform` (prod tier) to match the role label matchers.
 
-## SCIM Checklist
+## Notes
 
-- Enable SCIM in Teleport and associate it with your SAML connector.
-- In Okta, configure SCIM provisioning with the Teleport SCIM base URL and client credentials.
-- Ensure Okta group `displayName` values match Access List titles exactly:
-  - `Everyone`
-  - `devs`
-  - `engineers`
-- Apply the `3-rbac` layer to create roles and SCIM Access Lists.
-
-## SCIM/Okta Wiring (Minimal)
-
-- Teleport: Integrations → SCIM → create integration, select your SAML connector, copy Base URL + Client ID/Secret.
-- Okta: Provisioning → SCIM → paste Base URL + Client ID/Secret, enable Group Push/Assignments.
-- Access Lists: `spec.title` **must** equal Okta group `displayName` (case‑sensitive).
+- Only a single proxy `public_addr` should be configured; multiple values can cause redirect loops.
+- This is a demo deployment — not for production use.
