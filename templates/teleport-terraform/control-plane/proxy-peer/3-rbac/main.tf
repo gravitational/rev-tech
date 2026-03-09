@@ -216,3 +216,30 @@ resource "teleport_access_list_member" "engineers" {
     name            = each.value
   }
 }
+
+##################################################################################
+# AGENT MANAGED UPDATES
+##################################################################################
+resource "teleport_autoupdate_config" "main" {
+  version = "v1"
+
+  metadata = {
+    name = "autoupdate-config"
+  }
+
+  spec = {
+    agents = {
+      mode     = var.autoupdate_mode
+      strategy = "halt-on-error"
+      schedules = {
+        regular = [
+          {
+            name       = "default"
+            days       = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+            start_hour = 2
+          }
+        ]
+      }
+    }
+  }
+}

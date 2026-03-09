@@ -28,3 +28,6 @@ senior_devs = [
 engineers = [
   "admin@example.com",
 ]
+
+# Agent managed updates — set to "disabled" to pin versions manually
+autoupdate_mode = "enabled"

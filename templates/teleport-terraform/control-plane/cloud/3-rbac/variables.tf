@@ -20,3 +20,9 @@ variable "engineers" {
   type        = list(string)
   default     = []
 }
+
+variable "autoupdate_mode" {
+  description = "Agent auto-update mode: 'enabled' for automatic rolling updates, 'disabled' to manage manually"
+  type        = string
+  default     = "enabled"
+}
