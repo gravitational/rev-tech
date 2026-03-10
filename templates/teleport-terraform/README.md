@@ -43,7 +43,8 @@ terraform init && terraform apply
 
 | Template | Description |
 |---|---|
-| `control-plane/eks` | EKS-based Teleport control plane: infra, Teleport, RBAC, and Slack plugin (4 layers). |
+| `control-plane/eks` | EKS-based Teleport control plane: infra, Teleport, RBAC, Slack plugin, Access Graph (5 layers). |
+| `control-plane/standalone` | Single-node EC2 Teleport cluster — fastest path to a working self-hosted cluster. |
 | `control-plane/proxy-peer` | Self-hosted Teleport cluster with proxy peering. |
 | `control-plane/cloud` | Teleport Cloud tenant configuration (Teleport provider only, no infra layer). |
 
@@ -66,6 +67,7 @@ terraform init && terraform apply
 | `machine-id-ansible` | Machine ID bot + Ansible host — certificate-based automation, no static keys | ✅ |
 | `machine-id-mcp` | MCP stdio server + Machine ID bot — Claude/AI access via Teleport with full audit | ✅ |
 | `kubernetes-access-eks-autodiscovery` | EKS auto-discovery agent — tag a cluster, it enrolls automatically | ✅ |
+| `server-access-agentless-openssh` | Agentless SSH nodes registered via `teleport_server` — no Teleport agent installed | — |
 
 ### Profiles
 
