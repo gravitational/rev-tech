@@ -10,12 +10,12 @@ output "teleport_node_names" {
 
 output "connection_guide" {
   value       = <<-EOT
-    Nodes registered. To SSH via Teleport:
+    Nodes registered. To SSH via Teleport (agentless nodes use native ssh, not tsh ssh):
 
       tsh ls                                     # confirm nodes appear
-      tsh ssh ${var.ssh_login}@agentless-0.${var.env}   # connect to first node
 
-    The Teleport proxy routes the connection — no direct network access required.
+      tsh config >> ~/.ssh/config                # add Teleport ProxyCommand (once per cluster)
+      ssh ${var.ssh_login}@agentless-0.${var.env}.${var.proxy_address}   # connect to first node
 
     To view sessions and audit events:
       tsh recordings ls
