@@ -67,7 +67,6 @@ terraform init && terraform apply
 | `machine-id-ansible` | Machine ID bot + Ansible host — certificate-based automation, no static keys | ✅ |
 | `machine-id-mcp` | MCP stdio server + Machine ID bot — Claude/AI access via Teleport with full audit | ✅ |
 | `kubernetes-access-eks-autodiscovery` | EKS auto-discovery agent — tag a cluster, it enrolls automatically | ✅ |
-| `server-access-agentless-openssh` | Agentless SSH nodes registered via `teleport_server` — no Teleport agent installed | — |
 
 ### Profiles
 
