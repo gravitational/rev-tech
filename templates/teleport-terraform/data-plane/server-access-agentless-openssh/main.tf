@@ -70,6 +70,23 @@ module "network" {
 }
 
 ##################################################################################
+# SECURITY GROUP RULE — allow SSH from the Teleport proxy
+#
+# The network module SG allows traffic only within the VPC. For agentless SSH
+# the Teleport proxy (external) must TCP-connect to port 22 directly.
+# Auth is certificate-only (Teleport user CA), so opening 22/tcp is safe.
+##################################################################################
+resource "aws_security_group_rule" "ssh_from_teleport_proxy" {
+  type              = "ingress"
+  from_port         = 22
+  to_port           = 22
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = module.network.security_group_id
+  description       = "SSH from Teleport proxy (CA cert auth only)"
+}
+
+##################################################################################
 # EC2 INSTANCES — agentless (no Teleport agent installed)
 #
 # Userdata downloads Teleport's user CA from the proxy's unauthenticated API
