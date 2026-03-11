@@ -33,7 +33,7 @@ provider "aws" {
 # DATA SOURCES
 ##################################################################################
 data "aws_route53_zone" "main" {
-  name = var.parent_domain
+  name = var.domain_name
 }
 
 locals {

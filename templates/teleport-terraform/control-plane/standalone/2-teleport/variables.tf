@@ -21,7 +21,7 @@ variable "team" {
   description = "Team label"
 }
 
-variable "parent_domain" {
+variable "domain_name" {
   type        = string
   description = "Route 53 hosted zone domain (e.g. example.com)"
 }

@@ -39,7 +39,7 @@ terraform apply
 cd ../2-teleport
 export TF_VAR_region="us-east-2"
 export TF_VAR_user="you@example.com"
-export TF_VAR_parent_domain="example.com"
+export TF_VAR_domain_name="example.com"
 export TF_VAR_proxy_address="teleport.example.com"
 export TF_VAR_teleport_version="18.7.1"
 # export TF_VAR_license_path="../../license.pem"  # Enterprise only
@@ -108,7 +108,7 @@ Set `autoupdate_mode = "disabled"` in `terraform.tfvars` to manage agent version
 |---|---|---|
 | `region` | `us-east-2` | AWS region |
 | `user` | required | Your email — used for tagging and initial admin user |
-| `parent_domain` | required | Route 53 hosted zone (e.g. `example.com`) |
+| `domain_name` | required | Route 53 hosted zone (e.g. `example.com`) |
 | `proxy_address` | required | FQDN for the cluster (e.g. `teleport.example.com`) |
 | `teleport_version` | `18.7.1` | Teleport version to install |
 | `instance_type` | `t3.small` | EC2 instance type |
