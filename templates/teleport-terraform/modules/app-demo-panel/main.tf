@@ -58,7 +58,7 @@ resource "aws_instance" "demo_panel" {
   }
 
   root_block_device {
-    volume_size           = 20
+    volume_size           = 30 # AL2023 AMI requires >= 30GB
     volume_type           = "gp3"
     encrypted             = true
     delete_on_termination = true

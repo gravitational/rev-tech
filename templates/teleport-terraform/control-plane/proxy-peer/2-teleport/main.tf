@@ -64,7 +64,7 @@ resource "aws_instance" "main" {
     http_tokens   = "required"
   }
   root_block_device {
-    volume_size           = 30
+    volume_size           = 30 # AL2023 AMI requires >= 30GB
     volume_type           = "gp3"
     encrypted             = true
     delete_on_termination = true
@@ -97,7 +97,7 @@ resource "aws_instance" "proxy" {
     http_tokens   = "required"
   }
   root_block_device {
-    volume_size           = 30
+    volume_size           = 30 # AL2023 AMI requires >= 30GB
     volume_type           = "gp3"
     encrypted             = true
     delete_on_termination = true
