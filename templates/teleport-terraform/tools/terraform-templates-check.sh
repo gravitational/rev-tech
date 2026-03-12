@@ -48,7 +48,7 @@ template_dirs="$(
   find "${templates_root}" -path '*/.terraform/*' -prune -o -type f -name 'main.tf' -print \
     | xargs -n1 dirname \
     | sort -u \
-    | grep -v '/modules$'
+    | grep -v '/modules/'
 )"
 
 # Completeness check — every template must have README.md and outputs.tf.
@@ -84,6 +84,31 @@ while IFS= read -r dir; do
   fi
   (cd "${dir}" && terraform validate)
 done <<< "${template_dirs}"
+
+# ---------------------------------------------------------------------------
+# Run terraform test for any module that has .tftest.hcl files.
+# Tests use mock_provider blocks — no real credentials required.
+# Requires Terraform >= 1.7.
+# ---------------------------------------------------------------------------
+echo "==> terraform test (modules with .tftest.hcl)"
+test_module_dirs="$(
+  find "${templates_root}/modules" -name '*.tftest.hcl' -type f \
+    | xargs -n1 dirname \
+    | sed 's|/tests$||' \
+    | sort -u
+)"
+if [[ -z "${test_module_dirs}" ]]; then
+  echo "-- no .tftest.hcl files found in modules/"
+else
+  while IFS= read -r dir; do
+    [[ -z "${dir}" ]] && continue
+    echo "-- ${dir##*/}"
+    if [[ "${SKIP_TERRAFORM_INIT:-}" != "1" ]]; then
+      (cd "${dir}" && terraform init -backend=false -upgrade=false)
+    fi
+    (cd "${dir}" && terraform test)
+  done <<< "${test_module_dirs}"
+fi
 
 if [[ "${RUN_TERRAFORM_PLAN:-}" == "1" ]]; then
   if [[ -z "${TF_VAR_team:-}" ]]; then

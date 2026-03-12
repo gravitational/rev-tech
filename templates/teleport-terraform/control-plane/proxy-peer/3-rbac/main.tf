@@ -81,10 +81,6 @@ module "rbac" {
   source = "../../../modules/teleport-rbac"
 }
 
-output "rbac_summary" {
-  value = module.rbac.role_names
-}
-
 ##################################################################################
 # ACCESS LISTS — static (Terraform-managed membership)
 #
