@@ -1,0 +1,41 @@
+---
+# Namespace for tbot
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: teleport-system
+
+---
+# ServiceAccount for tbot
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tbot
+  namespace: teleport-system
+
+---
+# ClusterRole with permissions needed for Kubernetes attestation
+# Matching the old working configuration
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tbot
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "nodes/proxy"]
+    verbs: ["get"]
+
+---
+# ClusterRoleBinding to grant the ClusterRole to the ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tbot
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tbot
+subjects:
+  - kind: ServiceAccount
+    name: tbot
+    namespace: teleport-system

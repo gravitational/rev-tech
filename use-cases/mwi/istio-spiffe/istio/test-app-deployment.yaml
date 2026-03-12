@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-app
+  labels:
+    istio-injection: enabled
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-app
+  namespace: test-app
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-app
+  namespace: test-app
+  labels:
+    app: test-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-app
+  template:
+    metadata:
+      labels:
+        app: test-app
+        spiffe.io/spire-managed-identity: "true"
+      annotations:
+        # Use the SPIRE integration template for Istio sidecar
+        inject.istio.io/templates: "sidecar,spire"
+        # Mount the SPIFFE socket from hostPath
+        sidecar.istio.io/userVolumeMount: '[{"name":"workload-socket","mountPath":"/run/secrets/workload-spiffe-uds","readOnly":true}]'
+        sidecar.istio.io/userVolume: '[{"name":"workload-socket","hostPath":{"path":"/run/spire/sockets","type":"Directory"}}]'
+    spec:
+      serviceAccountName: test-app
+      # Node selector to run on k8s-worker-1 where tbot is working
+      nodeSelector:
+        kubernetes.io/hostname: k8s-worker-1
+      containers:
+      - name: app
+        image: nicolaka/netshoot:latest
+        command:
+          - sleep
+          - "infinity"
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-app
+  namespace: test-app
+  labels:
+    app: test-app
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  selector:
+    app: test-app

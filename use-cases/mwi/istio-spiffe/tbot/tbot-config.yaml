@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tbot-config
+  namespace: teleport-system
+data:
+  tbot.yaml: |
+    version: v2
+    proxy_server: YOUR-CLUSTER.teleport.sh:443
+    onboarding:
+      join_method: kubernetes
+      token: istio-tbot-k8s-join
+    storage:
+      type: memory
+    debug: true
+    certificate_ttl: 4m0s
+    renewal_interval: 2m0s
+    services:
+      # Use the newer workload-identity-api service
+      # NOT the deprecated spiffe-workload-api
+      - type: workload-identity-api
+        # CRITICAL: Use "socket" as the filename to match SPIFFE standard
+        # This eliminates the need for symlink workarounds
+        listen: unix:///run/spire/sockets/socket
+        # Selector references the WorkloadIdentity resource name
+        selector:
+          name: istio-workloads
+        # Kubernetes attestor configuration
+        attestors:
+          kubernetes:
+            enabled: true
+            kubelet:
+              # Kubelet secure port
+              secure_port: 10250
+              # Service account token for authentication to Kubelet API
+              token_path: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+              # CA certificate for TLS verification
+              ca_path: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+              # Use proper TLS verification
+              skip_verify: true
