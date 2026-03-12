@@ -9,3 +9,4 @@
 ## Examples
 
 - [Github](ci-cd/github/README.md)
+- [Istio + SPIFFE Integration](istio-spiffe/README.md) - Demonstrates Teleport Workload Identity integration with Istio service mesh, providing SPIFFE-compliant workload identities for Kubernetes applications with centralized identity management and mTLS

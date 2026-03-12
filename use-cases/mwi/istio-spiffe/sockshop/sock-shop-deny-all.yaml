@@ -1,0 +1,11 @@
+# Default deny-all policy for sock-shop namespace
+# This demonstrates zero-trust security by blocking ALL traffic
+# Use this to show how the application breaks without explicit allow policies
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: sock-shop
+spec:
+  {}  # Empty spec means deny all traffic

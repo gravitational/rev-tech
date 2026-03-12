@@ -1,0 +1,15 @@
+# WorkloadIdentity resource for Istio workloads
+# This defines the SPIFFE ID template for workloads
+# CRITICAL: The SPIFFE ID must NOT have a trailing slash per SPIFFE specification
+kind: workload_identity
+version: v1
+metadata:
+  name: istio-workloads
+  labels:
+    env: dev
+spec:
+  spiffe:
+    # SPIFFE ID template following Istio's required pattern
+    # spiffe://<trust.domain>/ns/<namespace>/sa/<service-account>
+    # NO TRAILING SLASH - this is critical per SPIFFE spec!
+    id: /ns/{{ workload.kubernetes.namespace }}/sa/{{ workload.kubernetes.service_account }}

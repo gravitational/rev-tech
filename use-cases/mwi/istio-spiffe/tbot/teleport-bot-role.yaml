@@ -1,0 +1,19 @@
+# Role for the tbot to issue workload identities
+kind: role
+version: v7
+metadata:
+  name: istio-workload-identity-issuer
+spec:
+  allow:
+    # Allow listing and reading workload identity resources
+    rules:
+      - resources:
+          - workload_identity
+        verbs:
+          - list
+          - read
+
+    # Selector to match workload identities with env:dev label
+    workload_identity_labels:
+      env:
+        - dev
