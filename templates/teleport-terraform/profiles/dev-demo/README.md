@@ -2,7 +2,7 @@
 
 **Archetype:** Any engineering org evaluating Teleport for day-to-day developer access.
 
-Use this for focused POCs or live demos where you walk through a realistic "developer day in the life" with two personas — Bob (a developer) and dlg (a platform engineer).
+Use this for focused POCs or live demos where you walk through a realistic "developer day in the life" with two personas — Bob (a developer) and engineer (a platform engineer).
 
 **Cost:** ~$5–7/day. Destroy after the demo.
 
@@ -61,7 +61,7 @@ tsh apps ls                         # grafana-dev, httpbin-dev, mcp-filesystem-d
 | Persona | Identity | Groups | Access |
 |---|---|---|---|
 | Bob | `bob@...` | devs | Dev-labeled SSH, databases, apps — **no prod** |
-| dlg | `dlg@...` | engineers | All dev resources + prod (standing access) + approver |
+| engineer | `engineer@...` | engineers | All dev resources + prod (standing access) + approver |
 
 ### Step-by-Step
 
@@ -117,10 +117,10 @@ tsh request create --roles=prod-readonly-access --reason="need to check prod log
 # Bob gets a request ID
 ```
 
-**7. dlg approves (Slack notification or web UI)**
+**7. engineer approves (Slack notification or web UI)**
 
 ```bash
-# dlg reviews and approves
+# engineer reviews and approves
 tsh request review <request-id> --approve --reason="approved for the session"
 ```
 
@@ -132,7 +132,7 @@ tsh ls                              # prod-server now appears
 tsh ssh ec2-user@prod-server        # Bob is in
 ```
 
-**9. dlg watches the live session — then locks it**
+**9. engineer watches the live session — then locks it**
 
 In the Teleport Web UI: **Activity → Active Sessions** → find Bob's prod session → **Join** or **Lock**.
 

@@ -6,7 +6,7 @@
 #
 # Demo personas:
 #   Bob  (bob@...)  — devs group  → dev-access, dev-requester
-#   dlg  (dlg@...)  — engineers   → platform-dev-access, prod-readonly-access,
+#   $USER  ($USER@...)  — engineers   → platform-dev-access, prod-readonly-access,
 #                                    prod-requester, prod-reviewer
 #
 # Demo flow:
@@ -17,11 +17,11 @@
 #   3.  Bob connects to postgres-dev via `tsh db connect` — no password, cert auth
 #   4.  Bob opens Grafana via the web UI — JWT header shows his identity to the app
 #   5.  Bob submits an access request for prod-readonly-access
-#   6.  dlg receives a Slack notification, reviews, approves
+#   6.  $USER receives a Slack notification, reviews, approves
 #   7.  Bob now sees `prod-server` in `tsh ls` — nothing else changed in his session
-#   8.  Bob SSHs to prod-server — dlg can see the live session and lock it
-#   9.  dlg walks through the audit log in the UI to show the full trail
-#  10.  dlg demos the Ansible Machine ID bot and MCP AI integration for automation
+#   8.  Bob SSHs to prod-server — $USER can see the live session and lock it
+#   9.  $USER walks through the audit log in the UI to show the full trail
+#  10.  $USER demos the Ansible Machine ID bot and MCP AI integration for automation
 #
 # Demonstrates:
 #   Server Access    — SSH to dev and prod nodes, dynamic host users, session recording
@@ -29,7 +29,7 @@
 #   App Access       — Grafana + HTTPBin (JWT identity injection)
 #   Desktop Access   — Windows Server (browser-based RDP via Teleport)
 #   Machine ID       — Ansible bot (infra automation), MCP stdio bot (AI/Claude)
-#   Access Requests  — Bob requests prod → Slack → dlg approves → session lock
+#   Access Requests  — Bob requests prod → Slack → $USER approves → session lock
 #
 # Resource summary (~$5-7/day):
 #   SSH nodes: 3 × t3.micro (2 dev + 1 prod)
@@ -179,10 +179,10 @@ module "ssh_nodes_dev" {
 # Used to demonstrate the full access request → approve → lock flow:
 #   tsh ls                            # Bob sees only dev nodes
 #   tsh request create --roles=prod-readonly-access
-#   (dlg approves in Slack)
+#   ($USER approves in Slack)
 #   tsh ls                            # prod-server appears
 #   tsh ssh ec2-user@prod-server      # session is recorded
-#   (dlg locks the session from the Teleport UI)
+#   ($USER locks the session from the Teleport UI)
 # ---------------------------------------------------------------------------
 module "ssh_node_prod" {
   source = "../../modules/ssh-node"

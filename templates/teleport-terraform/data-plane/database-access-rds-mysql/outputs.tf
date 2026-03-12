@@ -20,7 +20,7 @@ output "connection_guide" {
        tsh db connect rds-mysql-${var.env} --db-user=<your-teleport-username>
 
        Example (replace with actual login):
-       tsh db connect rds-mysql-${var.env} --db-user=dlg@example.com
+       tsh db connect rds-mysql-${var.env} --db-user=engineer@example.com
 
     4. Run a query:
        show databases;

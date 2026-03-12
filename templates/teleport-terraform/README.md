@@ -72,7 +72,7 @@ terraform init && terraform apply
 
 | Profile | Archetype | Cost | Tested |
 |---|---|---|---|
-| `profiles/dev-demo` | Developer "day in the life" — Bob (dev) + dlg (engineer), access requests, session locking | ~$5–7/day | ✅ |
+| `profiles/dev-demo` | Developer "day in the life" — Bob (dev) + engineer, access requests, session locking | ~$5–7/day | ✅ |
 | `profiles/windows-mongodb-ssh` | Traditional enterprise — Windows + MongoDB + Linux SSH | ~$2–4/day | — |
 | `profiles/cloud-native-apps` | Modern cloud shop — Grafana + HTTPBin + RDS MySQL + AWS Console | ~$3–5/day | — |
 | `profiles/full-platform` | All-up POC — every Teleport feature in one deployment | ~$8–12/day | ✅ |

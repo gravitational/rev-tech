@@ -31,7 +31,7 @@ output "connection_guide" {
 
     6. Access request demo (as Bob):
        tsh request create --roles=prod-readonly-access --reason="check prod logs"
-       # dlg approves → tsh ls now shows prod-${var.prod_env}
+       # engineer approves → tsh ls now shows prod-${var.prod_env}
        tsh ssh ec2-user@<prod-node>
 
     7. Windows Desktop (web UI only):

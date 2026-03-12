@@ -11,7 +11,7 @@ Profiles compose multiple data-plane use cases into a single Terraform root modu
 ### `dev-demo` — Developer Day in the Life
 
 **Archetype:** Any engineering org evaluating Teleport for day-to-day developer access.
-**Use when:** You want a focused narrative-driven demo with two personas (Bob the dev, dlg the engineer).
+**Use when:** You want a focused narrative-driven demo with two personas (Bob the dev, $USER the engineer).
 **Cost:** ~$5–7/day.
 
 **Includes:**
@@ -28,9 +28,9 @@ Profiles compose multiple data-plane use cases into a single Terraform root modu
 2. Bob SSHs to a dev node — Teleport creates a host user dynamically
 3. Bob connects to postgres-dev via `tsh db connect` — no password
 4. Bob submits an access request for prod access
-5. dlg approves in Slack — prod-server appears in Bob's `tsh ls`
-6. Bob SSHs to prod-server — dlg watches the live session and can lock it
-7. dlg walks the audit trail in the UI
+5. $USER approves in Slack — prod-server appears in Bob's `tsh ls`
+6. Bob SSHs to prod-server — $USER watches the live session and can lock it
+7. $USER walks the audit trail in the UI
 
 **Deploy:** See [dev-demo/README.md](dev-demo/README.md).
 

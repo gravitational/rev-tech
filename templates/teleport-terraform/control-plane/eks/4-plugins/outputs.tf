@@ -35,7 +35,7 @@ output "tbot_status" {
         --reason="Hotfix deployment needs prod DB access"
 
     → Slack notification fires in channel ${var.slack_channel_id}
-    → dlg (prod-reviewer) clicks Approve or Deny in Slack
+    → engineer (prod-reviewer) clicks Approve or Deny in Slack
 
     As the requester after approval:
       tsh request ls
