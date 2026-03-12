@@ -46,7 +46,7 @@ eval $(tctl terraform env)
 ### 3. Deploy
 
 ```bash
-cd data_plane/rds_mysql
+cd data-plane/database-access-rds-mysql
 terraform init
 terraform apply
 ```
