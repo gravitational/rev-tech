@@ -23,6 +23,11 @@ variable "proxy_address" {
   type        = string
 }
 
+variable "teleport_version" {
+  description = "Teleport version to install on the node"
+  type        = string
+}
+
 variable "security_group_ids" {
   description = "Security group IDs"
   type        = list(string)

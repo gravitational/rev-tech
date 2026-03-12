@@ -1,0 +1,33 @@
+# 3-rbac/terraform.tfvars.example
+# Copy to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored — do not commit it.
+
+proxy_address     = "yourcluster.teleport.sh"
+okta_metadata_url = "https://XXXXX.okta.com/app/XXXXXXXX/sso/saml/metadata"
+
+# Static access list membership — Terraform-managed (no SCIM required).
+# Add user emails for each persona tier. Users in multiple tiers should
+# appear in each list they belong to.
+#
+# The SAML connector's attributes_to_roles assigns base-user to Everyone,
+# so that role does not need to be managed here.
+#
+# devs        → dev-access, dev-auto-access, dev-requester
+# senior_devs → platform-dev-access, dev-auto-access, senior-dev-requester
+# engineers   → platform-dev-access, dev-auto-access, prod-readonly-access,
+#               dev-reviewer, prod-requester, prod-reviewer, editor, auditor
+
+devs = [
+  "bob@example.com",
+]
+
+senior_devs = [
+  "alice@example.com",
+]
+
+engineers = [
+  "admin@example.com",
+]
+
+# Agent managed updates — set to "disabled" to pin versions manually
+autoupdate_mode = "enabled"

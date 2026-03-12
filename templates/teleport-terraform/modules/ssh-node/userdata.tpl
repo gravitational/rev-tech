@@ -1,8 +1,14 @@
 #!/bin/bash
 set -euxo pipefail
+
 hostnamectl set-hostname "${name}"
-dnf install nginx -y 
-curl "https://${proxy_address}/scripts/install.sh" | bash
+
+# Install auditd — Teleport SSH service automatically writes session events to the
+# Linux Audit System when it detects auditd running. No Teleport config needed.
+dnf install -y audit nginx
+systemctl enable --now auditd
+
+curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
 echo "${token}" > /tmp/token
 
 cat<<EOF >/etc/teleport.yaml
@@ -17,12 +23,16 @@ teleport:
     format:
       output: text
 ssh_service:
-  enabled: true
+  enabled: "yes"
   enhanced_recording:
-    # Enable or disable enhanced auditing for this node. Default value: false.
+    # BPF/eBPF enhanced session recording — captures commands, arguments, and
+    # network connections. Requires kernel 5.8+ (AL2023 ships 6.x).
     enabled: true
+    command_buffer_size: 8
+    disk_buffer_size: 128
+    network_buffer_size: 8
   labels:
-    tier: ${env}
+    env: ${env}
     team: ${team}
   commands:
     - name: "hostname"
@@ -35,9 +45,9 @@ ssh_service:
       command: ["/bin/sh", "-c", "df -hTP / | awk '{print \$6}' | egrep '^[0-9][0-9]'"]
       period: "2m0s"
 proxy_service:
-  enabled: false
+  enabled: "no"
 auth_service:
-  enabled: false
+  enabled: "no"
 EOF
 
 systemctl enable teleport
