@@ -1,0 +1,195 @@
+# teleport-demo-teardown.yml
+#
+# Scheduled safety net: destroys all demo profiles that were deployed via the
+# teleport-demo-deploy.yml workflow and still have resources running.
+#
+# RUNS: Every Monday at 08:00 UTC (4am EST) — before the work week starts.
+# Can also be triggered manually from the Actions tab at any time.
+#
+# WHY: SEs routinely forget to destroy demo environments after calls.
+# This prevents runaway AWS costs and keeps the account clean.
+#
+# BEHAVIOR:
+# - Runs terraform destroy on all profiles for the target environment.
+# - Skips profiles that have no state / resources (destroy is idempotent).
+# - Posts a summary to the GitHub Actions job summary and optionally to Slack.
+#
+# REQUIRED SECRETS: Same as teleport-demo-deploy.yml
+#   AWS_ROLE_ARN, TELEPORT_PROXY, TF_STATE_BUCKET
+#
+# OPTIONAL SECRETS:
+#   SLACK_WEBHOOK_URL - If set, posts teardown summary to Slack.
+
+name: Scheduled Demo Teardown
+
+on:
+  # Every Monday at 08:00 UTC.
+  schedule:
+    - cron: "0 8 * * 1"
+
+  # Allow manual trigger from the Actions tab (e.g., "clean up after a call").
+  workflow_dispatch:
+    inputs:
+      env_label:
+        description: "Environment to tear down"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+          - all
+
+      aws_region:
+        description: "AWS region where demos were deployed"
+        required: true
+        default: "us-east-2"
+        type: choice
+        options:
+          - us-east-1
+          - us-east-2
+          - us-west-2
+          - eu-west-1
+          - ap-southeast-1
+
+env:
+  TF_IN_AUTOMATION: "1"
+  # Scheduled run always targets dev in us-east-2.
+  # Manual runs use the inputs above.
+  TARGET_ENV: ${{ inputs.env_label || 'dev' }}
+  TARGET_REGION: ${{ inputs.aws_region || 'us-east-2' }}
+  TF_VAR_proxy_address: ${{ secrets.TELEPORT_PROXY }}
+  TF_VAR_env: ${{ inputs.env_label || 'dev' }}
+  TF_VAR_region: ${{ inputs.aws_region || 'us-east-2' }}
+  TF_VAR_team: "platform"
+  TF_VAR_user: "teardown-bot@github-actions"
+  # teleport_version is required by profiles but unused during destroy.
+  TF_VAR_teleport_version: "18.6.4"
+  TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+  # Slack — exposed as env so it can be checked in if: conditions (secrets cannot be).
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  # Teleport Terraform provider — native GitHub OIDC join.
+  TF_TELEPORT_JOIN_METHOD: github
+  TF_TELEPORT_JOIN_TOKEN: github-ci
+  TF_TELEPORT_ADDR: ${{ secrets.TELEPORT_PROXY }}:443
+
+jobs:
+  teardown:
+    name: Teardown ${{ inputs.env_label || 'dev' }} demos
+    runs-on: ubuntu-latest
+    concurrency:
+      group: teleport-demo-teardown-${{ inputs.env_label || 'dev' }}
+      cancel-in-progress: false
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "~1.6"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.TARGET_REGION }}
+
+      # Teleport auth is handled by the Terraform provider natively via GitHub OIDC.
+      # TF_TELEPORT_JOIN_METHOD=github + TF_TELEPORT_JOIN_TOKEN are set in the env block above.
+
+      - name: Destroy all profiles
+        id: teardown
+        run: |
+          templates_root="templates/teleport-terraform"
+          destroyed=()
+          skipped=()
+          failed=()
+
+          for dir in "${templates_root}"/profiles/*/; do
+            profile="$(basename "${dir}")"
+            workdir="${templates_root}/profiles/${profile}"
+
+            # Skip non-Terraform directories (e.g., a profiles/README.md would not match
+            # the glob, but guard against any stray non-module dirs just in case).
+            [[ ! -f "${workdir}/main.tf" ]] && continue
+
+            echo "::group::destroy: ${profile}"
+
+            # Inject S3 backend if TF_STATE_BUCKET is configured (matches deploy workflow).
+            if [[ -n "${TF_STATE_BUCKET}" ]]; then
+              printf 'terraform {\n  backend "s3" {}\n}\n' > "${workdir}/backend_override.tf"
+              init_args="-backend-config=bucket=${TF_STATE_BUCKET} -backend-config=key=teleport-demo/${TARGET_ENV}/${profile}/terraform.tfstate -backend-config=region=${TARGET_REGION}"
+            else
+              echo "::warning::TF_STATE_BUCKET not set — no state to destroy for ${profile}; skipping"
+              skipped+=("${profile}")
+              echo "::endgroup::"
+              continue
+            fi
+
+            if ! terraform -chdir="${workdir}" init -input=false ${init_args}; then
+              echo "::warning::init failed for ${profile} — skipping"
+              skipped+=("${profile}")
+              echo "::endgroup::"
+              continue
+            fi
+
+            if terraform -chdir="${workdir}" destroy \
+                -auto-approve \
+                -input=false \
+                2>&1 | tee /tmp/destroy-output.txt; then
+              destroyed+=("${profile}")
+            else
+              # If destroy failed because there is no state (resources never
+              # applied), that's fine — treat it as skipped.
+              if grep -q "No changes\|nothing to do\|no state" /tmp/destroy-output.txt; then
+                skipped+=("${profile}")
+              else
+                failed+=("${profile}")
+              fi
+            fi
+
+            echo "::endgroup::"
+          done
+
+          # Write results for use in summary and Slack notification steps.
+          echo "destroyed=${destroyed[*]}" >> "$GITHUB_OUTPUT"
+          echo "skipped=${skipped[*]}" >> "$GITHUB_OUTPUT"
+          echo "failed=${failed[*]}" >> "$GITHUB_OUTPUT"
+
+          if [[ ${#failed[@]} -gt 0 ]]; then
+            echo "::error::Destroy failed for: ${failed[*]}"
+            exit 1
+          fi
+
+      - name: Job summary
+        if: always()
+        run: |
+          echo "### Scheduled Demo Teardown — ${{ env.TARGET_ENV }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Region:** \`${{ env.TARGET_REGION }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Triggered by:** ${{ github.event_name == 'schedule' && 'scheduled cron' || github.actor }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Result | Profiles |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Destroyed | \`${{ steps.teardown.outputs.destroyed }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Skipped (no state) | \`${{ steps.teardown.outputs.skipped }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Failed | \`${{ steps.teardown.outputs.failed }}\` |" >> "$GITHUB_STEP_SUMMARY"
+
+      # Optional: post to Slack if SLACK_WEBHOOK_URL secret is set.
+      - name: Notify Slack
+        if: always() && env.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "Teleport demo teardown (${{ env.TARGET_ENV }}) complete.\nDestroyed: ${{ steps.teardown.outputs.destroyed }}\nFailed: ${{ steps.teardown.outputs.failed || 'none' }}"
+            }

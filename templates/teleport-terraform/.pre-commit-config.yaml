@@ -1,0 +1,52 @@
+repos:
+  # Terraform hooks: fmt, validate, docs, lint, security scanning.
+  # Source: https://github.com/antonbabenko/pre-commit-terraform
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.96.1
+    hooks:
+      # Auto-format all .tf files. Equivalent to running terraform fmt -recursive.
+      - id: terraform_fmt
+
+      # Validate each template/module — catches syntax errors before you push.
+      # Assumes templates are already initialized (run terraform init -backend=false first).
+      - id: terraform_validate
+
+      # Auto-generate Inputs/Outputs tables in each module README.md from
+      # variables.tf and outputs.tf. No more manual README drift.
+      # Requires terraform-docs: brew install terraform-docs
+      - id: terraform_docs
+        args:
+          - --hook-config=--path-to-file=README.md
+          - --hook-config=--add-to-existing-file=true
+          - --hook-config=--create-file-if-not-exist=false
+        # Only run on modules/ — data-plane READMEs are hand-written narratives.
+        files: ^templates/teleport-terraform/modules/
+
+      # tflint: catches deprecated instance types, unused variables, invalid
+      # AMI filter values, and AWS provider rule violations.
+      # Requires tflint: brew install tflint
+      - id: terraform_tflint
+        args:
+          - --args=--minimum-failure-severity=error
+
+      # checkov: static IaC security scanning. Flags overly permissive IAM,
+      # missing encryption, public exposure, etc. — without needing AWS credentials.
+      # Requires checkov: pip install checkov
+      # Run manually: RUN_CONFTEST=1 RUN_TERRAFORM_PLAN=1 ./tools/terraform-templates-check.sh
+      # Uncomment to enable as a pre-commit hook once checkov is installed:
+      # - id: terraform_checkov
+      #   args:
+      #     - --args=--quiet
+      #     - --args=--skip-check CKV2_AWS_11,CKV2_AWS_12
+
+  # General file hygiene: trailing whitespace, end-of-file newlines, etc.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.md$
+      - id: end-of-file-fixer
+        exclude: \.md$
+      - id: check-merge-conflict
+      - id: check-yaml
+        exclude: \.github/

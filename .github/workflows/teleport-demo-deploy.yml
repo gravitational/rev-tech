@@ -1,0 +1,193 @@
+# teleport-demo-deploy.yml
+#
+# Manual one-click demo deployment workflow for Solutions Engineers.
+#
+# USAGE: GitHub → Actions tab → "Deploy Teleport Demo" → "Run workflow"
+# Pick a profile and environment, then click Run. The workflow provisions
+# all use cases in that profile against your Teleport Cloud cluster.
+#
+# PROFILES:
+#   dev-demo           — SSH, DB, App, K8s, MCP, access requests (recommended starting point)
+#   full-platform      — All of the above + Windows, AWS Console, RDS
+#   windows-mongodb-ssh — Windows Desktop + MongoDB + SSH
+#   cloud-native-apps  — EKS + App access
+#
+# REQUIRED SECRETS (Settings → Secrets and variables → Actions):
+#   AWS_ROLE_ARN         - IAM role ARN to assume via OIDC (recommended) or
+#                          AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (fallback)
+#   TELEPORT_PROXY       - Your Teleport Cloud proxy hostname (e.g., myorg.teleport.sh)
+#
+# TELEPORT AUTH — uses native GitHub OIDC join (no long-lived identity file needed):
+#   1. Run once: tctl bots add github-ci --roles=terraform-provider
+#   2. Run once: tctl create the github join token (see repo README for full YAML)
+#   The Terraform provider joins automatically using TF_TELEPORT_JOIN_METHOD=github.
+#
+# OPTIONAL SECRETS:
+#   TF_STATE_BUCKET      - S3 bucket name for storing Terraform state.
+#                          If set, state is persisted across runs and the scheduled teardown
+#                          can destroy resources that were deployed by this workflow.
+#                          If not set, state is ephemeral (resources are created but cannot
+#                          be destroyed by a later workflow run — manage teardown manually).
+#                          The OIDC role needs s3:GetObject/PutObject/DeleteObject/ListBucket
+#                          on this bucket.
+#
+# AWS OIDC SETUP (recommended — no long-lived keys):
+#   1. Create an OIDC provider in IAM: https://token.actions.githubusercontent.com
+#   2. Create an IAM role with trust policy allowing this repo to assume it.
+#   3. Set AWS_ROLE_ARN secret to the role ARN.
+#   See: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
+
+name: Deploy Teleport Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Profile to deploy"
+        required: true
+        default: "dev-demo"
+        type: choice
+        options:
+          - dev-demo
+          - full-platform
+          - windows-mongodb-ssh
+          - cloud-native-apps
+
+      env_label:
+        description: "Environment label applied to all Teleport resources (env= label)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+
+      team_label:
+        description: "Team label applied to all Teleport resources (team= label)"
+        required: true
+        default: "platform"
+        type: choice
+        options:
+          - platform
+          - sre
+          - app
+
+      aws_region:
+        description: "AWS region to deploy into"
+        required: true
+        default: "us-east-2"
+        type: choice
+        options:
+          - us-east-1
+          - us-east-2
+          - us-west-2
+          - eu-west-1
+          - ap-southeast-1
+
+      teleport_version:
+        description: "Teleport version to install on nodes (e.g., 18.6.4)"
+        required: true
+        default: "18.6.4"
+        type: string
+
+      destroy:
+        description: "Destroy deployed resources instead of applying"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  TF_IN_AUTOMATION: "1"
+  TF_VAR_env: ${{ inputs.env_label }}
+  TF_VAR_team: ${{ inputs.team_label }}
+  TF_VAR_region: ${{ inputs.aws_region }}
+  TF_VAR_proxy_address: ${{ secrets.TELEPORT_PROXY }}
+  TF_VAR_teleport_version: ${{ inputs.teleport_version }}
+  # user is derived from the GitHub actor who triggered the workflow.
+  TF_VAR_user: ${{ github.actor }}@github-actions
+  # Optional: S3 bucket for persisting Terraform state across runs.
+  # If empty, state is local and ephemeral (teardown automation won't work).
+  TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+  # Teleport Terraform provider — native GitHub OIDC join (no identity file needed).
+  TF_TELEPORT_JOIN_METHOD: github
+  TF_TELEPORT_JOIN_TOKEN: github-ci
+  TF_TELEPORT_ADDR: ${{ secrets.TELEPORT_PROXY }}:443
+
+jobs:
+  deploy:
+    name: ${{ inputs.destroy == true && 'Destroy' || 'Deploy' }} — ${{ inputs.profile }} (${{ inputs.env_label }})
+    runs-on: ubuntu-latest
+    # Limit concurrency per env label so two SEs don't stomp each other's deployment.
+    concurrency:
+      group: teleport-demo-${{ inputs.env_label }}
+      cancel-in-progress: false
+
+    permissions:
+      id-token: write  # required for AWS OIDC
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "~1.6"
+
+      # AWS OIDC authentication (no long-lived keys stored).
+      # If you prefer key-based auth, replace this step with:
+      #   aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #   aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ inputs.aws_region }}
+
+      # Teleport auth is handled by the Terraform provider natively via GitHub OIDC.
+      # TF_TELEPORT_JOIN_METHOD=github + TF_TELEPORT_JOIN_TOKEN are set in the env block above.
+      # No identity file or tbot step needed.
+
+      - name: Deploy / Destroy profile
+        run: |
+          profile="${{ inputs.profile }}"
+          workdir="templates/teleport-terraform/profiles/${profile}"
+          action="${{ inputs.destroy == true && 'destroy' || 'apply' }}"
+
+          if [[ ! -d "${workdir}" ]]; then
+            echo "::error::Profile directory not found: ${workdir}"
+            exit 1
+          fi
+
+          # Inject a temporary S3 backend block if TF_STATE_BUCKET is configured.
+          # Terraform merges terraform{} blocks across files, so this adds the backend
+          # without modifying the template itself. The file lives only in the runner workspace.
+          if [[ -n "${TF_STATE_BUCKET}" ]]; then
+            printf 'terraform {\n  backend "s3" {}\n}\n' > "${workdir}/backend_override.tf"
+            init_args="-backend-config=bucket=${TF_STATE_BUCKET} -backend-config=key=teleport-demo/${{ inputs.env_label }}/${{ inputs.profile }}/terraform.tfstate -backend-config=region=${{ inputs.aws_region }}"
+          else
+            echo "::warning::TF_STATE_BUCKET not set — state is local and ephemeral; teardown automation will not work for this run"
+            init_args="-backend=false"
+          fi
+
+          terraform -chdir="${workdir}" init -input=false ${init_args}
+          terraform -chdir="${workdir}" "${action}" -auto-approve -input=false
+
+      - name: Summary
+        if: always()
+        run: |
+          action="${{ inputs.destroy == true && 'Destroyed' || 'Deployed' }}"
+          echo "### ${action}: ${{ inputs.profile }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Variable | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Profile | \`${{ inputs.profile }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Environment | \`${{ inputs.env_label }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Team | \`${{ inputs.team_label }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Region | \`${{ inputs.aws_region }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Teleport version | \`${{ inputs.teleport_version }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Triggered by | \`${{ github.actor }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "To verify: \`tsh ls env=${{ inputs.env_label }},team=${{ inputs.team_label }}\`" >> "$GITHUB_STEP_SUMMARY"
