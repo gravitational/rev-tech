@@ -51,4 +51,6 @@ module "machineid_ansible" {
   teleport_version   = var.teleport_version
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
+
+  depends_on = [module.network]
 }

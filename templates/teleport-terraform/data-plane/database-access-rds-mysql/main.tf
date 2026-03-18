@@ -67,4 +67,6 @@ module "rds_mysql" {
   subnet_id            = module.network.subnet_id
   security_group_ids   = [module.network.security_group_id]
   ami_id               = data.aws_ami.linux.id
+
+  depends_on = [module.network]
 }

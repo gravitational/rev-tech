@@ -76,6 +76,8 @@ module "mcp_stdio_app" {
   app_name        = "mcp-filesystem"
   app_description = "MCP filesystem demo server"
   team            = var.team
+
+  depends_on = [module.network]
 }
 
 module "mcp_registration" {

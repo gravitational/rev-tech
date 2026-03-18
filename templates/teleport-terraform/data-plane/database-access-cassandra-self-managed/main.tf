@@ -79,6 +79,8 @@ module "cassandra_instance" {
   instance_type      = "t3.medium"
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
+
+  depends_on = [module.network]
 }
 
 module "cassandra_registration" {

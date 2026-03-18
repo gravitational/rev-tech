@@ -78,6 +78,8 @@ module "mysql_instance" {
   instance_type      = "t3.small"
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
+
+  depends_on = [module.network]
 }
 
 module "mysql_registration" {

@@ -90,6 +90,8 @@ module "windows_instance" {
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
+
+  depends_on = [module.network]
 }
 
 module "linux_desktop_service" {

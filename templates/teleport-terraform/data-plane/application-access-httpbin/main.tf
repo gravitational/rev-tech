@@ -64,6 +64,8 @@ module "httpbin_app" {
   instance_type      = "t3.micro"
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
+
+  depends_on = [module.network]
 }
 
 module "httpbin_registration" {

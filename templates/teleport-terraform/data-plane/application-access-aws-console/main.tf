@@ -164,4 +164,6 @@ module "aws_console_host" {
   app_b_team           = var.app_b_team
   app_b_external_id    = var.app_b_external_id
   assume_role_arns     = local.effective_assume_role_arns
+
+  depends_on = [module.network]
 }
