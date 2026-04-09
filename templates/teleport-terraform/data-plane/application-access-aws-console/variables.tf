@@ -182,6 +182,12 @@ variable "account_a_roles" {
   }
 }
 
+variable "create_nat_gateway" {
+  description = "Create a NAT gateway for the instance. Defaults to false — Teleport agents only need outbound access to the proxy and do not require a private subnet."
+  type        = bool
+  default     = false
+}
+
 variable "cidr_vpc" {
   description = "CIDR block for the VPC"
   type        = string

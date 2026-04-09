@@ -77,8 +77,9 @@ resource "aws_instance" "app_host" {
   instance_type          = var.instance_type
   subnet_id              = var.subnet_id
   vpc_security_group_ids = var.security_group_ids
-  # Teleport nodes register via outbound reverse tunnel — no public IP needed.
-  associate_public_ip_address = false
+  # Public IP is determined by subnet: public subnet assigns one (IGW egress),
+  # private subnet does not (NAT egress). Teleport agents use outbound reverse tunnels.
+  associate_public_ip_address = null
   iam_instance_profile        = aws_iam_instance_profile.app_host.name
 
   user_data = templatefile("${path.module}/userdata.tpl", {

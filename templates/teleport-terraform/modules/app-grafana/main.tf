@@ -42,7 +42,7 @@ resource "aws_instance" "grafana" {
   instance_type = var.instance_type
   subnet_id     = var.subnet_id
   # Teleport nodes register via outbound reverse tunnel — no public IP needed.
-  associate_public_ip_address = false
+  associate_public_ip_address = null
   vpc_security_group_ids      = var.security_group_ids
 
   user_data = templatefile("${path.module}/userdata.tpl", {

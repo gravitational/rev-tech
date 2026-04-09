@@ -43,7 +43,7 @@ resource "aws_instance" "httpbin" {
   subnet_id              = var.subnet_id
   vpc_security_group_ids = var.security_group_ids
   # Teleport nodes register via outbound reverse tunnel — no public IP needed.
-  associate_public_ip_address = false
+  associate_public_ip_address = null
 
   user_data = templatefile("${path.module}/userdata.tpl", {
     name             = "${var.env}-httpbin"

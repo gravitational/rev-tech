@@ -137,7 +137,7 @@ resource "aws_instance" "agent" {
   iam_instance_profile   = aws_iam_instance_profile.agent.name
 
   # Teleport nodes register via outbound reverse tunnel — no public IP needed.
-  associate_public_ip_address = false
+  associate_public_ip_address = null
 
   metadata_options {
     http_tokens                 = "required" # IMDSv2

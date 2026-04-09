@@ -50,6 +50,7 @@ module "network" {
   cidr_vpc           = var.cidr_vpc
   cidr_subnet        = var.cidr_subnet
   cidr_public_subnet = var.cidr_public_subnet
+  create_nat_gateway = var.create_nat_gateway
 }
 
 data "aws_iam_policy_document" "account_a_role_trust" {

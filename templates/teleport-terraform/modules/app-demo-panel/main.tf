@@ -40,7 +40,7 @@ resource "aws_instance" "demo_panel" {
   instance_type               = var.instance_type
   subnet_id                   = var.subnet_id
   vpc_security_group_ids      = var.security_group_ids
-  associate_public_ip_address = false
+  associate_public_ip_address = null
 
   user_data = templatefile("${path.module}/userdata.tpl", {
     name             = "${var.env}-demo-panel"

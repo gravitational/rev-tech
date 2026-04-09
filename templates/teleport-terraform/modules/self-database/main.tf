@@ -84,7 +84,7 @@ resource "aws_instance" "db" {
   subnet_id       = var.subnet_id
   security_groups = var.security_group_ids
   # Teleport nodes register via outbound reverse tunnel — no public IP needed.
-  associate_public_ip_address = false
+  associate_public_ip_address = null
 
   user_data = templatefile("${path.module}/userdata-${var.db_type}.tpl", {
     name             = "${var.env}-${var.db_type}"
