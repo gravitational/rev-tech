@@ -8,7 +8,7 @@ hostnamectl set-hostname "${name}"
 dnf install -y audit nginx
 systemctl enable --now auditd
 
-curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
+curl "https://${proxy_address}/scripts/install.sh" | bash
 echo "${token}" > /tmp/token
 
 cat<<EOF >/etc/teleport.yaml

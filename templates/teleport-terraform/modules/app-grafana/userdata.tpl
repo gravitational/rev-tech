@@ -51,7 +51,7 @@ docker run -d \
   grafana/grafana
 
 # install teleport
-curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
+curl "https://${proxy_address}/scripts/install.sh" | bash
 
 cat <<EOF_TEL > /etc/teleport.yaml
 version: v3

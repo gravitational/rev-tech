@@ -198,7 +198,7 @@ chown -R mongod:mongod /var/lib/mongo
 chown -R mongod:mongod /var/log/mongodb
 
 # Install Teleport
-curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
+curl "https://${proxy_address}/scripts/install.sh" | bash
 echo "${token}" > /tmp/token
 
 # Write teleport.yaml

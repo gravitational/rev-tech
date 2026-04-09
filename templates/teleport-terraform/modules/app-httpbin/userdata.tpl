@@ -13,7 +13,7 @@ docker run -d \
   --restart=always \
   kennethreitz/httpbin
 # Install Teleport
-curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
+curl "https://${proxy_address}/scripts/install.sh" | bash
 
 # Configure Teleport
 cat <<EOF_TEL > /etc/teleport.yaml

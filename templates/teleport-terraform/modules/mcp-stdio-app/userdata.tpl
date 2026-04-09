@@ -24,7 +24,7 @@ if ! id -u docker >/dev/null 2>&1; then
 fi
 
 # Install Teleport
-curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
+curl "https://${proxy_address}/scripts/install.sh" | bash
 
 # Write token to disk
 echo "${token}" > /tmp/token

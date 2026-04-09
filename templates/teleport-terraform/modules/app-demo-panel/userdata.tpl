@@ -35,7 +35,7 @@ systemctl enable demo-panel
 systemctl start demo-panel
 
 # Install Teleport
-curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
+curl "https://${proxy_address}/scripts/install.sh" | bash
 
 cat > /etc/teleport.yaml <<EOF
 version: v3

@@ -10,9 +10,8 @@ WINDOWS_HOST_NAME=$(echo "${windows_internal_dns}" | awk -F. '{print $1}')
 # Install Teleport
 echo "${token}" > /tmp/token
 
-# installs teleport enterprise edition
-# update for versions >17.3
-curl "https://${proxy_address}/scripts/install.sh" | bash -s "${teleport_version}" enterprise
+# install.sh fetched from the proxy installs the cluster-advertised version via teleport-update
+curl "https://${proxy_address}/scripts/install.sh" | bash
 
 # Log installed version for debugging
 teleport --version || true
