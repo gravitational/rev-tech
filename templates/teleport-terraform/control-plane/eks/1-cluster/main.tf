@@ -70,6 +70,8 @@ module "eks" {
 
   enable_cluster_creator_admin_permissions = true
 
+  cluster_enabled_log_types = [] # Disabled — control plane logs are expensive (~$27/mo)
+
   eks_managed_node_group_defaults = {
     ami_type = "BOTTLEROCKET_x86_64"
     tags = {
