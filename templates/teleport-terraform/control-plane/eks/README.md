@@ -8,10 +8,11 @@ This control plane is split into three layers to keep infrastructure stable whil
 
 ```
 control-plane/eks/
-├── 1-cluster/      # EKS infrastructure (stable, rarely changed)
-├── 2-teleport/     # Teleport deployment + supporting AWS/K8s resources
-├── 3-rbac/         # SAML/login rules, roles, and demo apps
-└── update-teleport.sh
+├── 1-cluster/       # EKS infrastructure (stable, rarely changed)
+├── 2-teleport/      # Teleport deployment + supporting AWS/K8s resources
+├── 3-rbac/          # SAML/login rules, roles, and demo apps
+├── 4-plugins/       # Slack access request plugin
+└── 5-access-graph/  # Identity Security (Access Graph) via RDS Aurora + Helm
 ```
 
 ## Quick Start
@@ -91,7 +92,7 @@ Ensure apps, DBs, nodes, and desktops are labeled with the same keys to align wi
 
 ## Teardown
 
-Destroy in reverse layer order: `4-plugins` → `3-rbac` → `2-teleport` → `1-cluster`.
+Destroy in reverse layer order: `5-access-graph` → `4-plugins` → `3-rbac` → `2-teleport` → `1-cluster`.
 
 ### 2-teleport: CRD finalizer hang
 
@@ -133,10 +134,10 @@ Then re-run `terraform destroy`.
 
 ## Teleport Updates
 
-Use the helper script to update Teleport without touching the EKS layer:
+To update Teleport without touching the EKS layer, update `TF_VAR_teleport_version` and re-apply only the `2-teleport` layer:
 
 ```bash
-./update-teleport.sh update-teleport 18.4.1
+cd 2-teleport
+export TF_VAR_teleport_version=18.7.2
+terraform apply
 ```
-
-This script updates `2-teleport/terraform.tfvars` and applies only the Teleport layer.

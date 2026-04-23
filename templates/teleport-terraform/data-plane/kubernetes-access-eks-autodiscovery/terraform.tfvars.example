@@ -1,14 +1,14 @@
-proxy_address    = "teleport.example.com"
-user             = "engineer@example.com"
-teleport_version = "18.0.0"
-region           = "us-east-2"
-env              = "dev"
-team             = "platform"
+export TF_VAR_proxy_address="teleport.example.com"
+export TF_VAR_user="engineer@example.com"
+export TF_VAR_teleport_version="18.0.0"
+export TF_VAR_region="us-east-2"
+export TF_VAR_env="dev"
+export TF_VAR_team="platform"
 
 # Tag an EKS cluster with this key/value to enroll it automatically.
 # Default: teleport-discovery = enabled
-eks_tag_key   = "teleport-discovery"
-eks_tag_value = "enabled"
+export TF_VAR_eks_tag_key="teleport-discovery"
+export TF_VAR_eks_tag_value="enabled"
 
 # Regions to scan for EKS clusters. Defaults to [region] if not set.
 # discovery_regions = ["us-east-2", "us-west-2"]

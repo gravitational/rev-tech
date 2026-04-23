@@ -1,23 +1,20 @@
-# terraform.tfvars.example
-# Copy to terraform.tfvars and fill in your values.
-# terraform.tfvars is gitignored — do not commit it.
-
-proxy_address      = "yourcluster.teleport.sh"
-region             = "us-east-2"
-env                = "prod"
-team               = "platform"
-teleport_namespace = "teleport-cluster"
+export TF_VAR_proxy_address="yourcluster.teleport.sh"
+export TF_VAR_region="us-east-2"
+export TF_VAR_env="prod"
+export TF_VAR_team="platform"
+export TF_VAR_teleport_namespace="teleport-cluster"
 
 # Strong password for the Access Graph PostgreSQL user
-db_password = "changeme-use-a-strong-password"
+export TF_VAR_db_password="changeme-use-a-strong-password"
 
 # Teleport host CA — retrieve with:
 #   curl 'https://yourcluster.teleport.sh/webapi/auth/export?type=tls-host'
-teleport_host_ca = <<-EOT
-  -----BEGIN CERTIFICATE-----
-  <paste CA certificate here>
-  -----END CERTIFICATE-----
-EOT
+export TF_VAR_teleport_host_ca="$(cat <<'CERT'
+-----BEGIN CERTIFICATE-----
+<paste CA certificate here>
+-----END CERTIFICATE-----
+CERT
+)"
 
 # Pin the chart version (optional — omit to use latest)
 # access_graph_chart_version = "1.29.5"

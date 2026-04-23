@@ -1,11 +1,9 @@
 # 2-teleport/terraform.tfvars.example
-# Copy to terraform.tfvars and fill in your values.
-# terraform.tfvars is gitignored — do not commit it.
 
-proxy_address    = "teleportdemo.com"
-domain_name      = "teleportdemo.com"
-user             = "you@example.com"
-teleport_version = "18.6.4"
-region           = "us-east-2"
-env              = "prod"
-team             = "platform"
+export TF_VAR_proxy_address="teleportdemo.com"
+export TF_VAR_domain_name="teleportdemo.com"
+export TF_VAR_user="you@example.com"
+export TF_VAR_teleport_version="18.6.4"
+export TF_VAR_region="us-east-2"
+export TF_VAR_env="prod"
+export TF_VAR_team="platform"

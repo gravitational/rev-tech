@@ -1,19 +1,17 @@
 # 3-rbac/terraform.tfvars.example
-# Copy to terraform.tfvars and fill in your values.
-# terraform.tfvars is gitignored — do not commit it.
 
-proxy_address    = "teleportdemo.com"
-region           = "us-east-2"
+export TF_VAR_proxy_address="teleportdemo.com"
+export TF_VAR_region="us-east-2"
 
 # Okta SAML connector (primary / integrator tenant)
-okta_metadata_url = "https://integrator-XXXXX.okta.com/app/XXXXXXXX/sso/saml/metadata"
+export TF_VAR_okta_metadata_url="https://integrator-XXXXX.okta.com/app/XXXXXXXX/sso/saml/metadata"
 
 # Okta Preview connector (optional — set enable_okta_preview = true to activate)
-enable_okta_preview       = false
-okta_preview_metadata_url = ""
+export TF_VAR_enable_okta_preview="false"
+export TF_VAR_okta_preview_metadata_url=""
 
 # Team label used in role label matchers
 # dev_team  — matches resources tagged team=<dev_team>
 # prod_team — matches resources tagged team=<prod_team>
-dev_team  = "dev"
-prod_team = "platform"
+export TF_VAR_dev_team="dev"
+export TF_VAR_prod_team="platform"

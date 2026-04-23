@@ -1,9 +1,7 @@
 # 3-rbac/terraform.tfvars.example
-# Copy to terraform.tfvars and fill in your values.
-# terraform.tfvars is gitignored — do not commit it.
 
-proxy_address     = "teleport.example.com"
-okta_metadata_url = "https://XXXXX.okta.com/app/XXXXXXXX/sso/saml/metadata"
+export TF_VAR_proxy_address="teleport.example.com"
+export TF_VAR_okta_metadata_url="https://XXXXX.okta.com/app/XXXXXXXX/sso/saml/metadata"
 
 # Static access list membership — Terraform-managed (no SCIM required).
 # Add user emails for each persona tier.
@@ -15,17 +13,11 @@ okta_metadata_url = "https://XXXXX.okta.com/app/XXXXXXXX/sso/saml/metadata"
 # engineers   → platform-dev-access, dev-auto-access, prod-readonly-access,
 #               dev-reviewer, prod-requester, prod-reviewer, editor, auditor
 
-devs = [
-  "bob@example.com",
-]
+export TF_VAR_devs='["bob@example.com"]'
 
-senior_devs = [
-  "alice@example.com",
-]
+export TF_VAR_senior_devs='["alice@example.com"]'
 
-engineers = [
-  "admin@example.com",
-]
+export TF_VAR_engineers='["admin@example.com"]'
 
 # Agent managed updates — set to "disabled" to pin versions manually
-autoupdate_mode = "enabled"
+export TF_VAR_autoupdate_mode="enabled"
