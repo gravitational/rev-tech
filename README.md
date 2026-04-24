@@ -169,6 +169,7 @@ Before opening (or merging) a PR:
 * [ ] Added **`README.md`** with usage & troubleshooting
 * [ ] Requested reviews
 * [ ] PR title uses a sensible prefix (e.g., `feat:`, `fix:`, `docs:`, `add:`, `update:`, `remove:`)
+* [ ] PR does not contain more than 2,000 lines of changes. If it does, break it up into multiple PRs.
 
 ---
 
