@@ -1,0 +1,5 @@
+mcp[cli]
+packaging
+PyJWT[crypto]
+requests
+uvicorn

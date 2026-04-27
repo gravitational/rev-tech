@@ -1,0 +1,24 @@
+services:
+  teleport-version-mcp:
+    image: webvictim/teleport-version-mcp
+    build: .
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    volumes:
+      - teleport-git:/data
+      # Mount a GitHub App private key (PEM) into the container; path must match GITHUB_APP_PRIVATE_KEY_PATH.
+      # - ./github-app.pem:/secrets/github-app.pem:ro
+    environment:
+      GIT_DATA_DIR: /data/teleport.git
+      HOST: 0.0.0.0
+      PORT: ${PORT:-8000}
+      # Personal access token path (fallback).
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      # GitHub App path. Set all three to enable.
+      GITHUB_APP_ID: ${GITHUB_APP_ID:-}
+      GITHUB_APP_INSTALLATION_ID: ${GITHUB_APP_INSTALLATION_ID:-}
+      GITHUB_APP_PRIVATE_KEY_PATH: ${GITHUB_APP_PRIVATE_KEY_PATH:-}
+    restart: unless-stopped
+
+volumes:
+  teleport-git:
