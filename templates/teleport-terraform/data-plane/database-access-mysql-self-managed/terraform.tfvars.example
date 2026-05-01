@@ -1,0 +1,5 @@
+user             = "engineer@example.com"
+proxy_address    = "teleport.example.com"
+teleport_version = "18.6.4"
+region       = "us-east-2"
+env              = "dev"

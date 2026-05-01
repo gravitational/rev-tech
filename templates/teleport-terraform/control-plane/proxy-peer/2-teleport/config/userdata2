@@ -1,0 +1,71 @@
+#!/bin/bash
+set -euxo pipefail
+# Get 10.x.x.x private IP for proxy peering
+PRIVATE_IP=$(ip -o -4 addr show scope global | awk '/10\./ {print $4}' | cut -d/ -f1 | head -n1)
+
+# Set hostname
+sudo hostnamectl set-hostname "${name}"
+
+# Create Teleport data dir
+sudo mkdir -p /var/lib/teleport
+
+# Install Teleport
+curl https://cdn.teleport.dev/install.sh | bash -s ${teleport_version} enterprise
+
+# Create Teleport config
+sudo tee /etc/teleport.yaml > /dev/null <<EOF
+version: v3
+teleport:
+  auth_token: /tmp/token
+  auth_server: ${auth_ip}:3025
+  data_dir: /var/lib/teleport
+  log:
+    output: stderr
+    severity: INFO
+    format:
+      output: json
+
+auth_service:
+  enabled: "no"
+
+proxy_service:
+  enabled: "yes"
+  web_listen_addr: 0.0.0.0:443
+  public_addr: ${proxy_address}:443
+  peer_listen_addr: 0.0.0.0:3021
+  peer_public_addr: $${PRIVATE_IP}:3021      # this could also be a name (e.g. teleport-proxy-host-1.example.com:3021) instead of an IP
+  acme:
+    enabled: yes
+    email: ${user}
+
+
+ssh_service:
+  enabled: "yes"
+  commands:
+    - name: hostname
+      command: [hostname]
+      period: 1m0s
+  labels:
+    env: ${env}
+    team: ${team}
+    os: ubuntu
+  enhanced_recording:
+    enabled: true
+EOF
+
+# Retrieve auth token 
+for i in {1..5}; do
+  echo "checking for token in s3 (attempt $i)..."
+  if aws s3api wait object-exists --bucket "${bucket}" --key "token"; then
+    aws s3 cp "s3://${bucket}/token" "/tmp/token"
+    echo "token retrieved and saved to /tmp/token"
+    break
+  else
+    echo "token not yet available, retrying in 10s..."
+    sleep 10
+  fi
+done
+
+# Make Teleport persistent and start the service
+sudo systemctl enable teleport.service 
+sudo systemctl restart teleport.service 

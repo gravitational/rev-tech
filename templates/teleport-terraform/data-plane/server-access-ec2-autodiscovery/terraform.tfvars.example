@@ -1,0 +1,15 @@
+proxy_address    = "teleport.example.com"
+user             = "engineer@example.com"
+teleport_version = "18.0.0"
+region           = "us-east-2"
+env              = "dev"
+team             = "platform"
+
+# Number of bare EC2 instances to create as auto-discovery targets.
+target_count = 2
+
+# Tag key/value used to select EC2 instances for auto-discovery.
+# Instances tagged with this key=value will be enrolled automatically.
+# Defaults match env/dev so instances tagged env=dev are picked up.
+ec2_tag_key   = "env"
+ec2_tag_value = "dev"

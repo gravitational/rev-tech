@@ -4,8 +4,8 @@ output "vpc_id" {
 }
 
 output "subnet_id" {
-  value       = aws_subnet.private.id
-  description = "ID of the private subnet"
+  value       = var.create_nat_gateway ? aws_subnet.private.id : aws_subnet.public.id
+  description = "ID of the subnet to use for instances (private when NAT gateway exists, public otherwise)"
 }
 
 output "security_group_id" {
