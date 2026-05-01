@@ -28,7 +28,11 @@ GITHUB_APP_PRIVATE_KEY_PATH = os.environ.get("GITHUB_APP_PRIVATE_KEY_PATH", "")
 
 _USING_GITHUB_APP = bool(GITHUB_APP_ID and GITHUB_APP_INSTALLATION_ID and GITHUB_APP_PRIVATE_KEY_PATH)
 
-mcp = FastMCP("teleport-version-finder", transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False))
+mcp = FastMCP(
+    "teleport-version-finder",
+    stateless_http=True,
+    transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+)
 
 _STABLE_TAG_RE = re.compile(r"^v\d+\.\d+\.\d+$")
 
