@@ -7,17 +7,28 @@ services:
     volumes:
       - teleport-git:/data
       # Mount a GitHub App private key (PEM) into the container; path must match GITHUB_APP_PRIVATE_KEY_PATH.
-      # - ./github-app.pem:/secrets/github-app.pem:ro
+      - /home/ubuntu/.credentials/teleport-version-mcp/github-app.pem:/secrets/github-app.pem:ro
+      # Required only if the configured GitHub App can't reach GITHUB_REPO_E. Mount an SSH
+      # private key with read access to teleport.e here; path must match GIT_SSH_KEY_PATH.
+      - /home/ubuntu/.credentials/teleport-version-mcp/teleport-e.key:/secrets/teleport-e.key:ro
     environment:
       GIT_DATA_DIR: /data/teleport.git
+      GIT_DATA_DIR_E: /data/teleport.e.git
+      GITHUB_REPO: ${GITHUB_REPO:-gravitational/teleport}
+      GITHUB_REPO_E: ${GITHUB_REPO_E:-gravitational/teleport.e}
       HOST: 0.0.0.0
       PORT: ${PORT:-8000}
       # Personal access token path (fallback).
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      # GitHub App path. Set all three to enable.
+      # GitHub App path. Set all three to enable. The App must have read access to both
+      # GITHUB_REPO and GITHUB_REPO_E (typically an org-level install on gravitational/* covers this).
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_INSTALLATION_ID: ${GITHUB_APP_INSTALLATION_ID:-}
       GITHUB_APP_PRIVATE_KEY_PATH: ${GITHUB_APP_PRIVATE_KEY_PATH:-}
+      # When set, teleport.e is cloned/fetched via SSH using the key at this path. The GitHub
+      # API is not consulted for teleport.e in this mode (PR-based tools for teleport.e will
+      # return a clear error directing users to the commit-based tools).
+      GIT_SSH_KEY_PATH: ${GIT_SSH_KEY_PATH:-}
     restart: unless-stopped
 
 volumes:
