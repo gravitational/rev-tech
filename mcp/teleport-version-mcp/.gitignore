@@ -1,2 +1,6 @@
 .claude
 .env
+id_ecdsa
+id_ecdsa.pub
+*.pem
+*.key
