@@ -24,9 +24,12 @@ variable "proxy_address" {
 }
 
 variable "domain_name" {
-  description = "Parent domain name for DNS records (e.g. demo.com)."
+  description = "Route53 hosted zone name for DNS records and cert-manager ACME DNS-01 validation (e.g. teleportdemo.com). Required — this layer creates DNS records and TLS certificates that depend on it."
   type        = string
-  default     = ""
+  validation {
+    condition     = length(var.domain_name) > 0
+    error_message = "domain_name must be set to your Route53 hosted zone name (e.g. export TF_VAR_domain_name=teleportdemo.com). Omitting it silently skips DNS record creation and breaks TLS certificate issuance."
+  }
 }
 
 variable "user" {
