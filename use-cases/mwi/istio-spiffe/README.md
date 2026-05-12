@@ -120,7 +120,7 @@ kubectl apply -f sockshop/sock-shop-demo.yaml
 
 Wait for all pods (1-2 minutes):
 ```bash
-kubectl get pods -n sock-shop -w
+kubectl get pods -n sock-shop
 ```
 
 All pods should show `2/2` READY (app + istio-proxy sidecar).
