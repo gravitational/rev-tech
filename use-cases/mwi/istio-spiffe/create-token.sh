@@ -29,11 +29,15 @@ echo ""
 # Warn if token file already exists
 if [ -f "istio/istio-tbot-token.yaml" ]; then
     echo "WARNING: istio/istio-tbot-token.yaml already exists"
-    read -p "Do you want to overwrite it? (y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Aborted."
-        exit 0
+    if [ -t 0 ]; then
+        read -p "Do you want to overwrite it? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "Aborted."
+            exit 0
+        fi
+    else
+        echo "Non-interactive mode — overwriting existing file."
     fi
 fi
 

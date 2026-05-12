@@ -177,18 +177,18 @@ spec:
   mtls:
     mode: STRICT
 ---
-# Allow MySQL protocol for catalogue-db
+# Enforce strict mTLS for catalogue-db (workload-level override of namespace default)
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication
 metadata:
-  name: catalogue-db-permissive
+  name: catalogue-db-strict
   namespace: sock-shop
 spec:
   selector:
     matchLabels:
       app: catalogue-db
   mtls:
-    mode: STRICT  # Enforce mTLS
+    mode: STRICT
 ---
 # MongoDB protocol for carts-db
 # Workload-specific policy needed for proper mTLS negotiation
