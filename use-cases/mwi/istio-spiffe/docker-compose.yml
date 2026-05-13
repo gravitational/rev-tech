@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  demo-vm:
+    build:
+      context: ./vm
+      args:
+        TELEPORT_VERSION: "18.7.6"
+    container_name: demo-vm
+    env_file: .env.vm
+    ports:
+      - "9901:9901"   # Envoy admin — shows SVID held in memory during demo

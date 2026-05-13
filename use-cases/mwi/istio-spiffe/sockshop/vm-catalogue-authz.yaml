@@ -1,0 +1,22 @@
+# AuthorizationPolicy: allow the off-cluster VM workload to call the catalogue service.
+#
+# The VM's SPIFFE ID is issued by Teleport Workload Identity:
+#   spiffe://${TRUST_DOMAIN}/demo/vm-service
+#
+# Istio automatically prepends "spiffe://" to principals, so this YAML uses the shorter form.
+# Apply via: TRUST_DOMAIN=<cluster> envsubst '${TRUST_DOMAIN}' < vm-catalogue-authz.yaml | kubectl apply -f -
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: catalogue-allow-vm
+  namespace: sock-shop
+spec:
+  selector:
+    matchLabels:
+      app: catalogue
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "${TRUST_DOMAIN}/demo/vm-service"

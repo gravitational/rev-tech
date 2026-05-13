@@ -55,11 +55,15 @@ if [ "$NEEDS_UPDATE" = false ]; then
 fi
 
 echo ""
-read -p "Continue with configuration? (y/n) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Configuration cancelled."
-    exit 0
+if [ -t 0 ]; then
+    read -p "Continue with configuration? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Configuration cancelled."
+        exit 0
+    fi
+else
+    echo "Non-interactive mode — proceeding with configuration."
 fi
 
 # Update each file

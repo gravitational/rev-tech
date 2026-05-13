@@ -1,0 +1,9 @@
+kind: workload_identity
+version: v1
+metadata:
+  name: demo-vm-service
+  labels:
+    purpose: vm-demo
+spec:
+  spiffe:
+    id: /demo/vm-service
