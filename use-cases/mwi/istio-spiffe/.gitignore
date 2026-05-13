@@ -19,6 +19,7 @@ kubeconfig*
 secrets/
 credentials/
 .env
+.env.vm
 
 # IDE and editor files
 .vscode/
@@ -34,3 +35,5 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+*.html

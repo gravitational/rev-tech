@@ -18,10 +18,14 @@ if ! kubectl cluster-info &>/dev/null; then
 fi
 
 echo "Current cluster: $(kubectl config current-context)"
-read -p "Continue with cleanup? (yes/no): " confirm
-if [ "$confirm" != "yes" ]; then
-    echo "Cleanup cancelled"
-    exit 0
+if [ -t 0 ]; then
+    read -p "Continue with cleanup? (yes/no): " confirm
+    if [ "$confirm" != "yes" ]; then
+        echo "Cleanup cancelled"
+        exit 0
+    fi
+else
+    echo "Non-interactive mode — proceeding with cleanup."
 fi
 
 echo ""
@@ -168,13 +172,18 @@ echo "=== Phase 6: Local Generated Files ==="
 echo "Checking for locally generated token files..."
 if [ -f "istio/istio-tbot-token.yaml" ]; then
     echo "Found istio/istio-tbot-token.yaml (cluster-specific, safe to delete)"
-    read -p "Delete istio/istio-tbot-token.yaml? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        rm -f istio/istio-tbot-token.yaml
-        echo "✓ Deleted istio/istio-tbot-token.yaml"
+    if [ -t 0 ]; then
+        read -p "Delete istio/istio-tbot-token.yaml? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            rm -f istio/istio-tbot-token.yaml
+            echo "✓ Deleted istio/istio-tbot-token.yaml"
+        else
+            echo "  Skipped deletion (file contains cluster-specific JWKS)"
+        fi
     else
-        echo "  Skipped deletion (file contains cluster-specific JWKS)"
+        rm -f istio/istio-tbot-token.yaml
+        echo "✓ Deleted istio/istio-tbot-token.yaml (non-interactive mode)"
     fi
 else
     echo "No istio/istio-tbot-token.yaml found"

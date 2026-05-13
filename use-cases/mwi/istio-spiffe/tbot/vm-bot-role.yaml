@@ -1,0 +1,15 @@
+kind: role
+version: v7
+metadata:
+  name: demo-vm-workload-identity
+spec:
+  allow:
+    rules:
+      - resources:
+          - workload_identity
+        verbs:
+          - list
+          - read
+    workload_identity_labels:
+      purpose:
+        - vm-demo
