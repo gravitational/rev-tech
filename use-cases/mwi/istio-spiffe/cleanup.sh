@@ -1,17 +1,17 @@
 #!/bin/bash
-set -e
+# Cleanup script for the Istio + Teleport Workload Identity demos (Part 1 + Part 2).
+# Safe to run multiple times — every deletion is guarded so missing resources are skipped.
 
-echo "=== Istio + tbot Cleanup Script ==="
-echo "This script will remove:"
-echo "  - Istio components (istio-system namespace)"
-echo "  - tbot DaemonSet and resources (teleport-system namespace)"
-echo "  - Test application (test-app namespace)"
-echo "  - Sock Shop demo (sock-shop namespace)"
-echo "  - Teleport server-side resources (role, workload identity, token)"
-echo "  - Local generated token files (optional)"
+# Never abort on error — a cleanup script must always run to completion.
+set +e
+
+echo "=== Istio + Teleport Workload Identity Cleanup ==="
+echo "This script removes:"
+echo "  Part 1: Istio, tbot DaemonSet, Sock Shop, Teleport resources"
+echo "  Part 2: demo-vm Docker container, Teleport VM bot/role/identity"
 echo ""
 
-# Check if we're connected to a cluster
+# Check cluster connectivity before doing anything
 if ! kubectl cluster-info &>/dev/null; then
     echo "ERROR: Cannot connect to Kubernetes cluster"
     exit 1
@@ -28,186 +28,137 @@ else
     echo "Non-interactive mode — proceeding with cleanup."
 fi
 
+# ---------------------------------------------------------------------------
 echo ""
 echo "=== Phase 1: Uninstalling Istio ==="
 if kubectl get namespace istio-system &>/dev/null; then
-    echo "Found istio-system namespace, attempting to uninstall Istio..."
-
-    # Try using istioctl if available
     if command -v istioctl &>/dev/null; then
         echo "Using istioctl to uninstall..."
-        istioctl uninstall --purge -y || echo "Warning: istioctl uninstall had issues"
+        istioctl uninstall --purge -y 2>/dev/null || echo "  Warning: istioctl uninstall had issues"
     fi
 
-    # Delete the namespace
     echo "Deleting istio-system namespace..."
-    kubectl delete namespace istio-system --timeout=60s || echo "Warning: istio-system namespace deletion timed out"
-
-    echo "Waiting for istio-system namespace to be fully deleted..."
-    kubectl wait --for=delete namespace/istio-system --timeout=120s || echo "Warning: namespace still exists"
+    kubectl delete namespace istio-system --timeout=60s 2>/dev/null || echo "  Warning: namespace deletion timed out"
+    kubectl wait --for=delete namespace/istio-system --timeout=120s 2>/dev/null || true
+    echo "✓ Istio removed"
 else
-    echo "No istio-system namespace found, skipping Istio uninstall"
+    echo "  istio-system not found — skipping"
 fi
 
+# ---------------------------------------------------------------------------
 echo ""
 echo "=== Phase 2: Removing tbot Resources ==="
 if kubectl get namespace teleport-system &>/dev/null; then
-    echo "Found teleport-system namespace..."
+    kubectl delete daemonsets    -n teleport-system --all --timeout=60s 2>/dev/null || true
+    kubectl delete configmaps    -n teleport-system --all --timeout=30s 2>/dev/null || true
+    kubectl delete serviceaccounts,roles,rolebindings -n teleport-system --all --timeout=30s 2>/dev/null || true
+    kubectl delete clusterrole        tbot --timeout=30s 2>/dev/null || true
+    kubectl delete clusterrolebinding tbot --timeout=30s 2>/dev/null || true
 
-    # Delete DaemonSets first
-    echo "Deleting tbot DaemonSets..."
-    kubectl delete daemonsets -n teleport-system --all --timeout=60s || echo "Warning: DaemonSet deletion had issues"
-
-    # Delete ConfigMaps
-    echo "Deleting ConfigMaps..."
-    kubectl delete configmaps -n teleport-system --all --timeout=30s || echo "Warning: ConfigMap deletion had issues"
-
-    # Delete RBAC resources
-    echo "Deleting ServiceAccounts, Roles, and RoleBindings..."
-    kubectl delete serviceaccounts,roles,rolebindings -n teleport-system --all --timeout=30s || echo "Warning: RBAC deletion had issues"
-
-    # Delete ClusterRoles and ClusterRoleBindings (if any with tbot prefix)
-    echo "Deleting ClusterRole and ClusterRoleBinding resources..."
-    kubectl delete clusterrole tbot --timeout=30s 2>/dev/null || echo "No tbot ClusterRole found"
-    kubectl delete clusterrolebinding tbot --timeout=30s 2>/dev/null || echo "No tbot ClusterRoleBinding found"
-
-    # Delete the namespace
     echo "Deleting teleport-system namespace..."
-    kubectl delete namespace teleport-system --timeout=60s || echo "Warning: teleport-system namespace deletion timed out"
-
-    echo "Waiting for teleport-system namespace to be fully deleted..."
-    kubectl wait --for=delete namespace/teleport-system --timeout=120s || echo "Warning: namespace still exists"
+    kubectl delete namespace teleport-system --timeout=60s 2>/dev/null || echo "  Warning: namespace deletion timed out"
+    kubectl wait --for=delete namespace/teleport-system --timeout=120s 2>/dev/null || true
+    echo "✓ tbot resources removed"
 else
-    echo "No teleport-system namespace found, skipping tbot cleanup"
+    echo "  teleport-system not found — skipping"
 fi
 
+# ---------------------------------------------------------------------------
 echo ""
-echo "=== Phase 3: Cleaning Up Node Resources ==="
-echo "Checking for symlinks and socket directories on nodes..."
-
-# Get list of worker nodes
-NODES=$(kubectl get nodes -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | grep -E 'worker|node' || echo "")
-
-if [ -z "$NODES" ]; then
-    echo "No worker nodes found or unable to determine node names"
-    echo "You may need to manually clean up /run/spire/sockets on each node if they exist"
-else
-    for NODE in $NODES; do
-        echo "Node: $NODE"
-        echo "  To clean up manually, SSH to the node and run:"
-        echo "    sudo rm -rf /run/spire/sockets"
-        echo ""
-    done
-
-    echo "NOTE: Automatic cleanup of node resources requires direct SSH access."
-    echo "If you have SSH access to the nodes, you can run:"
-    echo "  for node in $NODES; do"
-    echo "    ssh \$node 'sudo rm -rf /run/spire/sockets'"
-    echo "  done"
-fi
-
-echo ""
-echo "=== Phase 4: Cleaning Up Test Workloads ==="
-# Look for test applications in common namespaces
-for ns in default test-app; do
-    if kubectl get namespace $ns &>/dev/null; then
-        echo "Checking namespace $ns for test workloads..."
-        kubectl delete deployments,services,serviceaccounts -n $ns -l app=test-app --timeout=30s 2>/dev/null || echo "No test workloads found in $ns"
+echo "=== Phase 3: Removing Sock Shop ==="
+for ns in sock-shop test-app; do
+    if kubectl get namespace "$ns" &>/dev/null; then
+        echo "Deleting $ns namespace..."
+        kubectl delete namespace "$ns" --timeout=60s 2>/dev/null || echo "  Warning: $ns namespace deletion timed out"
+        kubectl wait --for=delete namespace/"$ns" --timeout=120s 2>/dev/null || true
+        echo "✓ $ns removed"
+    else
+        echo "  $ns not found — skipping"
     fi
 done
 
-# Delete test-app namespace if it exists
-if kubectl get namespace test-app &>/dev/null; then
-    echo "Deleting test-app namespace..."
-    kubectl delete namespace test-app --timeout=60s || echo "Warning: test-app namespace deletion timed out"
-    kubectl wait --for=delete namespace/test-app --timeout=120s || echo "Warning: test-app namespace still exists"
-else
-    echo "No test-app namespace found"
+# ---------------------------------------------------------------------------
+echo ""
+echo "=== Phase 4: Node Socket Directories ==="
+echo "  tbot wrote to /run/spire/sockets on each node."
+echo "  Automatic cleanup requires direct node SSH access."
+NODES=$(kubectl get nodes -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep -E 'worker|node' || true)
+if [ -n "$NODES" ]; then
+    echo "  To clean up manually, SSH to each node and run:"
+    echo "    sudo rm -rf /run/spire/sockets"
 fi
 
-# Delete sock-shop namespace if it exists
-if kubectl get namespace sock-shop &>/dev/null; then
-    echo "Deleting sock-shop demo namespace..."
-    kubectl delete namespace sock-shop --timeout=60s || echo "Warning: sock-shop namespace deletion timed out"
-    kubectl wait --for=delete namespace/sock-shop --timeout=120s || echo "Warning: sock-shop namespace still exists"
+# ---------------------------------------------------------------------------
+echo ""
+echo "=== Phase 5: Part 2 — VM Container ==="
+if command -v docker &>/dev/null && [ -f docker-compose.yml ]; then
+    docker compose down 2>/dev/null || true
+    echo "✓ demo-vm container stopped and removed"
 else
-    echo "No sock-shop namespace found"
+    echo "  docker or docker-compose.yml not found — skipping"
 fi
 
+# ---------------------------------------------------------------------------
 echo ""
-echo "=== Phase 5: Teleport Server-Side Resources ==="
-echo "Checking for Teleport resources (requires tctl and active tsh session)..."
+echo "=== Phase 6: Teleport Server-Side Resources ==="
+if ! command -v tctl &>/dev/null; then
+    echo "  tctl not found — skipping Teleport resource cleanup"
+    echo "  To clean up manually:"
+    echo "    tctl rm workload_identity/istio-workloads"
+    echo "    tctl rm role/istio-workload-identity-issuer"
+    echo "    tctl rm token/istio-tbot-k8s-join"
+    echo "    tctl bots rm demo-vm-bot"
+    echo "    tctl rm workload_identity/demo-vm-service"
+    echo "    tctl rm role/demo-vm-workload-identity"
+elif ! tctl status &>/dev/null; then
+    echo "  Not logged in to Teleport (run: tsh login) — skipping Teleport resource cleanup"
+    echo "  To clean up manually:"
+    echo "    tctl rm workload_identity/istio-workloads"
+    echo "    tctl rm role/istio-workload-identity-issuer"
+    echo "    tctl rm token/istio-tbot-k8s-join"
+    echo "    tctl bots rm demo-vm-bot"
+    echo "    tctl rm workload_identity/demo-vm-service"
+    echo "    tctl rm role/demo-vm-workload-identity"
+else
+    echo "--- Part 1 ---"
+    tctl rm workload_identity/istio-workloads        2>/dev/null && echo "✓ workload_identity/istio-workloads" || echo "  workload_identity/istio-workloads not found"
+    tctl rm role/istio-workload-identity-issuer      2>/dev/null && echo "✓ role/istio-workload-identity-issuer" || echo "  role/istio-workload-identity-issuer not found"
+    tctl rm token/istio-tbot-k8s-join               2>/dev/null && echo "✓ token/istio-tbot-k8s-join" || echo "  token/istio-tbot-k8s-join not found"
+
+    echo "--- Part 2 ---"
+    tctl bots rm demo-vm-bot                         2>/dev/null && echo "✓ bot/demo-vm-bot" || echo "  bot/demo-vm-bot not found"
+    tctl rm workload_identity/demo-vm-service        2>/dev/null && echo "✓ workload_identity/demo-vm-service" || echo "  workload_identity/demo-vm-service not found"
+    tctl rm role/demo-vm-workload-identity           2>/dev/null && echo "✓ role/demo-vm-workload-identity" || echo "  role/demo-vm-workload-identity not found"
+fi
+
+# ---------------------------------------------------------------------------
 echo ""
-
-# Check if tctl is available
-if command -v tctl &>/dev/null; then
-    if tctl status &>/dev/null; then
-        echo "Deleting Teleport workload identity..."
-        tctl rm workload_identity/istio-workloads 2>/dev/null || echo "  Workload identity not found or already deleted"
-
-        echo "Deleting Teleport bot role..."
-        tctl rm role/istio-workload-identity-issuer 2>/dev/null || echo "  Role not found or already deleted"
-
-        echo "Deleting Teleport join token..."
-        tctl rm token/istio-tbot-k8s-join 2>/dev/null || echo "  Token not found or already deleted"
-
-        echo "✓ Teleport resources cleaned up"
+echo "=== Phase 7: Local Generated Files ==="
+for f in istio/istio-tbot-token.yaml .env.vm; do
+    if [ -f "$f" ]; then
+        rm -f "$f" && echo "✓ Deleted $f" || echo "  Warning: could not delete $f"
     else
-        echo "WARNING: Not logged in to Teleport (tsh login required)"
-        echo "To manually clean up Teleport resources, run:"
-        echo "  tctl rm workload_identity/istio-workloads"
-        echo "  tctl rm role/istio-workload-identity-issuer"
-        echo "  tctl rm token/istio-tbot-k8s-join"
+        echo "  $f not found — skipping"
     fi
-else
-    echo "WARNING: tctl not found"
-    echo "To manually clean up Teleport resources, run:"
-    echo "  tctl rm workload_identity/istio-workloads"
-    echo "  tctl rm role/istio-workload-identity-issuer"
-    echo "  tctl rm token/istio-tbot-k8s-join"
-fi
+done
 
-echo ""
-echo "=== Phase 6: Local Generated Files ==="
-echo "Checking for locally generated token files..."
-if [ -f "istio/istio-tbot-token.yaml" ]; then
-    echo "Found istio/istio-tbot-token.yaml (cluster-specific, safe to delete)"
-    if [ -t 0 ]; then
-        read -p "Delete istio/istio-tbot-token.yaml? (y/N): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            rm -f istio/istio-tbot-token.yaml
-            echo "✓ Deleted istio/istio-tbot-token.yaml"
-        else
-            echo "  Skipped deletion (file contains cluster-specific JWKS)"
-        fi
-    else
-        rm -f istio/istio-tbot-token.yaml
-        echo "✓ Deleted istio/istio-tbot-token.yaml (non-interactive mode)"
-    fi
-else
-    echo "No istio/istio-tbot-token.yaml found"
-fi
-
-# Check for any other token files
+# Check for any stray token files
 TOKEN_FILES=$(ls *-token*.yaml 2>/dev/null | grep -v ".template" || true)
 if [ -n "$TOKEN_FILES" ]; then
     echo ""
-    echo "Found other token files:"
-    echo "$TOKEN_FILES"
-    echo "These files are gitignored and can be safely deleted if no longer needed."
+    echo "  Found other token files (gitignored, safe to delete if not needed):"
+    echo "$TOKEN_FILES" | sed 's/^/    /'
 fi
 
+# ---------------------------------------------------------------------------
 echo ""
-echo "=== Cleanup Summary ==="
-echo "✓ Istio components removed"
-echo "✓ tbot resources removed"
-echo "✓ Namespaces cleaned up"
-echo "✓ Teleport server resources cleaned up (if tctl available)"
+echo "=== Cleanup Complete ==="
+LEFTOVER=$(kubectl get namespaces 2>/dev/null | grep -E 'istio-system|teleport-system|sock-shop|test-app' || true)
+if [ -n "$LEFTOVER" ]; then
+    echo "WARNING: some namespaces still present:"
+    echo "$LEFTOVER"
+else
+    echo "✓ No demo namespaces remaining"
+fi
 echo ""
-echo "NOTE: You may need to manually remove /run/spire/sockets on worker nodes"
-echo ""
-echo "Remaining namespaces:"
-kubectl get namespaces | grep -E 'istio|teleport|test-app|sock-shop' || echo "  No Istio, Teleport, test-app, or sock-shop namespaces found ✓"
-echo ""
-echo "Cleanup complete! Ready for fresh installation."
+echo "NOTE: /run/spire/sockets on worker nodes may need manual cleanup (see Phase 4 above)."
