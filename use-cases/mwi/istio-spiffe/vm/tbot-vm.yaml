@@ -1,0 +1,15 @@
+version: v2
+proxy_server: ${TELEPORT_PROXY}
+
+onboarding:
+  join_method: token
+  token: ${BOT_TOKEN}
+
+storage:
+  type: memory
+
+services:
+  - type: workload-identity-api
+    listen: unix:///run/teleport/workload.sock
+    selector:
+      name: demo-vm-service

@@ -39,3 +39,20 @@ spec:
       # Logging level for debugging
       logging:
         level: "default:info"
+
+    sidecarInjectorWebhook:
+      # Apply sidecar template then tbot-socket template; strategic merge replaces
+      # workload-socket emptyDir (from sidecar) with the hostPath to tbot's socket.
+      # pilot-agent auto-detects the socket at /var/run/secrets/workload-spiffe-uds/socket
+      # and uses the SPIFFE Workload API (not citadelclient) for SVID issuance.
+      defaultTemplates:
+        - sidecar
+        - tbot-socket
+      templates:
+        tbot-socket: |
+          spec:
+            volumes:
+            - name: workload-socket
+              hostPath:
+                path: /run/spire/sockets
+                type: DirectoryOrCreate

@@ -1,0 +1,108 @@
+node:
+  id: demo-vm
+  cluster: demo-vm-cluster
+
+static_resources:
+
+  listeners:
+    - name: local_listener
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 8080
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: egress_http
+                route_config:
+                  virtual_hosts:
+                    - name: k8s_backend
+                      domains: ["*"]
+                      routes:
+                        - match:
+                            prefix: "/"
+                          route:
+                            cluster: k8s_catalogue
+                http_filters:
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+  clusters:
+    # SDS server — tbot's SPIFFE Workload API socket (gRPC over Unix domain socket)
+    - name: spiffe_workload_api
+      type: STATIC
+      connect_timeout: 1s
+      http2_protocol_options: {}
+      load_assignment:
+        cluster_name: spiffe_workload_api
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    pipe:
+                      path: /run/teleport/workload.sock
+
+    # The real Kubernetes catalogue service, reached via its external LoadBalancer IP
+    - name: k8s_catalogue
+      connect_timeout: 5s
+      type: STRICT_DNS
+      load_assignment:
+        cluster_name: k8s_catalogue
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: ${CATALOGUE_HOST}
+                      port_value: 80
+
+      # mTLS — SVID fetched in-memory from tbot via SDS, never written to disk
+      transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+          # SNI matches the in-cluster service name so Istio routes correctly
+          sni: catalogue.sock-shop.svc.cluster.local
+          common_tls_context:
+            # ALPN values Istio expects for sidecar-to-sidecar mTLS
+            alpn_protocols:
+              - "istio"
+              - "h2"
+              - "http/1.1"
+            # Client cert (SVID) — fetched in-memory from tbot via SDS
+            tls_certificate_sds_secret_configs:
+              - name: "spiffe://${TRUST_DOMAIN}/demo/vm-service"
+                sds_config:
+                  resource_api_version: V3
+                  api_config_source:
+                    api_type: GRPC
+                    transport_api_version: V3
+                    grpc_services:
+                      - envoy_grpc:
+                          cluster_name: spiffe_workload_api
+            # Trust bundle — combined so we can match URI SANs (SPIFFE) instead of hostname
+            combined_validation_context:
+              default_validation_context:
+                match_typed_subject_alt_names:
+                  - san_type: URI
+                    matcher:
+                      prefix: "spiffe://${TRUST_DOMAIN}/"
+              validation_context_sds_secret_config:
+                name: "ROOTCA"
+                sds_config:
+                  resource_api_version: V3
+                  api_config_source:
+                    api_type: GRPC
+                    transport_api_version: V3
+                    grpc_services:
+                      - envoy_grpc:
+                          cluster_name: spiffe_workload_api
+
+admin:
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9901   # Envoy admin — shows SVID held in memory during demo
