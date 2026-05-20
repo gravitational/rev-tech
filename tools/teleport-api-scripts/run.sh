@@ -22,12 +22,14 @@ to_epoch() {
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") -p <teleport proxy address> [-i <identity file path>] [-m] [-t] [-v] [-x]
+Usage: $(basename "$0") -p <teleport proxy address> [-i <identity file path>] [-m] [-t] [-b <day>] [-c <n>] [-v] [-x]
 
   -p  Teleport proxy address (required). If no port is specified, :443 is assumed.
   -i  Optional identity file path.
   -m  Run MAU script (mau.go)
   -t  Run TPR script (tpr.go)
+  -b  Billing cycle anchor day (1-31). Aligns reports with Teleport billing cycles.
+  -c  Number of completed cycles to include (default 3, requires -b).
   -v  Output version and exit
   -x  Enable debugging information for 'go get'
 
@@ -35,6 +37,7 @@ Examples:
   $(basename "$0") -p example.teleport.sh -m
   $(basename "$0") -p example.teleport.sh:443 -i /path/to/identity -t
   $(basename "$0") -p example.teleport.sh -m -t
+  $(basename "$0") -p example.teleport.sh -m -b 7 -c 3
 EOF
 }
 
@@ -43,13 +46,17 @@ PROXY=""
 IDENTITY_FILE=""
 RUN_MAU=0
 RUN_TPR=0
+BILLING_DAY=""
+CYCLES=""
 SHOW_VERSION=0
 GO_GET_DEBUG=0
 
-while getopts ":p:i:mtvx" opt; do
+while getopts ":p:i:b:c:mtvx" opt; do
   case "$opt" in
     p) PROXY="$OPTARG" ;;
     i) IDENTITY_FILE="$OPTARG" ;;
+    b) BILLING_DAY="$OPTARG" ;;
+    c) CYCLES="$OPTARG" ;;
     m) RUN_MAU=1 ;;
     t) RUN_TPR=1 ;;
     v) SHOW_VERSION=1 ;;
@@ -100,6 +107,15 @@ if [[ "${STATUS}" != "200" ]]; then
   exit 2
 fi
 
+# build extra args from billing-cycle flags
+EXTRA_ARGS=""
+if [[ -n "${BILLING_DAY}" ]]; then
+  EXTRA_ARGS+=" -billing-day ${BILLING_DAY}"
+fi
+if [[ -n "${CYCLES}" ]]; then
+  EXTRA_ARGS+=" -cycles ${CYCLES}"
+fi
+
 # handle identity file
 IDENTITY_FILE_STANZA=""
 if [[ -n "${IDENTITY_FILE}" ]]; then
@@ -143,11 +159,11 @@ go mod tidy
 if [[ "${RUN_MAU}" -eq 1 ]]; then
   echo "Running MAU script"
   #shellcheck disable=SC2086
-  go run mau.go -proxy ${PROXY}${IDENTITY_FILE_STANZA}
+  go run mau.go -proxy ${PROXY}${IDENTITY_FILE_STANZA}${EXTRA_ARGS}
 fi
 
 if [[ "${RUN_TPR}" -eq 1 ]]; then
   echo "Running TPR script"
   #shellcheck disable=SC2086
-  go run tpr.go -proxy ${PROXY}${IDENTITY_FILE_STANZA}
+  go run tpr.go -proxy ${PROXY}${IDENTITY_FILE_STANZA}${EXTRA_ARGS}
 fi

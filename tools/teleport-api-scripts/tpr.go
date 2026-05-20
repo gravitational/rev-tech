@@ -61,7 +61,70 @@ var (
 	resourcesMutex sync.Mutex                  // Mutex to ensure safe concurrent access
 	logFile        *os.File                    // File handle for logging & report outputs
 	db             *sql.DB                     // SQLite database connection
+
+	billingDayAnchor int // -billing-day value (0 = disabled)
+	cyclesCount      int // -cycles value
 )
+
+// cycleBounds is a half-open billing-cycle window [Start, End).
+type cycleBounds struct {
+	Start      time.Time
+	End        time.Time
+	Label      string
+	InProgress bool
+}
+
+func daysIn(year int, month time.Month) int {
+	return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+}
+
+func cycleStart(year int, month time.Month, anchor int) time.Time {
+	d := anchor
+	if last := daysIn(year, month); d > last {
+		d = last
+	}
+	return time.Date(year, month, d, 0, 0, 0, 0, time.UTC)
+}
+
+func cycleContaining(t time.Time, anchor int) cycleBounds {
+	t = t.UTC()
+	start := cycleStart(t.Year(), t.Month(), anchor)
+	if t.Before(start) {
+		prevYear, prevMonth := t.Year(), t.Month()-1
+		if prevMonth < 1 {
+			prevYear--
+			prevMonth = 12
+		}
+		start = cycleStart(prevYear, prevMonth, anchor)
+	}
+	nextYear, nextMonth := start.Year(), start.Month()+1
+	if nextMonth > 12 {
+		nextYear++
+		nextMonth = 1
+	}
+	end := cycleStart(nextYear, nextMonth, anchor)
+	return cycleBounds{
+		Start: start,
+		End:   end,
+		Label: fmt.Sprintf("%s - %s",
+			start.Format("2 Jan 2006"),
+			end.Add(-24*time.Hour).Format("2 Jan 2006")),
+	}
+}
+
+func lastNCycles(now time.Time, anchor, n int) []cycleBounds {
+	current := cycleContaining(now, anchor)
+	current.InProgress = true
+	out := []cycleBounds{current}
+	for i := 0; i < n; i++ {
+		prev := out[len(out)-1].Start.Add(-24 * time.Hour)
+		out = append(out, cycleContaining(prev, anchor))
+	}
+	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+		out[i], out[j] = out[j], out[i]
+	}
+	return out
+}
 
 // Initializes logging, connects to a Teleport cluster, and continuously tracks protected resources (TPRs) and MWI.
 // 1. Initializes Logging & Database: Sets up structured logging and a SQLite database for TPR/MWI storage.
@@ -89,6 +152,18 @@ func main() {
 		"Path to Teleport identity file (optional - enables use of an identity file instead of ambient tsh credentials)",
 	)
 
+	billingDayFlag := flag.Int(
+		"billing-day",
+		0,
+		"Billing cycle anchor day (1-31). When set, an additional per-cycle history section is included in each report.",
+	)
+
+	cyclesFlag := flag.Int(
+		"cycles",
+		3,
+		"Number of completed cycles to include alongside the in-progress cycle (only used with -billing-day).",
+	)
+
 	flag.Parse()
 
 	teleportProxyURL = *proxyFlag
@@ -108,6 +183,23 @@ func main() {
 		// Validation
 		if _, err := os.Stat(identityFilePath); err != nil {
 			log.Fatalf("identity file not accessible: %v", err)
+		}
+	}
+
+	billingDayAnchor = *billingDayFlag
+	if billingDayAnchor < 0 || billingDayAnchor > 31 {
+		log.Fatalf("invalid -billing-day %d (expected 1-31, or 0 to disable)", billingDayAnchor)
+	}
+	cyclesCount = *cyclesFlag
+	if cyclesCount < 0 {
+		log.Fatalf("invalid -cycles %d (must be >= 0)", cyclesCount)
+	}
+	if billingDayAnchor > 0 {
+		oldest := lastNCycles(time.Now().UTC(), billingDayAnchor, cyclesCount)[0].Start
+		spanDays := int(time.Since(oldest).Hours() / 24)
+		if spanDays > dataRetentionDays {
+			log.Printf("[WARN] Requested -cycles=%d spans ~%d days but dataRetentionDays=%d; older cycles will be empty until SQLite history catches up.",
+				cyclesCount, spanDays, dataRetentionDays)
 		}
 	}
 
@@ -469,6 +561,16 @@ func writeReportsToFile() {
 		bots, botInstances, spiffeIDs = 0, 0, 0
 	}
 
+	// Per-cycle history (only populated when -billing-day is set).
+	var cycleHistory []map[string]interface{}
+	if billingDayAnchor > 0 {
+		cycles := lastNCycles(time.Now().UTC(), billingDayAnchor, cyclesCount)
+		cycleHistory = make([]map[string]interface{}, len(cycles))
+		for i, c := range cycles {
+			cycleHistory[i] = aggregateCycle(c)
+		}
+	}
+
 	if reportFormat == "json" {
 		// JSON output format
 		reportData := map[string]interface{}{
@@ -487,6 +589,10 @@ func writeReportsToFile() {
 				"bot_instances":     botInstances,
 				"spiffe_ids_issued": spiffeIDs,
 			},
+		}
+		if cycleHistory != nil {
+			reportData["billing_anchor_day"] = billingDayAnchor
+			reportData["cycle_history"] = cycleHistory
 		}
 
 		jsonData, err := json.MarshalIndent(reportData, "", "  ")
@@ -539,12 +645,130 @@ func writeReportsToFile() {
 		output += fmt.Sprintf("SPIFFE IDs Issued (this period): %d\n", spiffeIDs)
 		output += "=================================================\n"
 
+		if cycleHistory != nil {
+			output += "\nBILLING CYCLE HISTORY (peak within cycle for TPR/MWI, sum for SPIFFE)\n"
+			output += fmt.Sprintf("Anchor day: %d\n", billingDayAnchor)
+			output += "-------------------------------------------------\n"
+
+			labelWidth := len("Cycle")
+			for _, row := range cycleHistory {
+				if l := len(row["label_display"].(string)); l > labelWidth {
+					labelWidth = l
+				}
+			}
+			labelWidth += 2
+
+			output += fmt.Sprintf("%-*s  %-8s  %-8s  %-8s  %-8s  %-8s  %-8s  %-6s  %-8s\n",
+				labelWidth, "Cycle", "Total", "Apps", "Kube", "DBs", "WinDesk", "Nodes", "Bots", "SPIFFE")
+			output += strings.Repeat("-", labelWidth+2+8*8+2*7+6) + "\n"
+
+			cell := func(width int, v interface{}) string {
+				if v == nil {
+					return fmt.Sprintf("%-*s", width, "n/a")
+				}
+				return fmt.Sprintf("%-*d", width, v.(int))
+			}
+
+			anyMissing := false
+			for _, row := range cycleHistory {
+				if !row["tpr_available"].(bool) || !row["mwi_available"].(bool) {
+					anyMissing = true
+				}
+				output += fmt.Sprintf("%-*s  %s  %s  %s  %s  %s  %s  %s  %s\n",
+					labelWidth, row["label_display"].(string),
+					cell(8, row["total_tpr"]),
+					cell(8, row["applications"]),
+					cell(8, row["kubernetes"]),
+					cell(8, row["databases"]),
+					cell(8, row["windows_desktops"]),
+					cell(8, row["nodes"]),
+					cell(6, row["bots"]),
+					cell(8, row["spiffe_ids_issued"]))
+			}
+			if anyMissing {
+				output += "(n/a = no snapshot recorded in this cycle; the tracker must be running to collect data)\n"
+			}
+			output += "=================================================\n"
+		}
+
 		_, err = file.WriteString(output)
 		if err != nil {
 			log.Printf("[ERROR] Failed to write to report file: %v", err)
 		}
 
 		log.Printf("[INFO] Usage report updated successfully at %s", timestamp)
+	}
+}
+
+// aggregateCycle queries SQLite for TPR/MWI activity within one billing cycle.
+// Resource counts use the peak (MAX) within the window — each row is a snapshot,
+// so the peak is the most defensible single number to compare against the
+// portal's per-cycle figure. SPIFFE issuance uses SUM because each row records
+// the count for that interval (the in-memory counter resets after each insert,
+// see updateMetrics).
+func aggregateCycle(c cycleBounds) map[string]interface{} {
+	startStr := c.Start.Format("2006-01-02 15:04:05")
+	endStr := c.End.Format("2006-01-02 15:04:05")
+
+	var totalTPR, appTPR, kubeTPR, dbTPR, windowsTPR, nodeTPR sql.NullInt64
+	err := db.QueryRow(`
+		SELECT MAX(total_tpr), MAX(app_tpr), MAX(kube_tpr), MAX(db_tpr),
+		       MAX(windows_tpr), MAX(node_tpr)
+		  FROM tpr_data
+		 WHERE timestamp >= ? AND timestamp < ?`,
+		startStr, endStr,
+	).Scan(&totalTPR, &appTPR, &kubeTPR, &dbTPR, &windowsTPR, &nodeTPR)
+	if err != nil {
+		log.Printf("[ERROR] aggregateCycle TPR query failed for %s: %v", c.Label, err)
+	}
+
+	var botsMax, instMax, spiffeSum sql.NullInt64
+	err = db.QueryRow(`
+		SELECT MAX(bots), MAX(bot_instances), COALESCE(SUM(spiffe_ids_issued), 0)
+		  FROM mwi_data
+		 WHERE timestamp >= ? AND timestamp < ?`,
+		startStr, endStr,
+	).Scan(&botsMax, &instMax, &spiffeSum)
+	if err != nil {
+		log.Printf("[ERROR] aggregateCycle MWI query failed for %s: %v", c.Label, err)
+	}
+
+	display := c.Label
+	if c.InProgress {
+		display += " (in progress)"
+	}
+
+	// MAX(...) returns NULL when no rows match — that's our signal for "no data
+	// recorded for this cycle" (e.g. tracker wasn't running yet). Preserve the
+	// distinction between "no data" and "real zero" by returning nil in that
+	// case; the text formatter renders it as n/a and JSON serialises it as null.
+	tprAvailable := totalTPR.Valid
+	mwiAvailable := botsMax.Valid
+
+	asValue := func(v sql.NullInt64, available bool) interface{} {
+		if !available || !v.Valid {
+			return nil
+		}
+		return int(v.Int64)
+	}
+
+	return map[string]interface{}{
+		"label":             c.Label,
+		"label_display":     display,
+		"start":             c.Start.Format(time.RFC3339),
+		"end":               c.End.Format(time.RFC3339),
+		"in_progress":       c.InProgress,
+		"tpr_available":     tprAvailable,
+		"mwi_available":     mwiAvailable,
+		"total_tpr":         asValue(totalTPR, tprAvailable),
+		"applications":      asValue(appTPR, tprAvailable),
+		"kubernetes":        asValue(kubeTPR, tprAvailable),
+		"databases":         asValue(dbTPR, tprAvailable),
+		"windows_desktops":  asValue(windowsTPR, tprAvailable),
+		"nodes":             asValue(nodeTPR, tprAvailable),
+		"bots":              asValue(botsMax, mwiAvailable),
+		"bot_instances":     asValue(instMax, mwiAvailable),
+		"spiffe_ids_issued": asValue(spiffeSum, mwiAvailable),
 	}
 }
 
