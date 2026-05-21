@@ -199,8 +199,8 @@ func main() {
 	// Command-line flags
 	proxyFlag := flag.String(
 		"proxy",
-		teleportProxyURL,
-		"Teleport proxy address (e.g. teleport.example.com:443)",
+		"",
+		"Teleport proxy address, e.g. teleport.example.com:443 (required)",
 	)
 
 	formatFlag := flag.String(
@@ -230,6 +230,9 @@ func main() {
 	flag.Parse()
 
 	teleportProxyURL = *proxyFlag
+	if teleportProxyURL == "" {
+		log.Fatalf("-proxy is required (e.g. -proxy teleport.example.com:443). Run with -h for usage.")
+	}
 	canonicalProxy, err := preflightProxy(teleportProxyURL)
 	if err != nil {
 		log.Fatalf("%v", err)
