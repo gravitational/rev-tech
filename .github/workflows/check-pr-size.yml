@@ -1,0 +1,146 @@
+name: Check PR size
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  size-check:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    env:
+      LINE_LIMIT: 1500
+      STICKY_MARKER: "<!-- pr-size-check -->"
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: |
+          git remote add upstream https://github.com/${{ github.event.pull_request.base.repo.full_name }}.git
+          git fetch --no-tags --prune upstream ${{ github.event.pull_request.base.ref }}
+
+      - name: Compute diff size
+        id: size
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # Paths to exclude from the line-count: lock files, vendored deps,
+          # and common generated-file patterns. These don't represent
+          # human-authored change and shouldn't count toward PR size.
+          excludes=(
+            ':(exclude)**/go.sum'
+            ':(exclude)go.sum'
+            ':(exclude)**/package-lock.json'
+            ':(exclude)package-lock.json'
+            ':(exclude)**/yarn.lock'
+            ':(exclude)yarn.lock'
+            ':(exclude)**/pnpm-lock.yaml'
+            ':(exclude)pnpm-lock.yaml'
+            ':(exclude)**/Cargo.lock'
+            ':(exclude)Cargo.lock'
+            ':(exclude)**/poetry.lock'
+            ':(exclude)poetry.lock'
+            ':(exclude)**/Pipfile.lock'
+            ':(exclude)Pipfile.lock'
+            ':(exclude)**/composer.lock'
+            ':(exclude)composer.lock'
+            ':(exclude)**/Gemfile.lock'
+            ':(exclude)Gemfile.lock'
+            ':(exclude)**/vendor/**'
+            ':(exclude)vendor/**'
+            ':(exclude)**/node_modules/**'
+            ':(exclude)**/dist/**'
+            ':(exclude)**/build/**'
+            ':(exclude)**/*.pb.go'
+            ':(exclude)**/*.pb.gw.go'
+            ':(exclude)**/*_pb2.py'
+            ':(exclude)**/*_pb2_grpc.py'
+            ':(exclude)**/*.generated.*'
+            ':(exclude)**/*_generated.go'
+            ':(exclude)**/zz_generated_*.go'
+            ':(exclude)**/*.min.js'
+            ':(exclude)**/*.min.css'
+            ':(exclude)**/*.map'
+            ':(exclude)**/*.svg'
+            ':(exclude)**/*.png'
+            ':(exclude)**/*.jpg'
+            ':(exclude)**/*.jpeg'
+            ':(exclude)**/*.gif'
+            ':(exclude)**/*.ico'
+            ':(exclude)**/*.pdf'
+          )
+
+          # --numstat gives "<added>\t<deleted>\t<path>"; binary files
+          # appear as "-\t-\t<path>" which we skip.
+          numstat=$(git diff --numstat "$BASE_SHA...$HEAD_SHA" -- "${excludes[@]}")
+
+          total=0
+          while IFS=$'\t' read -r added deleted _; do
+            [ -z "${added:-}" ] && continue
+            [ "$added" = "-" ] && continue
+            total=$(( total + added + deleted ))
+          done <<< "$numstat"
+
+          echo "total=$total" >> "$GITHUB_OUTPUT"
+          echo "PR changed line total (excluding generated): $total"
+
+      - name: Upsert size comment
+        uses: actions/github-script@v7
+        env:
+          TOTAL: ${{ steps.size.outputs.total }}
+        with:
+          script: |
+            const limit = parseInt(process.env.LINE_LIMIT, 10);
+            const total = parseInt(process.env.TOTAL, 10);
+            const marker = process.env.STICKY_MARKER;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const existing = await github.paginate(
+              github.rest.issues.listComments,
+              { owner, repo, issue_number, per_page: 100 },
+            );
+            const prior = existing.find(c => c.body && c.body.includes(marker));
+
+            if (total <= limit) {
+              if (prior) {
+                await github.rest.issues.deleteComment({
+                  owner, repo, comment_id: prior.id,
+                });
+              }
+              core.info(`PR size ${total} <= ${limit}; no comment needed.`);
+              return;
+            }
+
+            const body = [
+              marker,
+              `### :scroll: This PR is large (${total} changed lines)`,
+              ``,
+              `This PR exceeds the **${limit}-line** soft limit (additions + deletions, excluding lock files, vendored code, and generated files).`,
+              ``,
+              `Large PRs are harder to review carefully and take longer to land. Please consider splitting this into smaller, independently reviewable pieces — for example by separating refactors from behaviour changes, or splitting by feature/module.`,
+              ``,
+              `If the size is unavoidable (e.g. a generated-file update that the excludes missed, or a single atomic change), leave a note explaining why and a reviewer can proceed.`,
+            ].join("\n");
+
+            if (prior) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: prior.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body,
+              });
+            }
