@@ -24,11 +24,34 @@ Monitors infrastructure and identity usage, reporting:
 
 ## Quick Start
 
-1. **Download a prebuilt binary** for your platform from the [latest release](https://github.com/gravitational/rev-tech/releases) matching your Teleport cluster's version (release tags follow `teleport-api-scripts-vX.Y.Z`).
-2. **Or build from source**: `cd tools/teleport-api-scripts && make build` (or `make build-for TELEPORT_VERSION=v18.5.1` to pin against a specific Teleport version).
-3. **Review the detailed README** for the script you want to use (MAU_README.md or TPR_README.md).
+1. **Check your Teleport cluster's version** (see below).
+2. **Download a prebuilt binary** for your platform from the [latest release](https://github.com/gravitational/rev-tech/releases) matching that version (release tags follow `teleport-api-scripts-vX.Y.Z`).
+3. **Or build from source**: `cd tools/teleport-api-scripts && make build` (or `make build-for TELEPORT_VERSION=v18.5.1` to pin against a specific Teleport version).
+4. **Review the detailed README** for the script you want to use (MAU_README.md or TPR_README.md).
 
 See individual README files for complete configuration options.
+
+### Checking your Teleport cluster's version
+
+The Teleport proxy exposes a public, unauthenticated `/v1/webapi/find` endpoint that returns the cluster's version as JSON. Pick whichever method is most convenient — none require extra tooling beyond what each platform ships with by default.
+
+**Browser (any platform):** open `https://<your-proxy>/v1/webapi/find` and look for the `server_version` field in the response.
+
+**Linux / macOS (bash, no `jq` required):**
+
+```bash
+curl -s https://<your-proxy>/v1/webapi/find | grep -o '"server_version":"[^"]*"'
+# → "server_version":"18.5.1"
+```
+
+**Windows (PowerShell):**
+
+```powershell
+(Invoke-RestMethod https://<your-proxy>/v1/webapi/find).server_version
+# → 18.5.1
+```
+
+Use the version you find here to pick the matching `teleport-api-scripts-vX.Y.Z` release.
 
 ## Output
 
