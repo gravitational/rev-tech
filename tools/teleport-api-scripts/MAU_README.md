@@ -97,6 +97,36 @@ daysBack = 60  // Default is 30 days back
 batchSize = 10000  // Increase batch size for better performance. Default is 5000
 ```
 
+## Billing Cycles
+
+Teleport bills against monthly cycles anchored to a customer-specific day, not the
+1st of each month. To produce a report that lines up with the "Usage History" view
+in Teleport Cloud, pass `-billing-day` with your anchor day (1-31):
+
+```bash
+# Aligned to cycles starting on the 7th of each month (e.g. 7 May - 6 Jun)
+bash ./run.sh -p teleport.example.com:443 -m -b 7
+
+# Include 5 completed cycles in addition to the in-progress one (default: 3)
+bash ./run.sh -p teleport.example.com:443 -m -b 7 -c 5
+```
+
+When `-billing-day` is set:
+- The report contains one row per cycle (oldest → newest, with the in-progress
+  cycle last), matching the schema of the Teleport portal's Usage History page.
+- Each cycle has its own detailed per-user ZTA/IG breakdown underneath.
+- Anchor days that exceed a given month's length (e.g. 31 in February) are
+  clamped to the last day of that month.
+- All cycle math is in UTC. The script uses the audit log's `time` field to
+  bucket each event into a cycle.
+
+Without `-billing-day` (default), the script keeps its original rolling-window
+behavior driven by `daysBack` in the source.
+
+Caveat: events older than your cluster's audit log retention will not be
+returned, so older cycles may be silently empty. A warning is logged if the
+requested window exceeds ~90 days.
+
 ## Authentication
 
 The script automatically handles authentication based on your configuration:

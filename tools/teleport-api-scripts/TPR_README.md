@@ -97,6 +97,36 @@ dataRetentionDays = 90  // Keep 90 days of historical data instead of 30 (defaul
 eventBatchSize = 10000  // Increase batch size for better performance (default: 5000)
 ```
 
+## Billing Cycles
+
+Teleport bills against monthly cycles anchored to a customer-specific day, not
+the 1st of each month. To append a per-cycle history table to each report (so
+it lines up with the "Usage History" view in Teleport Cloud), pass
+`-billing-day` with your anchor day (1-31):
+
+```bash
+# Aligned to cycles starting on the 7th of each month (e.g. 7 May - 6 Jun)
+bash ./run.sh -p teleport.example.com:443 -t -b 7
+
+# Include 5 completed cycles in addition to the in-progress one (default: 3)
+bash ./run.sh -p teleport.example.com:443 -t -b 7 -c 5
+```
+
+When `-billing-day` is set, each report adds a `BILLING CYCLE HISTORY` section
+(or `cycle_history` array in JSON) with one row per cycle. Per-cycle resource
+counts are the **peak** (`MAX`) within the cycle window — each row in the
+SQLite history is a point-in-time snapshot, so the peak is the most defensible
+single number to compare against the portal's per-cycle figure. SPIFFE ID
+counts are summed across the cycle.
+
+Anchor days that exceed a given month's length (e.g. 31 in February) are
+clamped to the last day of that month. All cycle math is in UTC.
+
+Caveat: per-cycle history is bounded by what's in the SQLite database. If you
+request `-cycles N` spanning more than `dataRetentionDays` (default 30),
+older cycles will be empty until the tracker has been running long enough.
+Bump `dataRetentionDays` in the source to retain longer history.
+
 ## Authentication
 
 The script automatically handles authentication based on your configuration:
