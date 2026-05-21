@@ -32,13 +32,19 @@ Requires Teleport Enterprise with the Identity Security add-on enabled in your l
 curl 'https://yourcluster.teleport.sh/webapi/auth/export?type=tls-host'
 ```
 
-Copy the PEM output into `terraform.tfvars` as `teleport_host_ca`.
+Export the PEM as a `TF_VAR_*` env var (use a heredoc to handle the newlines):
+
+```bash
+export TF_VAR_teleport_host_ca="$(curl -s 'https://yourcluster.teleport.sh/webapi/auth/export?type=tls-host')"
+```
 
 ### Step 2: Apply this layer
 
 ```bash
-cp terraform.tfvars.example terraform.tfvars
-# fill in proxy_address, db_password, teleport_host_ca
+# See terraform.tfvars.example for all required variables
+export TF_VAR_proxy_address="yourcluster.teleport.sh"
+export TF_VAR_db_password="a-strong-password"
+# TF_VAR_teleport_host_ca set above
 eval $(tctl terraform env)
 terraform init
 terraform apply
