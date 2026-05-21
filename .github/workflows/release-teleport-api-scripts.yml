@@ -67,7 +67,20 @@ jobs:
       - name: Pin Teleport API to target version
         if: steps.precheck.outputs.skip != 'true'
         run: |
-          go get "github.com/gravitational/teleport/api@${{ steps.target.outputs.tag }}"
+          # Resolve the Teleport release tag to a commit SHA, then `go get` the
+          # api/ submodule at that commit. We can't use @<tag> directly because
+          # Teleport's api module is published at .../api/v18 for v18+ tagged
+          # releases, but we keep importing the unsuffixed path. The Go module
+          # resolver accepts any commit on the unsuffixed path as a pseudo-
+          # version, so this round-tripping works.
+          tag="${{ steps.target.outputs.tag }}"
+          sha=$(git ls-remote https://github.com/gravitational/teleport "refs/tags/${tag}" | awk '{print $1}')
+          if [[ -z "${sha}" ]]; then
+            echo "Could not resolve tag ${tag} to a commit SHA"
+            exit 1
+          fi
+          echo "Pinning github.com/gravitational/teleport/api to ${tag} (${sha})"
+          go get "github.com/gravitational/teleport/api@${sha}"
           go mod tidy
 
       - name: Build binaries for all platforms
