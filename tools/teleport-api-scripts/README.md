@@ -24,8 +24,9 @@ Monitors infrastructure and identity usage, reporting:
 
 ## Quick Start
 
-1. **Choose your script** based on what you want to track (users vs. resources)
-2. **Review the detailed README** for your chosen script (MAU_README.md or TPR_README.md)
+1. **Download a prebuilt binary** for your platform from the [latest release](https://github.com/gravitational/rev-tech/releases) matching your Teleport cluster's version (release tags follow `teleport-api-scripts-vX.Y.Z`).
+2. **Or build from source**: `cd tools/teleport-api-scripts && make build` (or `make build-for TELEPORT_VERSION=v18.5.1` to pin against a specific Teleport version).
+3. **Review the detailed README** for the script you want to use (MAU_README.md or TPR_README.md).
 
 See individual README files for complete configuration options.
 
@@ -37,10 +38,10 @@ Both scripts generate reports in JSON or text format:
 
 ## Requirements
 
-- Go 1.24 or later
 - Access to a Teleport cluster
-- Valid Teleport credentials (tsh login or identity file)
+- Valid Teleport credentials (active `tsh` profile, or an identity file)
 - Network connectivity to your Teleport proxy
+- Go 1.24+ only if building from source
 
 ## Use Cases
 

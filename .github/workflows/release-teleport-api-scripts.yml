@@ -1,0 +1,120 @@
+name: Release teleport-api-scripts binaries
+
+# Builds and publishes prebuilt MAU/TPR tracker binaries against the latest
+# Teleport release. Runs daily; users can also trigger manually with a
+# specific Teleport version. Idempotent: if a release for the target
+# Teleport version already exists, the workflow no-ops.
+on:
+  schedule:
+    - cron: '0 6 * * *'   # daily at 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      teleport_version:
+        description: 'Teleport version (e.g. v18.5.1). Leave empty to use the latest gravitational/teleport release.'
+        required: false
+
+permissions:
+  contents: write   # to create releases on this repo
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/teleport-api-scripts
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine target Teleport version
+        id: target
+        working-directory: .
+        run: |
+          if [[ -n "${{ inputs.teleport_version }}" ]]; then
+            tag="${{ inputs.teleport_version }}"
+          else
+            tag=$(gh release view --repo gravitational/teleport --json tagName -q .tagName)
+          fi
+          if [[ -z "${tag}" ]]; then
+            echo "Could not determine target Teleport version"
+            exit 1
+          fi
+          # Strip any leading 'v' from user input, then re-add for consistency.
+          tag="v${tag#v}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Target Teleport version: ${tag}"
+
+      - name: Skip if release already exists
+        id: precheck
+        working-directory: .
+        run: |
+          release_tag="teleport-api-scripts-${{ steps.target.outputs.tag }}"
+          if gh release view "${release_tag}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release ${release_tag} already exists; nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Go
+        if: steps.precheck.outputs.skip != 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/teleport-api-scripts/go.mod
+
+      - name: Pin Teleport API to target version
+        if: steps.precheck.outputs.skip != 'true'
+        run: |
+          go get "github.com/gravitational/teleport/api@${{ steps.target.outputs.tag }}"
+          go mod tidy
+
+      - name: Build binaries for all platforms
+        if: steps.precheck.outputs.skip != 'true'
+        run: |
+          version="${{ steps.target.outputs.tag }}"
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+            goos="${target%/*}"
+            goarch="${target#*/}"
+            ext=""
+            [[ "${goos}" == "windows" ]] && ext=".exe"
+            out="teleport-api-scripts-${version}-${goos}-${goarch}"
+            mkdir -p "dist/${out}"
+            for tool in mau tpr; do
+              CGO_ENABLED=0 GOOS="${goos}" GOARCH="${goarch}" \
+                go build -trimpath -ldflags='-s -w' \
+                -o "dist/${out}/teleport-${tool}-tracker${ext}" "${tool}.go"
+            done
+            cp README.md MAU_README.md TPR_README.md "dist/${out}/"
+            if [[ "${goos}" == "windows" ]]; then
+              (cd dist && zip -qr "${out}.zip" "${out}")
+            else
+              tar -czf "dist/${out}.tar.gz" -C dist "${out}"
+            fi
+          done
+          ls -lh dist/*.tar.gz dist/*.zip
+
+      - name: Create release
+        if: steps.precheck.outputs.skip != 'true'
+        run: |
+          version="${{ steps.target.outputs.tag }}"
+          release_tag="teleport-api-scripts-${version}"
+          notes=$(cat <<EOF
+          Prebuilt MAU and TPR tracker binaries built against Teleport ${version}.
+
+          Each tarball contains:
+          - \`teleport-mau-tracker\` — Monthly Active Users report (one-shot)
+          - \`teleport-tpr-tracker\` — Protected Resources tracker (long-lived)
+          - \`run.sh\` and READMEs
+
+          See \`MAU_README.md\` and \`TPR_README.md\` inside the tarball for usage.
+
+          Built automatically by \`.github/workflows/release-teleport-api-scripts.yml\`.
+          EOF
+          )
+          gh release create "${release_tag}" \
+            --repo "${{ github.repository }}" \
+            --title "MAU/TPR scripts for Teleport ${version}" \
+            --notes "${notes}" \
+            dist/*.tar.gz dist/*.zip

@@ -25,19 +25,56 @@ The script tracks the following types of Teleport Protected Resources:
 - **Automated Reports** - Generates periodic reports in JSON or text format
 - **Resource Cleanup** - Automatically removes stale resources from memory
 
-## Prerequisites
+## Prebuilt Binaries (Recommended)
+
+If you don't want to build from source, prebuilt binaries are published as
+GitHub Releases on the `gravitational/rev-tech` repository for each Teleport
+version. Each release tag follows the pattern `teleport-api-scripts-vX.Y.Z`
+and matches the corresponding Teleport server version.
+
+Pick the release matching your Teleport cluster's version, then download the
+tarball for your platform (linux-amd64, linux-arm64, darwin-amd64,
+darwin-arm64). The tarball contains both `teleport-mau-tracker` and
+`teleport-tpr-tracker` binaries plus a copy of these READMEs.
+
+```bash
+# Example: grab the binary matching your cluster's Teleport version
+TELEPORT_VERSION=v18.5.1   # check via: curl -s https://<proxy>/v1/webapi/find | jq -r .server_version
+gh release download teleport-api-scripts-${TELEPORT_VERSION} \
+  --repo gravitational/rev-tech \
+  --pattern '*linux-amd64*.tar.gz'
+tar xzf teleport-api-scripts-${TELEPORT_VERSION}-linux-amd64.tar.gz
+cd teleport-api-scripts-${TELEPORT_VERSION}-linux-amd64
+./teleport-tpr-tracker -proxy <your-proxy>:443
+```
+
+## Prerequisites (when building from source)
 
 - Go 1.24+ installed
 - Access to a Teleport cluster with audit log read permissions
 - Valid Teleport credentials (see [Authentication](#authentication) section below)
 - Network connectivity to your Teleport proxy and to github.com/golang.org repositories
 
-## Installation
+## Installation (source build)
 
-1. Clone or download the script
-2. Run `bash ./run.sh -p teleport.example.com:443` to download the correct API version for your cluster
-   and install dependencies
-(replacing `teleport.example.com:443` with your Teleport cluster's proxy address)
+```bash
+git clone https://github.com/gravitational/rev-tech.git
+cd rev-tech/tools/teleport-api-scripts
+make build           # builds against the currently-pinned Teleport API version
+```
+
+To re-pin the API to a specific Teleport version before building:
+
+```bash
+make build-for TELEPORT_VERSION=v18.5.1
+```
+
+That runs `go get github.com/gravitational/teleport/api@v18.5.1`, `go mod tidy`, and `make build`. Cross-compile for other platforms by setting `GOOS`/`GOARCH`:
+
+```bash
+GOOS=linux GOARCH=amd64 make build
+GOOS=windows GOARCH=amd64 make build   # produces teleport-tpr-tracker.exe
+```
 
 ## Customization
 
@@ -83,31 +120,54 @@ For continuous/automated jobs:
 
 (for an alternative, use [Machine ID](https://goteleport.com/docs/machine-workload-identity/access-guides/tctl/))
 
-2. Provide the identity file to the script:
+2. Provide the identity file to the binary:
    ```bash
-   bash ./run.sh -p teleport.example.com:443 -i /path/to/your/identity-file -t
+   ./teleport-tpr-tracker -proxy teleport.example.com:443 -identity_file /path/to/your/identity-file
    ```
 
 (for Machine ID, you want the `identity` file in the bot's output directory)
 
-The script will automatically use the appropriate authentication method based on your settings.
+The binary uses the identity file when `-identity_file` is provided; otherwise it falls back to the active `tsh` profile.
 
-## Running the Script
+## Running
 
 ```bash
-# replace teleport.example.com:443 with your own Teleport proxy URL
-# port 443 will be assumed if you provide no port
-# -t runs the TPR script
-bash ./run.sh -p teleport.example.com:443 -t
+# port 443 is assumed if you provide no port
+./teleport-tpr-tracker -proxy teleport.example.com:443
+
+# Output as JSON instead of text
+./teleport-tpr-tracker -proxy teleport.example.com:443 -format json
+
+# Append per-cycle history aligned to billing cycles starting on the 7th
+./teleport-tpr-tracker -proxy teleport.example.com:443 -billing-day 7 -cycles 6
 ```
 
-The script will:
+Before connecting, the binary performs a couple of preflight checks: it probes
+`https://<proxy>/v1/webapi/find` for reachability, and (when no `-identity_file`
+is given) verifies that the active `tsh` profile points at the same proxy and
+hasn't expired. Failures produce a clear message with the exact `tsh login`
+command to run.
+
+### Running mau and tpr together
+
+`teleport-tpr-tracker` is a long-lived service; `teleport-mau-tracker` is
+one-shot. Run them separately — typically the TPR tracker as a service and the
+MAU tracker on demand:
+
+```bash
+# In one terminal (or backgrounded / under systemd / in Docker)
+./teleport-tpr-tracker -proxy teleport.example.com:443
+
+# In another terminal whenever you want a fresh MAU snapshot
+./teleport-mau-tracker -proxy teleport.example.com:443
+```
+
+The TPR tracker will:
 1. Connect to your Teleport cluster
-2. Download the correct Teleport Go API version for your cluster (this can take a few minutes on initial runs)
-3. Perform initial resource discovery
-4. Start continuous monitoring with periodic updates
-5. Generate reports at each update interval
-6. Run indefinitely until manually stopped
+2. Perform initial resource discovery
+3. Start continuous monitoring with periodic updates
+4. Generate reports at each update interval
+5. Run indefinitely until manually stopped
 
 **Note**: This is designed to run as a long-lived service. Use process management tools like systemd, supervisor, or Docker for production deployments.
 
@@ -121,11 +181,10 @@ To create a standalone binary for deployment:
 # Build for current platform
 go build -o teleport-tpr-tracker tpr.go
 
-# Build for Linux (common for containers/servers)
-# Change target arch if you're running on Mac/arm64
-# You will need a C compiler for the chosen OS/arch available as the script requires sqlite
-# Look into toolchains for cross-compiling if you need them
-CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o teleport-tpr-tracker tpr.go
+# Cross-compile for any supported platform (pure Go, no C toolchain needed)
+CGO_ENABLED=0 GOOS=linux  GOARCH=amd64 go build -o teleport-tpr-tracker tpr.go
+CGO_ENABLED=0 GOOS=linux  GOARCH=arm64 go build -o teleport-tpr-tracker tpr.go
+CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o teleport-tpr-tracker tpr.go
 
 # Run the binary
 # Update to use your own proxy address
@@ -144,10 +203,10 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY tpr.go .
-RUN CGO_ENABLED=1 GOOS=linux go build -o teleport-tpr-tracker tpr.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o teleport-tpr-tracker tpr.go
 
 FROM alpine:latest
-RUN apk --no-cache add ca-certificates sqlite
+RUN apk --no-cache add ca-certificates
 WORKDIR /app
 
 # Create directory for data persistence
@@ -375,20 +434,19 @@ version: v7
 - Consider using Teleport RBAC to restrict resource listing permissions if needed
 - Log files may contain sensitive cluster information - protect accordingly
 
-### Script arguments
+### Command-line flags
 
-```bash
-Usage: run.sh -p <teleport proxy address> [-i <identity file path>] [-m] [-t] [-v] [-x]
+```
+Usage: teleport-tpr-tracker -proxy <teleport-proxy-address> [flags]
 
-  -p  Teleport proxy address (required). If no port is specified, :443 is assumed.
-  -i  Optional identity file path.
-  -m  Run MAU script (mau.go)
-  -t  Run TPR script (tpr.go)
-  -v  Output version and exit
-  -x  Enable debugging information for 'go get'
+  -proxy           Teleport proxy address (required). :443 assumed if no port.
+  -identity_file   Optional identity file path. Falls back to active tsh profile.
+  -format          Output format: "text" (default) or "json".
+  -billing-day     Billing cycle anchor day (1-31). Aligns reports with Teleport billing cycles.
+  -cycles          Number of completed cycles to include (default 3, requires -billing-day).
 
 Examples:
-  run.sh -p example.teleport.sh -m
-  run.sh -p example.teleport.sh:443 -i /path/to/identity -t
-  run.sh -p example.teleport.sh -m -t
+  teleport-tpr-tracker -proxy example.teleport.sh
+  teleport-tpr-tracker -proxy example.teleport.sh:443 -identity_file /path/to/identity
+  teleport-tpr-tracker -proxy example.teleport.sh -billing-day 7 -cycles 3
 ```
