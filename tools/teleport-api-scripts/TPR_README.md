@@ -33,12 +33,20 @@ version. Each release tag follows the pattern `teleport-api-scripts-vX.Y.Z`
 and matches the corresponding Teleport server version.
 
 Pick the release matching your Teleport cluster's version, then download the
-tarball for your platform (linux-amd64, linux-arm64, darwin-amd64,
-darwin-arm64). The tarball contains both `teleport-mau-tracker` and
-`teleport-tpr-tracker` binaries plus a copy of these READMEs.
+archive for your platform. Each archive contains both `teleport-mau-tracker`
+and `teleport-tpr-tracker` binaries plus a copy of these READMEs.
+
+| Platform        | Archive                                                                   |
+|-----------------|---------------------------------------------------------------------------|
+| linux-amd64     | `teleport-api-scripts-<version>-linux-amd64.tar.gz`                       |
+| linux-arm64     | `teleport-api-scripts-<version>-linux-arm64.tar.gz`                       |
+| darwin-amd64    | `teleport-api-scripts-<version>-darwin-amd64.tar.gz`                      |
+| darwin-arm64    | `teleport-api-scripts-<version>-darwin-arm64.tar.gz`                      |
+| windows-amd64   | `teleport-api-scripts-<version>-windows-amd64.zip` (binaries end in `.exe`) |
+| windows-arm64   | `teleport-api-scripts-<version>-windows-arm64.zip` (binaries end in `.exe`) |
 
 ```bash
-# Example: grab the binary matching your cluster's Teleport version
+# Example: grab the binary matching your cluster's Teleport version (Linux/macOS)
 TELEPORT_VERSION=v18.5.1   # check via: curl -s https://<proxy>/v1/webapi/find | jq -r .server_version
 gh release download teleport-api-scripts-${TELEPORT_VERSION} \
   --repo gravitational/rev-tech \
@@ -46,6 +54,17 @@ gh release download teleport-api-scripts-${TELEPORT_VERSION} \
 tar xzf teleport-api-scripts-${TELEPORT_VERSION}-linux-amd64.tar.gz
 cd teleport-api-scripts-${TELEPORT_VERSION}-linux-amd64
 ./teleport-tpr-tracker -proxy <your-proxy>:443
+```
+
+```powershell
+# Windows (PowerShell)
+$TELEPORT_VERSION = "v18.5.1"
+gh release download "teleport-api-scripts-$TELEPORT_VERSION" `
+  --repo gravitational/rev-tech `
+  --pattern "*windows-amd64*.zip"
+Expand-Archive "teleport-api-scripts-$TELEPORT_VERSION-windows-amd64.zip"
+cd "teleport-api-scripts-$TELEPORT_VERSION-windows-amd64\teleport-api-scripts-$TELEPORT_VERSION-windows-amd64"
+.\teleport-tpr-tracker.exe -proxy <your-proxy>:443
 ```
 
 ## Prerequisites (when building from source)
