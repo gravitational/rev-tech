@@ -1,0 +1,15 @@
+# Built binaries
+teleport-mau-tracker*
+teleport-tpr-tracker*
+
+# Release tarballs (downloaded or locally built)
+teleport-usage-binaries*
+teleport-api-scripts-*.tar.gz
+
+# Runtime outputs
+teleport_usage_data.db
+teleport_tracker.log
+Teleport_Active_Users.txt
+Teleport_Active_Users.json
+Teleport_Usage_Report.txt
+Teleport_Usage_Report.json
