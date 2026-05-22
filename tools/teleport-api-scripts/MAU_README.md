@@ -30,18 +30,75 @@ Users utilizing just-in-time access and governance features:
 
 **Important**: Users may appear in both ZTA MAU and IG MAU categories if they use both resource access and governance features.
 
-## Prerequisites
+## Prebuilt Binaries (Recommended)
+
+If you don't want to build from source, prebuilt binaries are published as
+GitHub Releases on the `gravitational/rev-tech` repository for each Teleport
+version. Each release tag follows the pattern `teleport-api-scripts-vX.Y.Z`
+and matches the corresponding Teleport server version.
+
+Pick the release matching your Teleport cluster's version, then download the
+archive for your platform. Each archive contains both `teleport-mau-tracker`
+and `teleport-tpr-tracker` binaries plus a copy of these READMEs.
+
+| Platform        | Archive                                                                   |
+|-----------------|---------------------------------------------------------------------------|
+| linux-amd64     | `teleport-api-scripts-<version>-linux-amd64.tar.gz`                       |
+| linux-arm64     | `teleport-api-scripts-<version>-linux-arm64.tar.gz`                       |
+| darwin-amd64    | `teleport-api-scripts-<version>-darwin-amd64.tar.gz`                      |
+| darwin-arm64    | `teleport-api-scripts-<version>-darwin-arm64.tar.gz`                      |
+| windows-amd64   | `teleport-api-scripts-<version>-windows-amd64.zip` (binaries end in `.exe`) |
+| windows-arm64   | `teleport-api-scripts-<version>-windows-arm64.zip` (binaries end in `.exe`) |
+
+```bash
+# Example: grab the binary matching your cluster's Teleport version (Linux/macOS)
+TELEPORT_VERSION=v18.5.1   # check via: curl -s https://<proxy>/v1/webapi/find | jq -r .server_version
+gh release download teleport-api-scripts-${TELEPORT_VERSION} \
+  --repo gravitational/rev-tech \
+  --pattern '*linux-amd64*.tar.gz'
+tar xzf teleport-api-scripts-${TELEPORT_VERSION}-linux-amd64.tar.gz
+cd teleport-api-scripts-${TELEPORT_VERSION}-linux-amd64
+./teleport-mau-tracker -proxy <your-proxy>:443
+```
+
+```powershell
+# Windows (PowerShell)
+$TELEPORT_VERSION = "v18.5.1"
+gh release download "teleport-api-scripts-$TELEPORT_VERSION" `
+  --repo gravitational/rev-tech `
+  --pattern "*windows-amd64*.zip"
+Expand-Archive "teleport-api-scripts-$TELEPORT_VERSION-windows-amd64.zip"
+cd "teleport-api-scripts-$TELEPORT_VERSION-windows-amd64\teleport-api-scripts-$TELEPORT_VERSION-windows-amd64"
+.\teleport-mau-tracker.exe -proxy <your-proxy>:443
+```
+
+## Prerequisites (when building from source)
 
 - Go 1.24+ installed
 - Access to a Teleport cluster with audit log read permissions
 - Valid Teleport credentials (see [Authentication](#authentication) section below)
 - Network connectivity to your Teleport proxy and to github.com/golang.org repositories
 
-## Installation
+## Installation (source build)
 
-1. Clone or download the script
-2. Run `bash ./run.sh -p teleport.example.com:443` to download the correct API version for your cluster
-(replacing `teleport.example.com:443` with your Teleport cluster's proxy address)
+```bash
+git clone https://github.com/gravitational/rev-tech.git
+cd rev-tech/tools/teleport-api-scripts
+make build           # builds against the currently-pinned Teleport API version
+```
+
+To re-pin the API to a specific Teleport version before building:
+
+```bash
+make build-for TELEPORT_VERSION=v18.5.1
+```
+
+That runs `go get github.com/gravitational/teleport/api@v18.5.1`, `go mod tidy`, and `make build`. Cross-compile for other platforms by setting `GOOS`/`GOARCH`:
+
+```bash
+GOOS=linux GOARCH=amd64 make build
+GOOS=windows GOARCH=amd64 make build   # produces teleport-mau-tracker.exe
+```
 
 ## Customization
 
@@ -58,6 +115,36 @@ daysBack = 60  // Default is 30 days back
 ```go
 batchSize = 10000  // Increase batch size for better performance. Default is 5000
 ```
+
+## Billing Cycles
+
+Teleport bills against monthly cycles anchored to a customer-specific day, not the
+1st of each month. To produce a report that lines up with the "Usage History" view
+in Teleport Cloud, pass `-billing-day` with your anchor day (1-31):
+
+```bash
+# Aligned to cycles starting on the 7th of each month (e.g. 7 May - 6 Jun)
+./teleport-mau-tracker -proxy teleport.example.com:443 -billing-day 7
+
+# Include 5 completed cycles in addition to the in-progress one (default: 3)
+./teleport-mau-tracker -proxy teleport.example.com:443 -billing-day 7 -cycles 5
+```
+
+When `-billing-day` is set:
+- The report contains one row per cycle (oldest → newest, with the in-progress
+  cycle last), matching the schema of the Teleport portal's Usage History page.
+- Each cycle has its own detailed per-user ZTA/IG breakdown underneath.
+- Anchor days that exceed a given month's length (e.g. 31 in February) are
+  clamped to the last day of that month.
+- All cycle math is in UTC. The script uses the audit log's `time` field to
+  bucket each event into a cycle.
+
+Without `-billing-day` (default), the script keeps its original rolling-window
+behavior driven by `daysBack` in the source.
+
+Caveat: events older than your cluster's audit log retention will not be
+returned, so older cycles may be silently empty. A warning is logged if the
+requested window exceeds ~90 days.
 
 ## Authentication
 
@@ -82,47 +169,46 @@ For continuous/automated jobs:
 
 (for an alternative, use [Machine ID](https://goteleport.com/docs/machine-workload-identity/access-guides/tctl/))
 
-2. Provide the identity file to the script:
+2. Provide the identity file to the binary:
    ```bash
-   bash ./run.sh -p teleport.example.com:443 -i /path/to/your/identity-file -m
+   ./teleport-mau-tracker -proxy teleport.example.com:443 -identity_file /path/to/your/identity-file
    ```
 
 (for Machine ID, you want the `identity` file in the bot's output directory)
 
-The script will automatically use the appropriate authentication method based on your settings.
+The binary uses the identity file when `-identity_file` is provided; otherwise it falls back to the active `tsh` profile.
 
-## Running the Script
+## Running
 
 ```bash
-# replace teleport.example.com:443 with your own Teleport proxy URL
-# port 443 will be assumed if you provide no port
-# -m runs the MAU script
-bash ./run.sh -p teleport.example.com:443 -m
+# port 443 is assumed if you provide no port
+./teleport-mau-tracker -proxy teleport.example.com:443
+
+# Output as JSON instead of text
+./teleport-mau-tracker -proxy teleport.example.com:443 -format json
+
+# Align reports to billing cycles starting on the 7th of each month, with 3 completed cycles of history
+./teleport-mau-tracker -proxy teleport.example.com:443 -billing-day 7 -cycles 3
 ```
 
-The script will:
-1. Connect to your Teleport cluster
-2. Download the correct Teleport Go API version for your cluster (this can take a few minutes on initial runs)
-3. Fetch events in batches (you'll see progress messages)
-4. Process and analyze the data
-5. Generate a report file
+Before connecting, the binary performs a couple of preflight checks: it probes
+`https://<proxy>/v1/webapi/find` for reachability, and (when no `-identity_file`
+is given) verifies that the active `tsh` profile points at the same proxy and
+hasn't expired. Failures produce a clear message with the exact `tsh login`
+command to run.
 
-## Building
+### Running mau and tpr together
 
-### Building a Binary
-
-To create a standalone binary for deployment:
+`teleport-mau-tracker` is one-shot; `teleport-tpr-tracker` is a long-lived
+service. If you want both, run them separately — typically the TPR tracker in
+the background (or under systemd/Docker) and the MAU tracker on demand or via
+cron:
 
 ```bash
-# Build for current platform
-go build -o teleport-mau-tracker mau.go
+# In one terminal (or backgrounded / as a service)
+./teleport-tpr-tracker -proxy teleport.example.com:443
 
-# Build for Linux (common for containers/servers)
-# Change target OS/arch if you're running on Mac/arm64
-GOOS=linux GOARCH=amd64 go build -o teleport-mau-tracker mau.go
-
-# Run the binary
-# Update to use your own proxy address
+# In another terminal whenever you want a fresh MAU snapshot
 ./teleport-mau-tracker -proxy teleport.example.com:443
 ```
 
@@ -247,20 +333,19 @@ version: v7
 - Limit script access to users who need audit log visibility
 - Consider using Teleport RBAC to restrict audit access if needed
 
-### Script arguments
+### Command-line flags
 
-```bash
-Usage: run.sh -p <teleport proxy address> [-i <identity file path>] [-m] [-t] [-v] [-x]
+```
+Usage: teleport-mau-tracker -proxy <teleport-proxy-address> [flags]
 
-  -p  Teleport proxy address (required). If no port is specified, :443 is assumed.
-  -i  Optional identity file path.
-  -m  Run MAU script (mau.go)
-  -t  Run TPR script (tpr.go)
-  -v  Output version and exit
-  -x  Enable debugging information for 'go get'
+  -proxy           Teleport proxy address (required). :443 assumed if no port.
+  -identity_file   Optional identity file path. Falls back to active tsh profile.
+  -format          Output format: "text" (default) or "json".
+  -billing-day     Billing cycle anchor day (1-31). Aligns reports with Teleport billing cycles.
+  -cycles          Number of completed cycles to include (default 3, requires -billing-day).
 
 Examples:
-  run.sh -p example.teleport.sh -m
-  run.sh -p example.teleport.sh:443 -i /path/to/identity -t
-  run.sh -p example.teleport.sh -m -t
+  teleport-mau-tracker -proxy example.teleport.sh
+  teleport-mau-tracker -proxy example.teleport.sh:443 -identity_file /path/to/identity
+  teleport-mau-tracker -proxy example.teleport.sh -billing-day 7 -cycles 3
 ```
