@@ -1,0 +1,27 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+#IDE
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+*-executed*.ipynb
+*-executed*.html
+*-clean.html
+
+# Teleport agent data
+/data/
+
+# macOS
+.DS_Store
