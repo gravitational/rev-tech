@@ -124,10 +124,10 @@ in Teleport Cloud, pass `-billing-day` with your anchor day (1-31):
 
 ```bash
 # Aligned to cycles starting on the 7th of each month (e.g. 7 May - 6 Jun)
-bash ./run.sh -p teleport.example.com:443 -m -b 7
+./teleport-mau-tracker -proxy teleport.example.com:443 -billing-day 7
 
 # Include 5 completed cycles in addition to the in-progress one (default: 3)
-bash ./run.sh -p teleport.example.com:443 -m -b 7 -c 5
+./teleport-mau-tracker -proxy teleport.example.com:443 -billing-day 7 -cycles 5
 ```
 
 When `-billing-day` is set:

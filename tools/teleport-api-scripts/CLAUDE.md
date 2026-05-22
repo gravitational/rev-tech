@@ -36,7 +36,7 @@ Both binaries are pure Go (`CGO_ENABLED=0`). TPR's SQLite driver is `modernc.org
 
 ## Architecture notes worth knowing before editing
 
-**Preflight.** Both binaries call `preflightProxy(proxy)` (auto-appends `:443`, HTTPS-probes `/v1/webapi/find` for reachability) and `preflightTshProfile(proxy)` (only when no `-identity_file` is given — uses `api/profile` to verify the active tsh profile points at the same proxy and hasn't expired). The helpers are duplicated byte-for-byte between `mau.go` and `tpr.go`; keep them in sync. They replace the old shell-based `run.sh` checks.
+**Preflight.** Both binaries call `preflightProxy(proxy)` (auto-appends `:443`, HTTPS-probes `/v1/webapi/find` for reachability) and `preflightTshProfile(proxy)` (only when no `-identity_file` is given — uses `api/profile` to verify the active tsh profile points at the same proxy and hasn't expired). The helpers are duplicated byte-for-byte between `mau.go` and `tpr.go`; keep them in sync.
 
 **Authentication.** Both programs use `github.com/gravitational/teleport/api/client`. They fall back to the local `tsh` profile by default; pass `-identity_file` to use an exported identity instead. The preflight helper above is what produces the friendly "run: tsh login --proxy …" message when credentials are missing/expired.
 

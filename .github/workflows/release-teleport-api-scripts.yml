@@ -116,12 +116,12 @@ jobs:
           notes=$(cat <<EOF
           Prebuilt MAU and TPR tracker binaries built against Teleport ${version}.
 
-          Each tarball contains:
+          Each archive contains:
           - \`teleport-mau-tracker\` — Monthly Active Users report (one-shot)
           - \`teleport-tpr-tracker\` — Protected Resources tracker (long-lived)
-          - \`run.sh\` and READMEs
+          - READMEs
 
-          See \`MAU_README.md\` and \`TPR_README.md\` inside the tarball for usage.
+          See \`MAU_README.md\` and \`TPR_README.md\` inside the archive for usage.
 
           Built automatically by \`.github/workflows/release-teleport-api-scripts.yml\`.
           EOF

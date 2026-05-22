@@ -94,8 +94,7 @@ func preflightProxy(proxy string) (string, error) {
 }
 
 // preflightTshProfile verifies that the active tsh profile in ~/.tsh points
-// at proxyURL and has a non-expired certificate. Mirrors the cred check that
-// the old run.sh used to do via `tsh status --format json`.
+// at proxyURL and has a non-expired certificate.
 func preflightTshProfile(proxyURL string) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
