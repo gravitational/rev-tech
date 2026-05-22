@@ -37,6 +37,7 @@ jobs:
             # Manual dispatch: single version, normalize leading v.
             version="${{ inputs.teleport_version }}"
             tags="v${version#v}"
+            mode="manual"
           else
             # Auto mode: latest stable patch on each of the two newest supported
             # Teleport majors (v17 LTS + v18 current as of writing). The set
@@ -51,17 +52,23 @@ jobs:
               | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
               | sort -V -r \
               | awk -F. 'BEGIN { count = 0 } { if (!seen[$1]++ && count < 2) { print; count++ } }')
+            mode="auto"
           fi
           if [[ -z "${tags}" ]]; then
             echo "Could not determine any target Teleport versions"
             exit 1
           fi
-          echo "Target Teleport versions:"
+          # The first line is the highest-major target (we sort -V -r above).
+          # In auto mode it becomes the new "Latest" release on this repo.
+          highest=$(echo "${tags}" | head -1)
+          echo "Target Teleport versions (mode=${mode}, highest-major=${highest}):"
           printf '  %s\n' ${tags}
           {
             echo "tags<<TAGS_EOF"
             echo "${tags}"
             echo "TAGS_EOF"
+            echo "mode=${mode}"
+            echo "highest=${highest}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Set up Go
@@ -75,9 +82,21 @@ jobs:
         run: |
           set -e
           tags="${{ steps.targets.outputs.tags }}"
+          mode="${{ steps.targets.outputs.mode }}"
+          highest="${{ steps.targets.outputs.highest }}"
           while IFS= read -r tag; do
             [[ -z "${tag}" ]] && continue
             release_tag="teleport-api-scripts-${tag}"
+
+            # Decide whether this release becomes the new "Latest" on this repo:
+            # - auto mode: only the highest-major target (newest Teleport major)
+            # - manual mode: never — manual dispatches shouldn't silently
+            #   demote/promote Latest. User can promote in the UI if they want.
+            if [[ "${mode}" == "auto" && "${tag}" == "${highest}" ]]; then
+              latest_flag="--latest=true"
+            else
+              latest_flag="--latest=false"
+            fi
 
             if gh release view "${release_tag}" --repo "${REPO}" >/dev/null 2>&1; then
               echo "::notice::Release ${release_tag} already exists; skipping."
@@ -141,6 +160,7 @@ jobs:
               --repo "${REPO}" \
               --title "MAU/TPR scripts for Teleport ${tag}" \
               --notes "${notes}" \
+              "${latest_flag}" \
               dist/*.tar.gz dist/*.zip
 
             # Reset go.mod/go.sum so the next iteration starts clean.
