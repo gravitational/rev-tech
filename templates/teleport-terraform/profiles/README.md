@@ -11,7 +11,7 @@ Profiles compose multiple data-plane use cases into a single Terraform root modu
 ### `dev-demo` — Developer Day in the Life
 
 **Archetype:** Any engineering org evaluating Teleport for day-to-day developer access.
-**Use when:** You want a focused narrative-driven demo with two personas (Bob the dev, $USER the engineer).
+**Use when:** You want a focused narrative-driven demo with two personas (Bob the dev, Alex the platform engineer).
 **Cost:** ~$5–7/day.
 
 **Includes:**

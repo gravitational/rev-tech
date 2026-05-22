@@ -90,14 +90,16 @@ Inline policy for S3 state bucket:
 
 **Done once.** Required for the scheduled teardown to destroy what the deploy workflow created.
 
+Replace `your-name` with something unique to you (bucket names are global):
+
 ```bash
-aws s3 mb s3://presales-teleport-demo-tfstate --region us-east-2
+aws s3 mb s3://your-name-teleport-demo-tfstate --region us-east-2
 aws s3api put-bucket-versioning \
-  --bucket presales-teleport-demo-tfstate \
+  --bucket your-name-teleport-demo-tfstate \
   --versioning-configuration Status=Enabled
 ```
 
-Set `TF_STATE_BUCKET = presales-teleport-demo-tfstate` as a GitHub secret.
+Set `TF_STATE_BUCKET = your-name-teleport-demo-tfstate` as a GitHub secret.
 
 ---
 

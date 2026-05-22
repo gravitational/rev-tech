@@ -133,6 +133,8 @@ engine_version = "15.00"
 port           = 1433
 ```
 
+> **Note:** Teleport's automatic database user creation does not support SQL Server. Users must be pre-created in the database and mapped via Teleport roles.
+
 ---
 
 ## Clean Up

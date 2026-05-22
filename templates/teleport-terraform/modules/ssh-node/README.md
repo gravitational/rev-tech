@@ -9,7 +9,7 @@ module "ssh_nodes" {
   source = "../modules/ssh-node"
 
   env           = "dev"
-  user          = "user@example.com"
+  user          = "engineer@example.com"
   proxy_address = "teleport.example.com"
   team          = "platform"
 
@@ -21,7 +21,7 @@ module "ssh_nodes" {
   security_group_ids = [module.network.security_group_id]
 
   tags = {
-    owner = "user@example.com"
+    owner = "engineer@example.com"
   }
 }
 ```

@@ -14,6 +14,10 @@ data "terraform_remote_state" "cluster" {
   backend = "local" # Change to "s3" if using remote backend
   config = {
     path = "../1-cluster/terraform.tfstate"
+    # For S3 backend:
+    # bucket = "your-state-bucket"
+    # key    = "proxy-peer-cluster/terraform.tfstate"
+    # region = var.region
   }
 }
 
