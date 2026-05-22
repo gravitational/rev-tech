@@ -1,0 +1,33 @@
+version: v3
+teleport:
+  proxy_server: ellinj.teleport.sh:443
+  auth_token: <need one>  # tctl tokens add --type=app --ttl=1h
+  data_dir: /Users/jeff/dev/teleport-agent/data
+  log:
+    output: stderr
+    severity: DEBUG
+    format:
+      output: text
+      extra_fields: [timestamp, level, component, caller]
+
+auth_service:
+  enabled: false
+
+proxy_service:
+  enabled: false
+
+ssh_service:
+  enabled: false
+
+app_service:
+  enabled: true
+  debug_app: true  # serves a diagnostic page at /teleport-debug showing forwarded headers and JWT claims
+  apps:
+    - name: identity-aware-mcp
+      uri: "mcp+http://localhost:9999/mcp"
+      labels:
+        env: dev
+      insecure_skip_verify: false  # set true to skip TLS verification for the backend
+      rewrite:
+        headers:
+          - "Authorization: Bearer {{internal.id_token}}"
