@@ -1,16 +1,17 @@
 name: Release teleport-api-scripts binaries
 
 # Builds and publishes prebuilt MAU/TPR tracker binaries against the latest
-# Teleport release. Runs daily; users can also trigger manually with a
-# specific Teleport version. Idempotent: if a release for the target
-# Teleport version already exists, the workflow no-ops.
+# stable patch on each of Teleport's two newest supported majors (currently
+# v17 LTS and v18 current). Runs daily; users can also trigger manually with a
+# specific Teleport version. Idempotent: if a release for a given target
+# Teleport version already exists, that target is skipped.
 on:
   schedule:
     - cron: '0 6 * * *'   # daily at 06:00 UTC
   workflow_dispatch:
     inputs:
       teleport_version:
-        description: 'Teleport version (e.g. v18.5.1). Leave empty to use the latest gravitational/teleport release.'
+        description: 'Teleport version (e.g. v18.5.1). Leave empty to use the latest stable patch on each of the two newest supported majors.'
         required: false
 
 permissions:
@@ -28,93 +29,122 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Determine target Teleport version
-        id: target
+      - name: Determine target Teleport versions
+        id: targets
         working-directory: .
         run: |
           if [[ -n "${{ inputs.teleport_version }}" ]]; then
-            tag="${{ inputs.teleport_version }}"
+            # Manual dispatch: single version, normalize leading v.
+            version="${{ inputs.teleport_version }}"
+            tags="v${version#v}"
+            mode="manual"
           else
-            tag=$(gh release view --repo gravitational/teleport --json tagName -q .tagName)
+            # Auto mode: latest stable patch on each of the two newest supported
+            # Teleport majors (v17 LTS + v18 current as of writing). The set
+            # rolls forward automatically: when Teleport ships v19, this picks
+            # v18 + v19 and drops v17 once v17 is no longer the highest of the
+            # two newest majors.
+            tags=$(gh release list \
+                --repo gravitational/teleport \
+                --exclude-pre-releases \
+                --limit 200 \
+                --json tagName -q '.[].tagName' \
+              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+              | sort -V -r \
+              | awk -F. 'BEGIN { count = 0 } { if (!seen[$1]++ && count < 2) { print; count++ } }')
+            mode="auto"
           fi
-          if [[ -z "${tag}" ]]; then
-            echo "Could not determine target Teleport version"
+          if [[ -z "${tags}" ]]; then
+            echo "Could not determine any target Teleport versions"
             exit 1
           fi
-          # Strip any leading 'v' from user input, then re-add for consistency.
-          tag="v${tag#v}"
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          echo "Target Teleport version: ${tag}"
-
-      - name: Skip if release already exists
-        id: precheck
-        working-directory: .
-        run: |
-          release_tag="teleport-api-scripts-${{ steps.target.outputs.tag }}"
-          if gh release view "${release_tag}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            echo "Release ${release_tag} already exists; nothing to do."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+          # The first line is the highest-major target (we sort -V -r above).
+          # In auto mode it becomes the new "Latest" release on this repo.
+          highest=$(echo "${tags}" | head -1)
+          echo "Target Teleport versions (mode=${mode}, highest-major=${highest}):"
+          printf '  %s\n' ${tags}
+          {
+            echo "tags<<TAGS_EOF"
+            echo "${tags}"
+            echo "TAGS_EOF"
+            echo "mode=${mode}"
+            echo "highest=${highest}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Go
-        if: steps.precheck.outputs.skip != 'true'
         uses: actions/setup-go@v5
         with:
           go-version-file: tools/teleport-api-scripts/go.mod
 
-      - name: Pin Teleport API to target version
-        if: steps.precheck.outputs.skip != 'true'
+      - name: Build and release each target
+        env:
+          REPO: ${{ github.repository }}
         run: |
-          # Resolve the Teleport release tag to a commit SHA, then `go get` the
-          # api/ submodule at that commit. We can't use @<tag> directly because
-          # Teleport's api module is published at .../api/v18 for v18+ tagged
-          # releases, but we keep importing the unsuffixed path. The Go module
-          # resolver accepts any commit on the unsuffixed path as a pseudo-
-          # version, so this round-tripping works.
-          tag="${{ steps.target.outputs.tag }}"
-          sha=$(git ls-remote https://github.com/gravitational/teleport "refs/tags/${tag}" | awk '{print $1}')
-          if [[ -z "${sha}" ]]; then
-            echo "Could not resolve tag ${tag} to a commit SHA"
-            exit 1
-          fi
-          echo "Pinning github.com/gravitational/teleport/api to ${tag} (${sha})"
-          go get "github.com/gravitational/teleport/api@${sha}"
-          go mod tidy
+          set -e
+          tags="${{ steps.targets.outputs.tags }}"
+          mode="${{ steps.targets.outputs.mode }}"
+          highest="${{ steps.targets.outputs.highest }}"
+          while IFS= read -r tag; do
+            [[ -z "${tag}" ]] && continue
+            release_tag="teleport-api-scripts-${tag}"
 
-      - name: Build binaries for all platforms
-        if: steps.precheck.outputs.skip != 'true'
-        run: |
-          version="${{ steps.target.outputs.tag }}"
-          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
-            goos="${target%/*}"
-            goarch="${target#*/}"
-            ext=""
-            [[ "${goos}" == "windows" ]] && ext=".exe"
-            out="teleport-api-scripts-${version}-${goos}-${goarch}"
-            mkdir -p "dist/${out}"
-            for tool in mau tpr; do
-              CGO_ENABLED=0 GOOS="${goos}" GOARCH="${goarch}" \
-                go build -trimpath -ldflags='-s -w' \
-                -o "dist/${out}/teleport-${tool}-tracker${ext}" "${tool}.go"
-            done
-            cp README.md MAU_README.md TPR_README.md "dist/${out}/"
-            if [[ "${goos}" == "windows" ]]; then
-              (cd dist && zip -qr "${out}.zip" "${out}")
+            # Decide whether this release becomes the new "Latest" on this repo:
+            # - auto mode: only the highest-major target (newest Teleport major)
+            # - manual mode: never — manual dispatches shouldn't silently
+            #   demote/promote Latest. User can promote in the UI if they want.
+            if [[ "${mode}" == "auto" && "${tag}" == "${highest}" ]]; then
+              latest_flag="--latest=true"
             else
-              tar -czf "dist/${out}.tar.gz" -C dist "${out}"
+              latest_flag="--latest=false"
             fi
-          done
-          ls -lh dist/*.tar.gz dist/*.zip
 
-      - name: Create release
-        if: steps.precheck.outputs.skip != 'true'
-        run: |
-          version="${{ steps.target.outputs.tag }}"
-          release_tag="teleport-api-scripts-${version}"
-          notes=$(cat <<EOF
-          Prebuilt MAU and TPR tracker binaries built against Teleport ${version}.
+            if gh release view "${release_tag}" --repo "${REPO}" >/dev/null 2>&1; then
+              echo "::notice::Release ${release_tag} already exists; skipping."
+              continue
+            fi
+            echo "::group::Building ${release_tag}"
+
+            # Resolve the Teleport release tag to a commit SHA, then `go get` the
+            # api/ submodule at that commit. We can't use @<tag> directly because
+            # Teleport's api module is published at .../api/v18 for v18+ tagged
+            # releases, but we keep importing the unsuffixed path. The Go module
+            # resolver accepts any commit on the unsuffixed path as a pseudo-
+            # version, so this round-tripping works.
+            sha=$(git ls-remote https://github.com/gravitational/teleport "refs/tags/${tag}" | awk '{print $1}')
+            if [[ -z "${sha}" ]]; then
+              echo "::error::Could not resolve tag ${tag} to a commit SHA"
+              exit 1
+            fi
+            echo "Pinning github.com/gravitational/teleport/api to ${tag} (${sha})"
+            go get "github.com/gravitational/teleport/api@${sha}"
+            go mod tidy
+
+            # Build matrix.
+            rm -rf dist
+            for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+              goos="${target%/*}"
+              goarch="${target#*/}"
+              ext=""
+              [[ "${goos}" == "windows" ]] && ext=".exe"
+              out="teleport-api-scripts-${tag}-${goos}-${goarch}"
+              mkdir -p "dist/${out}"
+              for tool in mau tpr; do
+                CGO_ENABLED=0 GOOS="${goos}" GOARCH="${goarch}" \
+                  go build -trimpath -ldflags='-s -w' \
+                  -o "dist/${out}/teleport-${tool}-tracker${ext}" "${tool}.go"
+              done
+              cp README.md MAU_README.md TPR_README.md "dist/${out}/"
+              if [[ "${goos}" == "windows" ]]; then
+                (cd dist && zip -qr "${out}.zip" "${out}")
+              else
+                tar -czf "dist/${out}.tar.gz" -C dist "${out}"
+              fi
+            done
+            ls -lh dist/*.tar.gz dist/*.zip
+
+            # Create the release.
+            notes=$(cat <<NOTES_EOF
+          Prebuilt MAU and TPR tracker binaries built against Teleport ${tag}.
 
           Each archive contains:
           - \`teleport-mau-tracker\` — Monthly Active Users report (one-shot)
@@ -124,10 +154,17 @@ jobs:
           See \`MAU_README.md\` and \`TPR_README.md\` inside the archive for usage.
 
           Built automatically by \`.github/workflows/release-teleport-api-scripts.yml\`.
-          EOF
-          )
-          gh release create "${release_tag}" \
-            --repo "${{ github.repository }}" \
-            --title "MAU/TPR scripts for Teleport ${version}" \
-            --notes "${notes}" \
-            dist/*.tar.gz dist/*.zip
+          NOTES_EOF
+            )
+            gh release create "${release_tag}" \
+              --repo "${REPO}" \
+              --title "MAU/TPR scripts for Teleport ${tag}" \
+              --notes "${notes}" \
+              "${latest_flag}" \
+              dist/*.tar.gz dist/*.zip
+
+            # Reset go.mod/go.sum so the next iteration starts clean.
+            git checkout -- go.mod go.sum
+
+            echo "::endgroup::"
+          done <<< "${tags}"
