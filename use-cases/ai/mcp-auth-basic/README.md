@@ -93,7 +93,7 @@ The notebook:
 After running the notebook you should see output like:
 
 ```
-You were called by jeff@example.com on yourcluster.teleport.sh
+You were called by alice@acme.com on yourcluster.teleport.sh
 with roles [admin, access, mcp-user]
 and read and write capabilities (token expires 2026-05-22 12:55 UTC).
 ```
