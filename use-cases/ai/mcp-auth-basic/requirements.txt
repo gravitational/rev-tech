@@ -1,0 +1,9 @@
+boto3
+strands-agents
+strands-agents-tools
+mcp
+fastmcp
+uvicorn
+httpx
+PyJWT
+python-dotenv
