@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# namespace is injected at deploy time by scripts/deploy.sh from config.yaml.
+# Do not set it here — the deploy script generates a temp kustomization with
+# the correct value and applies that instead.
+
+resources:
+  - namespace.yaml
+  - tbot-serviceaccount.yaml
+  - haproxy-configmap.yaml
