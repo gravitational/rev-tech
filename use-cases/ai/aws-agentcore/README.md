@@ -18,8 +18,10 @@ AgentCore Gateway employs a dual authentication model:
 - **Outbound Auth** — enables the gateway to securely connect to backend resources.
   Here that is an IAM role that grants the gateway permission to invoke the tool Lambdas.
 
-Teleport's `tsh mcp connect` proxy forwards the signed JWT to the gateway as a Bearer token,
-so every tool invocation carries a verified, auditable caller identity.
+Teleport's `tsh mcp connect` proxy forwards the signed JWT to the gateway as a Bearer token.
+A REQUEST interceptor Lambda decodes that JWT and injects the caller's verified identity
+(`_teleport_user`, `_teleport_roles`) into every tool call — so Lambda tools know *who*
+called them without any authentication code of their own.
 
 ### Architecture
 
@@ -34,10 +36,16 @@ AgentCore Gateway
   │  Validates JWT against Teleport OIDC discovery URL
   │  Enforces: roles CONTAINS "mcp-user"
   ↓
+REQUEST Interceptor Lambda
+  │  Decodes JWT → sub, roles   (no re-verify — gateway already did it)
+  │  Calls Amazon Verified Permissions (Cedar policy)
+  │  DENY  → MCP error returned, tool Lambda never invoked
+  │  ALLOW → inject _teleport_user + _teleport_roles into tool arguments
+  ↓
 Tool Lambda
-  │  whoami_tool       → returns caller identity from JWT claims
-  │  get_order_tool    → retrieve order data
-  │  update_order_tool → update order data
+  │  whoami_tool       → returns verified caller identity
+  │  get_order_tool    → readable by mcp-user role (Cedar ALLOW)
+  │  update_order_tool → requires order-admin role  (Cedar DENY for mcp-user)
 ```
 
 ### Tutorial Details
@@ -47,6 +55,7 @@ Tool Lambda
 | **Tutorial type** | Interactive (Jupyter notebooks) |
 | **AgentCore components** | AgentCore Gateway |
 | **Identity provider** | Teleport (OIDC) |
+| **Authorization** | Amazon Verified Permissions (Cedar policies) |
 | **Gateway target** | AWS Lambda |
 | **MCP transport** | `mcp+https` (Streamable HTTP) |
 | **SDK** | boto3 / tsh CLI |
@@ -62,9 +71,29 @@ Sets up the foundation:
 - Registers the Lambda as an MCP target
 - Smoke-tests via `tsh mcp connect`
 
+### 02 — Interceptor: Identity Injection
+`02-interceptor-identity-injection.ipynb`
+
+Bridges the identity gap — AgentCore validates the JWT but doesn't forward it to Lambda:
+- Deploys a REQUEST interceptor Lambda
+- Interceptor decodes the Teleport JWT and injects `_teleport_user` + `_teleport_roles`
+  into every `tools/call` invocation
+- After this notebook, `whoami_tool` returns the real Teleport identity
+
+### 03 — Cedar Policy Authorization
+`03-cedar-avp-authorization.ipynb`
+
+Adds policy enforcement via Amazon Verified Permissions:
+- Creates an AVP policy store with Cedar policies mapping Teleport roles to tools
+- `mcp-user` → `whoami_tool`, `get_order_tool`
+- `order-admin` → `update_order_tool`  *(caller does not hold this role — expect DENY)*
+- Deploys the AVP-aware interceptor (`lambda_interceptor_avp.py`)
+- **Live policy change demo**: grants `mcp-user` access to `update_order_tool` by adding
+  a Cedar policy in AVP — no Lambda redeployment, no gateway restart
+
 ## Prerequisites
 
-- AWS credentials with permissions for Lambda, IAM, bedrock-agentcore
+- AWS credentials with permissions for Lambda, IAM, bedrock-agentcore, verifiedpermissions
 - A Teleport cluster (self-hosted or Teleport Cloud) with admin access (e.g. the built-in `editor` role)
 - `tsh` installed and logged in (`tsh login --proxy=<your-cluster>`)
 - Python 3.9+
@@ -84,11 +113,11 @@ cp .env.example .env
 
 ### 2. Run the notebooks
 
-Run notebook **01**. It is idempotent — re-running a cell that already created a resource
-will skip creation gracefully.
+Run in order: **01 → 02 → 03**. Each notebook is self-contained and idempotent —
+re-running a cell that already created a resource will skip creation gracefully.
 
 After notebook 01 completes and prints the gateway URL, complete the Teleport agent
-setup below.
+setup below before proceeding to notebook 02.
 
 ### 3. Configure the Teleport app agent
 
@@ -187,5 +216,7 @@ bash test-mcp.sh
 | File | Purpose |
 |:-----|:--------|
 | `lambda_tool.py` | Tool Lambda handler (whoami, get_order, update_order) |
+| `lambda_interceptor.py` | REQUEST interceptor — identity injection only |
+| `lambda_interceptor_avp.py` | REQUEST interceptor — identity injection + Cedar/AVP enforcement |
 | `test-mcp.sh` | Shell script to test the MCP endpoint directly via `tsh mcp connect` |
 | `.env.example` | Template for AWS credential environment variables |
