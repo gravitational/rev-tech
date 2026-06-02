@@ -259,8 +259,7 @@ k8s/
 ├── namespace.yaml
 ├── kustomization.yaml
 ├── tbot-serviceaccount.yaml   # SA with automountServiceAccountToken: true
-├── haproxy-configmap.yaml     # HAProxy config (201→200 rewrite + mTLS termination)
-└── fluent-bit-service.yaml    # Adds port 8888 to the chart-managed Service
+└── haproxy-configmap.yaml     # HAProxy config (201→200 rewrite + mTLS termination)
 helm/
 ├── fluent-bit/
 │   └── values.yaml            # fluent/fluent-bit chart — HTTP input + HAProxy sidecar
@@ -271,7 +270,8 @@ helm/
 └── event-handler/
     └── values.yaml            # teleport/teleport-plugin-event-handler (address/url via --set)
 scripts/
-├── deploy.sh                        # Reads config.yaml, deploys everything
+├── deploy.sh                        # Reads config.sh, deploys everything
+├── delete.sh                        # Removes all K8s resources and Teleport bot/role/token
 ├── generate-certs.sh                # CA + server/client certs → fluent-bit-tls Secret
 └── generate-teleport-resources.sh   # Emits role+bot+token YAML for the chosen join method
 ```
