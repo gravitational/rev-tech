@@ -90,6 +90,7 @@ vim config.sh   # TELEPORT_ADDRESS, JOIN_METHOD, OUTPUT_TYPE
 | `BOT_NAME` | string | Machine ID bot name; also used for the role and join token (`tbot-<BOT_NAME>`) |
 | `TELEPORT_ADDRESS` | `host:port` | Teleport Proxy or Auth address |
 | `CLUSTER_NAME` | string | Output of `tctl status \| grep Cluster` |
+| `TELEPORT_VERSION` | semver | Must match the same cluster major version or n-1  |
 | `JOIN_METHOD` | `eks` `gcp` `aks` `kubernetes` `token` `bound_keypair` | OIDC JWKS (eks/gcp/aks), in-cluster (kubernetes), static auto-generated token (token), asymmetric keypair (bound_keypair — Teleport 15+) |
 | `OUTPUT_TYPE` | `fluent-bit` `fluentd` `none` | Fluent Bit (+ HAProxy sidecar), Fluentd (native 200), or bring your own |
 | `FLUENTD_URL` | URL | Required when `OUTPUT_TYPE=none` — your own endpoint |
@@ -286,5 +287,21 @@ scripts/
 - The `fluent-bit-tls` Secret holds all five cert files. The event-handler uses
   `ca.crt`, `client.crt`, `client.key`. Fluent Bit uses `ca.crt`, `server.crt`,
   `server.key`. Rotate by re-running `generate-certs.sh` and restarting both.
-- Pin versions: all three Teleport components (`tbot`, `teleport-plugin-event-handler`,
-  `teleport-plugin-event-handler` image) should match the cluster version (`18.8.2`).
+
+## Version pinning
+
+`TELEPORT_VERSION` in `config.sh` must match your cluster major version or n-1. The `tbot`
+and `teleport-plugin-event-handler` Helm charts and the event-handler container
+image are all pinned to this value.
+
+Look up your cluster version from the `/webapi/ping` endpoint — no auth needed:
+
+```bash
+curl -s https://<your-proxy>/webapi/ping | jq -r .server_version
+```
+
+Example against the example.trial.teleport.sh cluster:
+
+```bash
+curl -s https://example.trial.teleport.sh/webapi/ping | jq -r .server_version
+```

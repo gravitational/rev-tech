@@ -3,8 +3,13 @@ NAMESPACE="teleport-events"
 BOT_NAME="event-handler"   # Teleport Machine ID bot name; also used for the role and token
 
 # ── Teleport cluster ──────────────────────────────────────────────────────────
-TELEPORT_ADDRESS="teleport.example.com:443"   # Proxy or Auth address
-CLUSTER_NAME="teleport.example.com"            # tctl status → "Cluster:"
+TELEPORT_ADDRESS="example.trial.teleport.sh:443"   # Proxy or Auth address
+CLUSTER_NAME="example.trial.teleport.sh"            # tctl status → "Cluster:"
+
+# Must match your cluster major version or n-1  — get it from:
+#   curl -s https://<proxy>/webapi/ping | jq -r .server_version
+# Example: curl -s https://example.trial.teleport.sh/webapi/ping | jq -r .server_version
+TELEPORT_VERSION="$(curl -s https://$TELEPORT_ADDRESS/webapi/ping | jq -r .server_version)"
 
 # ── Kubernetes join method ────────────────────────────────────────────────────
 # eks / gcp / aks  kubernetes join via OIDC JWKS (auto-fetched from API server)
