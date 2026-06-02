@@ -70,6 +70,7 @@ tbot  (Helm: teleport/tbot)
 - `kubectl` pointed at your cluster
 - `helm` 3+
 - `openssl` available locally
+- `jq` (used to auto-detect `TELEPORT_VERSION` from `/webapi/ping`)
 - `tctl` authenticated to your Teleport cluster
 
 ## Quick start
