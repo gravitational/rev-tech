@@ -1,0 +1,80 @@
+# Helm chart: fluent/fluent-bit
+# Repo:       https://fluent.github.io/helm-charts
+# Install:    helm upgrade --install fluent-bit fluent/fluent-bit \
+#               --namespace teleport-events \
+#               --version 0.48.9 \
+#               -f helm/fluent-bit/values.yaml
+
+image:
+  repository: fluent/fluent-bit
+  tag: "5.0"
+
+# Expose the HAProxy mTLS port on the Service so the event-handler can reach it.
+service:
+  type: ClusterIP
+  port: 2020
+
+config:
+  service: |
+    [SERVICE]
+        Flush        1
+        Log_Level    info
+        Daemon       Off
+        HTTP_Server  On
+        HTTP_Listen  0.0.0.0
+        HTTP_Port    2020
+        Health_Check On
+
+  inputs: |
+    # Receive events from the HAProxy sidecar on localhost only.
+    # HAProxy handles mTLS on :8888 and rewrites 201->200 before forwarding here.
+    [INPUT]
+        Name         http
+        Listen       127.0.0.1
+        Port         8889
+
+  outputs: |
+    # Replace with your real destination (opensearch, splunk, loki, kafka, s3, …).
+    [OUTPUT]
+        Name         stdout
+        Match        *
+        Format       json_lines
+
+# HAProxy sidecar: terminates mTLS on :8888, proxies to Fluent Bit on :8889,
+# and rewrites HTTP 201 → 200 (Fluent Bit returns 201, event-handler expects 200).
+extraContainers:
+  - name: haproxy
+    image: haproxy:2.8-alpine
+    ports:
+      - containerPort: 8888
+        name: https
+    volumeMounts:
+      - name: certs
+        mountPath: /certs
+        readOnly: true
+      - name: haproxy-config
+        mountPath: /usr/local/etc/haproxy/haproxy.cfg
+        subPath: haproxy.cfg
+        readOnly: true
+    resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+    readinessProbe:
+      tcpSocket:
+        port: 8888
+      initialDelaySeconds: 3
+      periodSeconds: 10
+
+# Mount the fluent-bit-tls Secret (certs) and haproxy-config ConfigMap
+# into the HAProxy sidecar.
+extraVolumes:
+  - name: certs
+    secret:
+      secretName: fluent-bit-tls
+  - name: haproxy-config
+    configMap:
+      name: haproxy-config

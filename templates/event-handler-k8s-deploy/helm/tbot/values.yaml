@@ -1,0 +1,21 @@
+# Helm chart: teleport/tbot
+# Repo:       https://charts.releases.teleport.dev
+#
+# teleportProxyAddress and clusterName are injected by deploy.sh from config.yaml.
+
+# joinMethod and token are always injected by deploy.sh via --set.
+# See config.sh for the supported values.
+
+serviceAccount:
+  create: false
+  name: tbot
+
+outputs:
+  - type: identity
+    destination:
+      type: kubernetes_secret
+      name: teleport-identity
+
+storage:
+  destination:
+    type: memory

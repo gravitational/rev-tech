@@ -1,0 +1,20 @@
+# Helm chart: teleport/teleport-plugin-event-handler
+# Repo:       https://charts.releases.teleport.dev
+#
+# teleport.address and fluentd.url / fluentd.sessionUrl are injected by
+# deploy.sh from config.yaml.
+
+teleport:
+  identitySecretName: teleport-identity
+  identitySecretPath: identity
+
+fluentd:
+  certificate:
+    secretName: fluent-bit-tls
+    caPath: ca.crt
+    certPath: client.crt
+    keyPath: client.key
+
+persistentVolumeClaim:
+  enabled: true
+  size: 1Gi

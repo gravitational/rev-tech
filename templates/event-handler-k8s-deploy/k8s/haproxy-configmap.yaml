@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: haproxy-config
+data:
+  haproxy.cfg: |
+    global
+        maxconn 1024
+
+    defaults
+        mode http
+        timeout connect 5s
+        timeout client 30s
+        timeout server 30s
+
+    frontend https_in
+        # HAProxy expects cert + key in one PEM file; the init container creates it.
+        bind *:8888 ssl crt /certs/server.pem ca-file /certs/ca.crt verify required
+        default_backend fluent_bit
+
+    backend fluent_bit
+        # Fluent Bit HTTP input returns 201; event-handler requires 200.
+        http-response set-status 200 if { status 201 }
+        server fluent_bit 127.0.0.1:8889

@@ -1,0 +1,79 @@
+# Helm chart: fluent/fluentd
+# Repo:       https://fluent.github.io/helm-charts
+#
+# Fluentd's in_http plugin returns HTTP 200, so no HAProxy proxy is needed.
+
+image:
+  repository: fluent/fluentd
+  tag: v1.17-1
+
+replicaCount: 1
+
+# The default probe checks /metrics on port 24231 (fluent-plugin-prometheus),
+# which isn't in the base image. Use a TCP check on the HTTP input port instead.
+readinessProbe:
+  httpGet: null
+  tcpSocket:
+    port: 8888
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+livenessProbe:
+  httpGet: null
+  tcpSocket:
+    port: 8888
+  initialDelaySeconds: 10
+  periodSeconds: 20
+
+service:
+  type: ClusterIP
+  ports:
+    - name: https
+      protocol: TCP
+      containerPort: 8888
+
+# Override ALL four default config files to prevent the chart loading its
+# default 02_filters.conf which requires the kubernetes_metadata gem.
+fileConfigs:
+  01_sources.conf: |-
+    <source>
+      @type http
+      port 8888
+      bind 0.0.0.0
+      <transport tls>
+        cert_path /certs/server.crt
+        private_key_path /certs/server.key
+        client_cert_auth true
+        ca_path /certs/ca.crt
+      </transport>
+      <parse>
+        @type json
+        time_key time
+        time_type string
+        time_format %iso8601
+        keep_time_key true
+      </parse>
+    </source>
+
+
+  02_filters.conf: |-
+    # no-op — kubernetes_metadata plugin not required
+
+  03_dispatch.conf: |-
+    # no-op
+
+  04_outputs.conf: |-
+    # Replace with your real destination.
+    <match **>
+      @type stdout
+    </match>
+
+volumes:
+  - name: certs
+    secret:
+      secretName: fluent-bit-tls
+
+volumeMounts:
+  - name: certs
+    mountPath: /certs
+    readOnly: true
