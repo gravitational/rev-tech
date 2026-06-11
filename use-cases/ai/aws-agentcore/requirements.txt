@@ -1,4 +1,4 @@
-gitboto3
+boto3
 strands-agents
 strands-agents-tools
 mcp

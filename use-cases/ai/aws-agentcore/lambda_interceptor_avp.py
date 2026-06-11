@@ -8,7 +8,46 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 avp = boto3.client('verifiedpermissions')
-POLICY_STORE_ID = os.environ.get('AVP_POLICY_STORE_ID', '')
+POLICY_STORE_ID     = os.environ.get('AVP_POLICY_STORE_ID', '')
+TTI_APPLICATION_ARN = os.environ.get('TTI_APPLICATION_ARN', '')
+USER_ROLE_ARN       = os.environ.get('USER_ROLE_ARN', '')
+IC_REGION           = os.environ.get('IDENTITY_CENTER_REGION', 'us-east-1')
+
+
+def _exchange_token_for_credentials(id_token: str, user_email: str) -> dict | None:
+    """
+    Two-step identity flow:
+      1. Teleport id_token → IC TTI validation (proves user exists in Identity Center)
+      2. sts:AssumeRole with user email as RoleSessionName → CloudTrail attribution
+    Returns STS Credentials dict or None when TTI is not configured or validation fails.
+    """
+    if not TTI_APPLICATION_ARN or not USER_ROLE_ARN:
+        return None
+
+    # Step 1: validate user through IC TTI — fails closed if user isn't in IC
+    try:
+        sso_oidc = boto3.client('sso-oidc', region_name=IC_REGION)
+        sso_oidc.create_token_with_iam(
+            clientId=TTI_APPLICATION_ARN,
+            grantType='urn:ietf:params:oauth:grant-type:jwt-bearer',
+            assertion=id_token,
+        )
+        logger.info(f'IC TTI validated {user_email}')
+    except Exception as e:
+        logger.error(f'TTI validation failed: {e}')
+        return None
+
+    # Step 2: assume user-scoped role; session name = email → CloudTrail shows user
+    try:
+        sts  = boto3.client('sts')
+        resp = sts.assume_role(
+            RoleArn=USER_ROLE_ARN,
+            RoleSessionName=user_email[:64],
+        )
+        return resp['Credentials']
+    except Exception as e:
+        logger.error(f'AssumeRole failed: {e}')
+        return None
 
 
 def _decode_jwt_claims(token: str) -> dict:
@@ -63,6 +102,7 @@ def lambda_handler(event, context):
             roles          = claims.get('roles', [])
             teleport_roles = roles if isinstance(roles, list) else [str(roles)]
             logger.info(f'Identity: sub={teleport_user} roles={teleport_roles}')
+            logger.info(f'JWT aud={claims.get("aud")} iss={claims.get("iss")}')
         except Exception as e:
             logger.warning(f'Failed to decode JWT: {e}')
 
@@ -104,11 +144,21 @@ def lambda_handler(event, context):
             # Fail closed — deny if we can't reach AVP
             return _avp_deny_response(request_id, tool, ['authorization service unavailable'])
 
-    # --- Inject identity into tool call arguments ---
+    # --- Inject identity and optional user-scoped AWS credentials ---
     if method == 'tools/call':
         args = body.setdefault('params', {}).setdefault('arguments', {})
         args['_teleport_user']  = teleport_user
         args['_teleport_roles'] = ','.join(teleport_roles)
+
+        raw_token = auth_header[7:] if auth_header.startswith('Bearer ') else ''
+        creds = _exchange_token_for_credentials(raw_token, teleport_user)
+        if creds:
+            args['_aws_access_key']    = creds['AccessKeyId']
+            args['_aws_secret_key']    = creds['SecretAccessKey']
+            args['_aws_session_token'] = creds['SessionToken']
+            logger.info(f'Injected user-scoped credentials for {teleport_user}')
+        elif TTI_APPLICATION_ARN:
+            logger.warning(f'TTI exchange failed for {teleport_user} — continuing without user credentials')
 
     return {
         'interceptorOutputVersion': '1.0',
