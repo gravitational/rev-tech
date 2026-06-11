@@ -23,6 +23,12 @@ A REQUEST interceptor Lambda decodes that JWT and injects the caller's verified 
 (`_teleport_user`, `_teleport_roles`) into every tool call — so Lambda tools know *who*
 called them without any authentication code of their own.
 
+Notebook 04 closes the final gap: the Lambda still runs under its IAM execution role, so
+CloudTrail shows the role — not the user. **IAM Identity Center Trusted Token Issuers (TTI)**
+fix this. The interceptor exchanges the Teleport JWT for an Identity Center token, then
+assumes a user-scoped IAM role with the user's email as the `RoleSessionName`. Every AWS API
+call made with those credentials appears in CloudTrail as the user, not the agent.
+
 ### Architecture
 
 ```
@@ -41,11 +47,17 @@ REQUEST Interceptor Lambda
   │  Calls Amazon Verified Permissions (Cedar policy)
   │  DENY  → MCP error returned, tool Lambda never invoked
   │  ALLOW → inject _teleport_user + _teleport_roles into tool arguments
+  │
+  │  [Notebook 04 — TTI] sso-oidc:CreateTokenWithIAM (exchanges Teleport JWT via IC TTI)
+  │  [Notebook 04 — TTI] sts:AssumeRole (RoleSessionName = user email)
   ↓
 Tool Lambda
-  │  whoami_tool       → returns verified caller identity
+  │  whoami_tool       → returns verified caller identity + user-scoped AWS ARN
   │  get_order_tool    → readable by mcp-user role (Cedar ALLOW)
   │  update_order_tool → requires order-admin role  (Cedar DENY for mcp-user)
+  ↓
+CloudTrail
+     assumed-role/<role>/user@example.com  ← AWS calls attributed to the user, not the agent
 ```
 
 ### Tutorial Details
@@ -91,12 +103,46 @@ Adds policy enforcement via Amazon Verified Permissions:
 - **Live policy change demo**: grants `mcp-user` access to `update_order_tool` by adding
   a Cedar policy in AVP — no Lambda redeployment, no gateway restart
 
+### 04 — TTI User Identity (CloudTrail Attribution)
+`04-tti-user-identity.ipynb`
+
+Closes the final identity gap — Lambdas run under their IAM execution role, so CloudTrail
+attributes calls to the role, not the user. This notebook fixes that with IAM Identity
+Center Trusted Token Issuers:
+
+**Phase 0** (setup, idempotent):
+- Discovers the IC instance ARN and writes it to `.env`
+- Creates a Trusted Token Issuer pointing at the Teleport cluster OIDC endpoint
+- Creates a Customer Managed Application with a `jwt-bearer` grant
+- Creates IC users from `DEMO_USER_EMAILS` and assigns them to the application
+
+**Steps 1–7** (IAM wiring + Lambda deployment):
+- Creates `agentcore-user-role` trusted by the interceptor Lambda's execution role
+- Grants the interceptor `sso-oauth:CreateTokenWithIAM` + `sts:AssumeRole`
+- Updates the Application Actor Policy to include the interceptor role
+- Deploys updated interceptor and tool Lambda with TTI environment variables
+- **Test**: `whoami_tool` now returns two ARNs — `lambda_execution_role` (static) and
+  `aws_caller` (user-scoped session named after the Teleport user's email)
+- **CloudTrail**: every tool invocation appears as `assumed-role/<role>/user@example.com`
+
+The identity chain is unbroken end to end:
+
+| Layer | Identity |
+|:------|:---------|
+| Teleport JWT `sub` | `user@example.com` |
+| IC token exchange | IC validates user via TTI |
+| STS session name | `user@example.com` (set by interceptor via `RoleSessionName`) |
+| `aws_caller.Arn` | `arn:aws:sts::<account>:assumed-role/<role>/user@example.com` |
+| CloudTrail actor | `assumed-role/<role>/user@example.com` |
+
 ## Prerequisites
 
 - AWS credentials with permissions for Lambda, IAM, bedrock-agentcore, verifiedpermissions
 - A Teleport cluster (self-hosted or Teleport Cloud) with admin access
 - `tsh` installed and logged in (`tsh login --proxy=<your-cluster>`)
 - Python 3.9+
+- *(Notebook 04 only)* IAM Identity Center enabled in your AWS account with
+  Identity-Enhanced Sessions turned on: **IAM Identity Center → Settings → Enable identity-enhanced sessions**
 
 ## Setup
 
@@ -113,7 +159,7 @@ cp .env.example .env
 
 ### 2. Run the notebooks
 
-Run in order: **01 → 02 → 03**. Each notebook is self-contained and idempotent —
+Run in order: **01 → 02 → 03 → 04**. Each notebook is self-contained and idempotent —
 re-running a cell that already created a resource will skip creation gracefully.
 
 After notebook 01 completes and prints the gateway URL, complete the Teleport agent
@@ -211,7 +257,7 @@ bash test-mcp.sh
 |:-----|:--------|
 | `lambda_tool.py` | Tool Lambda handler (whoami, get_order, update_order) |
 | `lambda_interceptor.py` | REQUEST interceptor — identity injection only |
-| `lambda_interceptor_avp.py` | REQUEST interceptor — identity injection + Cedar/AVP enforcement |
+| `lambda_interceptor_avp.py` | REQUEST interceptor — identity injection + Cedar/AVP enforcement + TTI exchange |
 | `teleport.yaml` | Teleport app service config pointing at the AgentCore Gateway |
 | `test-mcp.sh` | Shell script to test the MCP endpoint directly via `tsh mcp connect` |
 | `DEMO-PLAN.md` | Full architecture doc including Scenario 2 (RFC 8693 / Keycloak OBO) |
