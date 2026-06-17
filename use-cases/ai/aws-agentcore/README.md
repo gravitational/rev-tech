@@ -65,7 +65,7 @@ Sets up the foundation:
 ## Prerequisites
 
 - AWS credentials with permissions for Lambda, IAM, bedrock-agentcore
-- A Teleport cluster (self-hosted or Teleport Cloud) with admin access
+- A Teleport cluster (self-hosted or Teleport Cloud) with admin access (e.g. the built-in `editor` role)
 - `tsh` installed and logged in (`tsh login --proxy=<your-cluster>`)
 - Python 3.9+
 
@@ -110,7 +110,7 @@ Edit `teleport.yaml` and set:
 
 ```yaml
 teleport:
-  proxy_server: <your-cluster>:443   # e.g. ellinj.teleport.sh:443
+  proxy_server: <your-cluster>:443   # e.g. example.teleport.sh:443
   auth_token: <token-from-step-3a>
   data_dir: /path/to/data            # writable directory for agent state
 
@@ -149,19 +149,25 @@ Create the role if it doesn't exist:
 ```yaml
 # mcp-user-role.yaml
 kind: role
-version: v7
+version: v8
 metadata:
+  description: Access to MCP servers
   name: mcp-user
 spec:
   allow:
     app_labels:
-      '*': '*'
+      teleport.internal/app-sub-kind: mcp
+    mcp:
+      tools:
+      - '*'
 ```
 
 ```bash
 tctl create -f mcp-user-role.yaml
 tctl users update <your-username> --set-roles=...,mcp-user
 ```
+
+If you are using SSO integration you may need to update your `claims_to_roles` (OIDC) or `attrbutes_to_roles` to enable the user to have acccess to the mcp-user role.  See Teleport [docs] (https://goteleport.com/docs/zero-trust-access/sso/integrate-idp/oidc/)  for details.
 
 ### 4. Connect and test
 
@@ -181,7 +187,5 @@ bash test-mcp.sh
 | File | Purpose |
 |:-----|:--------|
 | `lambda_tool.py` | Tool Lambda handler (whoami, get_order, update_order) |
-| `teleport.yaml` | Teleport app service config pointing at the AgentCore Gateway |
 | `test-mcp.sh` | Shell script to test the MCP endpoint directly via `tsh mcp connect` |
-| `DEMO-PLAN.md` | Full architecture doc including Scenario 2 (RFC 8693 / Keycloak OBO) |
 | `.env.example` | Template for AWS credential environment variables |
