@@ -99,11 +99,11 @@ cp .env.example .env
 
 ### 2. Run the notebooks
 
-Run notebook **01**. It is idempotent — re-running a cell that already created a resource
-will skip creation gracefully.
+Run in order: **01 → 02**. Each notebook is idempotent — re-running a cell that already
+created a resource will skip creation gracefully.
 
 After notebook 01 completes and prints the gateway URL, complete the Teleport agent
-setup below.
+setup below before proceeding to notebook 02.
 
 ### 3. Configure the Teleport app agent
 
@@ -202,5 +202,6 @@ bash test-mcp.sh
 | File | Purpose |
 |:-----|:--------|
 | `lambda_tool.py` | Tool Lambda handler (whoami, get_order, update_order) |
+| `lambda_interceptor.py` | REQUEST interceptor — decodes Teleport JWT and injects caller identity |
 | `test-mcp.sh` | Shell script to test the MCP endpoint directly via `tsh mcp connect` |
 | `.env.example` | Template for AWS credential environment variables |
