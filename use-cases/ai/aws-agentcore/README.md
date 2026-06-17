@@ -65,7 +65,7 @@ Sets up the foundation:
 ## Prerequisites
 
 - AWS credentials with permissions for Lambda, IAM, bedrock-agentcore
-- A Teleport cluster (self-hosted or Teleport Cloud) with admin access
+- A Teleport cluster (self-hosted or Teleport Cloud) with admin access (e.g. the built-in `editor` role)
 - `tsh` installed and logged in (`tsh login --proxy=<your-cluster>`)
 - Python 3.9+
 
@@ -187,6 +187,5 @@ bash test-mcp.sh
 | File | Purpose |
 |:-----|:--------|
 | `lambda_tool.py` | Tool Lambda handler (whoami, get_order, update_order) |
-| `teleport.yaml` | Teleport app service config pointing at the AgentCore Gateway |
 | `test-mcp.sh` | Shell script to test the MCP endpoint directly via `tsh mcp connect` |
 | `.env.example` | Template for AWS credential environment variables |
