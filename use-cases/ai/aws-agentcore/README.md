@@ -18,8 +18,10 @@ AgentCore Gateway employs a dual authentication model:
 - **Outbound Auth** — enables the gateway to securely connect to backend resources.
   Here that is an IAM role that grants the gateway permission to invoke the tool Lambdas.
 
-Teleport's `tsh mcp connect` proxy forwards the signed JWT to the gateway as a Bearer token,
-so every tool invocation carries a verified, auditable caller identity.
+Teleport's `tsh mcp connect` proxy forwards the signed JWT to the gateway as a Bearer token.
+A REQUEST interceptor Lambda decodes that JWT and injects the caller's verified identity
+(`_teleport_user`, `_teleport_roles`) into every tool call — so Lambda tools know *who*
+called them without any authentication code of their own.
 
 ### Architecture
 
@@ -34,8 +36,12 @@ AgentCore Gateway
   │  Validates JWT against Teleport OIDC discovery URL
   │  Enforces: roles CONTAINS "mcp-user"
   ↓
+REQUEST Interceptor Lambda
+  │  Decodes JWT → sub, roles   (no re-verify — gateway already did it)
+  │  Injects _teleport_user + _teleport_roles into tool arguments
+  ↓
 Tool Lambda
-  │  whoami_tool       → returns caller identity from JWT claims
+  │  whoami_tool       → returns verified caller identity
   │  get_order_tool    → retrieve order data
   │  update_order_tool → update order data
 ```
@@ -61,6 +67,15 @@ Sets up the foundation:
 - Creates the AgentCore Gateway with Teleport OIDC JWT authorizer
 - Registers the Lambda as an MCP target
 - Smoke-tests via `tsh mcp connect`
+
+### 02 — Interceptor: Identity Injection
+`02-interceptor-identity-injection.ipynb`
+
+Bridges the identity gap — AgentCore validates the JWT but doesn't forward it to Lambda:
+- Deploys a REQUEST interceptor Lambda (`lambda_interceptor.py`)
+- Interceptor decodes the Teleport JWT and injects `_teleport_user` + `_teleport_roles`
+  into every `tools/call` invocation
+- After this notebook, `whoami_tool` returns the real Teleport identity
 
 ## Prerequisites
 
