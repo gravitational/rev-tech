@@ -449,7 +449,11 @@ module "mcp_bot" {
     team                             = [var.team]
     "teleport.internal/app-sub-kind" = ["mcp"]
   }
-  mcp_tools = ["*"]
+  # Read-only tool allowlist — AI agents get read-only by default; write
+  # tools (write_file, edit_file, move_file, ...) are denied by policy.
+  # Pairs with the :ro volume mount on the MCP container. Good demo beat:
+  # ask the client to write a file and show the denial in the audit log.
+  mcp_tools = ["read_*", "list_*", "search_files", "get_file_info", "directory_tree"]
 }
 
 # ---------------------------------------------------------------------------

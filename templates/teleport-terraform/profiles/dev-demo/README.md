@@ -173,6 +173,10 @@ tsh mcp ls
 tsh mcp config mcp-filesystem-dev
 # Paste the output into Claude Desktop, Cursor, or any MCP client
 # Claude can now run tools against live infrastructure through Teleport
+#
+# The bot's role allows only read tools (read_*, list_*, search_files, ...).
+# Demo beat: ask the client to WRITE a file — Teleport denies the tool call
+# by policy, and the denial shows up in the audit log with full attribution.
 ```
 
 **12. Windows Desktop Access**
