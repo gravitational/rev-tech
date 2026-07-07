@@ -45,7 +45,6 @@ eval $(tctl terraform env)
 
 export TF_VAR_proxy_address=myorg.teleport.sh
 export TF_VAR_user=you@company.com
-export TF_VAR_teleport_version=18.6.4
 export TF_VAR_region=us-east-2          # optional, default: us-east-2
 export TF_VAR_env=dev                   # optional, default: dev
 export TF_VAR_team=platform             # optional, default: platform
@@ -54,6 +53,8 @@ cd profiles/dev-demo
 terraform init
 terraform apply
 ```
+
+Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 Allow 3–5 minutes for all instances to boot and register. Then verify:
 
@@ -199,7 +200,6 @@ terraform destroy
 |---|---|---|
 | `proxy_address` | Teleport proxy hostname (no https, no port) | **required** |
 | `user` | Your email — used for tagging and resource naming | **required** |
-| `teleport_version` | Teleport version to install on all nodes | **required** |
 | `env` | Environment label for dev resources | `"dev"` |
 | `prod_env` | Environment label for the prod SSH node (access request target) | `"prod"` |
 | `team` | Team label for Teleport RBAC | `"platform"` |

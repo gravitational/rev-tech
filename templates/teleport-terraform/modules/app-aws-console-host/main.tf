@@ -86,7 +86,6 @@ resource "aws_instance" "app_host" {
     name                 = "${var.host_env}-aws-console-host"
     token                = teleport_provision_token.app_host.metadata.name
     proxy_address        = var.proxy_address
-    teleport_version     = var.teleport_version
     host_env             = var.host_env
     host_team            = var.host_team
     app_env              = var.app_env

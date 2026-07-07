@@ -24,11 +24,6 @@ variable "team" {
   default     = "platform"
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install on the MongoDB host"
-  type        = string
-}
-
 variable "cidr_vpc" {
   description = "CIDR block for the VPC"
   type        = string

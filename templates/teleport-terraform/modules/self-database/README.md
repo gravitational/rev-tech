@@ -28,7 +28,6 @@ module "postgres" {
   team             = var.team
   user             = var.user
   proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
   teleport_db_ca   = data.http.teleport_db_ca.response_body
   ami_id           = data.aws_ami.linux.id
   instance_type    = "t3.small"
@@ -65,7 +64,6 @@ module "mongodb"  { source = "../../modules/self-database"; db_type = "mongodb";
 | `env` | Environment label (e.g., `dev`, `prod`) | **required** |
 | `user` | Tag value for resource creator | **required** |
 | `proxy_address` | Teleport proxy hostname (no `https://`, no port) | **required** |
-| `teleport_version` | Teleport version to install | **required** |
 | `teleport_db_ca` | Teleport DB CA cert from `/webapi/auth/export?type=db-client` | **required** |
 | `ami_id` | AMI ID for the EC2 instance (Amazon Linux 2023 recommended) | **required** |
 | `instance_type` | EC2 instance type | **required** |

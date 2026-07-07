@@ -8,11 +8,6 @@ variable "user" {
   type        = string
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install on the agent"
-  type        = string
-}
-
 variable "env" {
   description = "Environment label (e.g., dev, stage, prod)"
   type        = string

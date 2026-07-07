@@ -151,7 +151,6 @@ resource "aws_instance" "agent" {
   }
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    teleport_version  = var.teleport_version
     proxy_address     = var.proxy_address
     token             = teleport_provision_token.agent.metadata.name
     env               = var.env

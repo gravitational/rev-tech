@@ -16,7 +16,6 @@
 # Deploy:
 #   export TF_VAR_proxy_address=myorg.teleport.sh
 #   export TF_VAR_user=you@company.com
-#   export TF_VAR_teleport_version=18.0.0
 #   terraform init && terraform apply
 
 terraform {
@@ -91,15 +90,14 @@ module "network" {
 module "kube_agent" {
   source = "../../modules/kube-discovery-agent"
 
-  env              = var.env
-  team             = var.team
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  region           = var.region
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.small"
-  tags             = local.resource_tags
+  env           = var.env
+  team          = var.team
+  user          = var.user
+  proxy_address = var.proxy_address
+  region        = var.region
+  ami_id        = data.aws_ami.linux.id
+  instance_type = "t3.small"
+  tags          = local.resource_tags
 
   eks_tag_key       = var.eks_tag_key
   eks_tag_value     = var.eks_tag_value

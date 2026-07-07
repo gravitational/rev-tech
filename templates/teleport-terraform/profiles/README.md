@@ -78,7 +78,6 @@ cd profiles/<profile-name>
 # Required
 export TF_VAR_proxy_address=myorg.teleport.sh
 export TF_VAR_user=you@company.com
-export TF_VAR_teleport_version=18.7.1
 
 # Optional overrides
 export TF_VAR_env=dev
@@ -91,6 +90,8 @@ terraform apply
 # After the demo
 terraform destroy
 ```
+
+Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 After `apply`, Teleport resources are registered and labeled. Use `tsh ls`, `tsh db ls`, `tsh apps ls` to verify everything enrolled.
 

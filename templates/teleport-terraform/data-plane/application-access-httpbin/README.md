@@ -13,6 +13,7 @@ Mirrors the official [Protect a Web Application](https://goteleport.com/docs/enr
 - 1 EC2 instance running HTTPBin on Docker
 - Teleport agent with `app_service` and `ssh_service`
 - Dynamic app registration (`httpbin-<env>`) with `env` + `team` labels
+- Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 ---
 
@@ -24,7 +25,6 @@ eval $(tctl terraform env)
 
 export TF_VAR_user=you@company.com
 export TF_VAR_proxy_address=myorg.teleport.sh
-export TF_VAR_teleport_version=18.6.4
 export TF_VAR_env=dev
 export TF_VAR_team=platform
 export TF_VAR_region=us-east-2
@@ -73,7 +73,6 @@ terraform destroy
 |---|---|---|
 | `user` | Your email — used for tagging | **required** |
 | `proxy_address` | Teleport proxy hostname | **required** |
-| `teleport_version` | Teleport version to install | **required** |
 | `env` | Environment label | **required** |
 | `team` | Team label | `"platform"` |
 | `region` | AWS region | **required** |

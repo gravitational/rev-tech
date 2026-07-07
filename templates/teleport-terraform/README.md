@@ -29,8 +29,6 @@ eval $(tctl terraform env)
 
 export TF_VAR_proxy_address=myorg.teleport.sh
 export TF_VAR_user=you@company.com
-# Pin to a specific version, or pull the running version from your proxy:
-export TF_VAR_teleport_version=$(curl -s "https://myorg.teleport.sh/webapi/ping" | jq -r .server_version)
 
 cd data-plane/server-access-ssh-getting-started   # or any template
 terraform init && terraform apply
@@ -193,5 +191,6 @@ Note: workflows are only triggerable from the default branch (`main`).
 ## Notes
 
 - State is kept locally and gitignored. Each practitioner manages their own state.
+- Agents always install the version your cluster advertises (via `install.sh`) and stay current through [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/). The update schedule is managed cluster-side by the `teleport_autoupdate_config` resource in `control-plane/*/3-rbac`.
 - The `application-access-aws-console` template requires `manage_account_a_roles=true` on first deploy in a fresh account to create the IAM target roles. See that template's README for the shared-account ownership pattern.
 - All templates tag resources with `teleport.dev/creator`, `env`, `team`, and `ManagedBy=terraform` for cost attribution and RBAC consistency.

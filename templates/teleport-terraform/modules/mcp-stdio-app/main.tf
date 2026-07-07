@@ -50,7 +50,6 @@ resource "aws_instance" "mcp_app" {
     name             = "${var.env}-${var.app_name}"
     token            = teleport_provision_token.app.metadata.name
     proxy_address    = var.proxy_address
-    teleport_version = var.teleport_version
     env              = var.env
     team             = var.team
     app_name         = var.app_name

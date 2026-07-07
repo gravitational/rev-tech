@@ -28,11 +28,6 @@ variable "proxy_address" {
   type        = string
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install"
-  type        = string
-}
-
 variable "teleport_db_ca" {
   description = "Teleport DB CA cert from /webapi/auth/export"
   type        = string

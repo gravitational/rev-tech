@@ -13,6 +13,7 @@ Demonstrates Teleport's EC2 auto-discovery using SSM + IAM joining. A Discovery 
 - IAM role for targets with `AmazonSSMManagedInstanceCore` (SSM agent receives installer)
 - IAM join token (no secret — targets authenticate via their instance IAM role)
 - Shared VPC/subnet/security group
+- Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 ---
 
@@ -36,7 +37,6 @@ eval $(tctl terraform env)
 
 export TF_VAR_user=you@company.com
 export TF_VAR_proxy_address=myorg.teleport.sh
-export TF_VAR_teleport_version=18.7.1
 export TF_VAR_env=dev
 export TF_VAR_team=platform
 export TF_VAR_region=us-east-2
@@ -95,7 +95,6 @@ terraform destroy
 |---|---|---|
 | `proxy_address` | Teleport proxy hostname | **required** |
 | `user` | Your email — used for tagging | **required** |
-| `teleport_version` | Teleport version for the discovery agent | **required** |
 | `env` | Environment label | `"dev"` |
 | `team` | Team label | `"platform"` |
 | `region` | AWS region (must match where target instances run) | `"us-east-2"` |

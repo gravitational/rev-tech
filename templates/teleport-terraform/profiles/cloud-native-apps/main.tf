@@ -13,7 +13,6 @@
 # Deploy:
 #   export TF_VAR_proxy_address=myorg.teleport.sh
 #   export TF_VAR_user=you@company.com
-#   export TF_VAR_teleport_version=18.0.0
 #   export TF_VAR_aws_account_id=$(aws sts get-caller-identity --query Account --output text)
 #   terraform init && terraform apply
 #
@@ -121,14 +120,13 @@ module "network" {
 module "grafana" {
   source = "../../modules/app-grafana"
 
-  env              = var.env
-  team             = var.team
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.small"
-  tags             = local.resource_tags
+  env           = var.env
+  team          = var.team
+  user          = var.user
+  proxy_address = var.proxy_address
+  ami_id        = data.aws_ami.linux.id
+  instance_type = "t3.small"
+  tags          = local.resource_tags
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -156,14 +154,13 @@ module "grafana_registration" {
 module "httpbin" {
   source = "../../modules/app-httpbin"
 
-  env              = var.env
-  team             = var.team
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.micro"
-  tags             = local.resource_tags
+  env           = var.env
+  team          = var.team
+  user          = var.user
+  proxy_address = var.proxy_address
+  ami_id        = data.aws_ami.linux.id
+  instance_type = "t3.micro"
+  tags          = local.resource_tags
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -195,7 +192,6 @@ module "rds_mysql" {
   team                 = var.team
   user                 = var.user
   proxy_address        = var.proxy_address
-  teleport_version     = var.teleport_version
   region               = var.region
   ami_id               = data.aws_ami.linux.id
   vpc_id               = module.network.vpc_id
@@ -212,7 +208,6 @@ module "aws_console_host" {
 
   user                 = var.user
   proxy_address        = var.proxy_address
-  teleport_version     = var.teleport_version
   ami_id               = data.aws_ami.linux.id
   instance_type        = "t3.micro"
   tags                 = local.resource_tags

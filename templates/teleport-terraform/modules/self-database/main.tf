@@ -87,16 +87,15 @@ resource "aws_instance" "db" {
   associate_public_ip_address = null
 
   user_data = templatefile("${path.module}/userdata-${var.db_type}.tpl", {
-    name             = "${var.env}-${var.db_type}"
-    token            = teleport_provision_token.db.metadata.name
-    proxy_address    = var.proxy_address
-    teleport_version = var.teleport_version
-    ca               = tls_self_signed_cert.ca_cert.cert_pem
-    cert             = tls_locally_signed_cert.server_cert.cert_pem
-    key              = tls_private_key.server_key.private_key_pem
-    tele_ca          = var.teleport_db_ca
-    env              = var.env
-    team             = var.team
+    name          = "${var.env}-${var.db_type}"
+    token         = teleport_provision_token.db.metadata.name
+    proxy_address = var.proxy_address
+    ca            = tls_self_signed_cert.ca_cert.cert_pem
+    cert          = tls_locally_signed_cert.server_cert.cert_pem
+    key           = tls_private_key.server_key.private_key_pem
+    tele_ca       = var.teleport_db_ca
+    env           = var.env
+    team          = var.team
   })
 
   metadata_options {

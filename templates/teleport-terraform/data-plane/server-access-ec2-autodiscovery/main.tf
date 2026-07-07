@@ -14,7 +14,6 @@
 # Deploy:
 #   export TF_VAR_proxy_address=myorg.teleport.sh
 #   export TF_VAR_user=you@company.com
-#   export TF_VAR_teleport_version=18.0.0
 #   terraform init && terraform apply
 #
 # After apply, the discovery agent enrolls the target instances within ~60 s.
@@ -157,7 +156,6 @@ module "ec2_discovery" {
   team                 = var.team
   user                 = var.user
   proxy_address        = var.proxy_address
-  teleport_version     = var.teleport_version
   region               = var.region
   ami_id               = data.aws_ami.linux.id
   instance_type        = "t3.small"

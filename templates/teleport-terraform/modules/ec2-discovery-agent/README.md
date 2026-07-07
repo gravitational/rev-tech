@@ -35,7 +35,6 @@ module "ec2_discovery" {
   team                 = "platform"
   user                 = "user@example.com"
   proxy_address        = "teleport.example.com"
-  teleport_version     = "18.0.0"
   region               = "us-east-2"
   ami_id               = data.aws_ami.linux.id
   target_iam_role_name = aws_iam_role.target.name
@@ -53,7 +52,6 @@ module "ec2_discovery" {
 | `team` | Team label for RBAC | `string` | n/a |
 | `user` | Creator email | `string` | n/a |
 | `proxy_address` | Teleport proxy host (no scheme, no port) | `string` | n/a |
-| `teleport_version` | Teleport version to install | `string` | n/a |
 | `region` | AWS region to scan for EC2 instances | `string` | n/a |
 | `ami_id` | AMI for the agent (Amazon Linux 2023 recommended) | `string` | n/a |
 | `instance_type` | EC2 instance type | `string` | `"t3.small"` |

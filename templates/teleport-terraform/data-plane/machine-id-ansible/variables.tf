@@ -13,11 +13,6 @@ variable "proxy_address" {
   description = "Teleport proxy domain"
 }
 
-variable "teleport_version" {
-  type        = string
-  description = "Teleport version to install"
-}
-
 variable "region" {
   type        = string
   description = "AWS region to deploy resources"

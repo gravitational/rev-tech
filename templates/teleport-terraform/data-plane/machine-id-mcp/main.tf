@@ -64,10 +64,9 @@ module "network" {
 module "mcp_stdio_app" {
   source = "../../modules/mcp-stdio-app"
 
-  env              = var.env
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
+  env           = var.env
+  user          = var.user
+  proxy_address = var.proxy_address
 
   ami_id             = data.aws_ami.linux.id
   instance_type      = var.instance_type

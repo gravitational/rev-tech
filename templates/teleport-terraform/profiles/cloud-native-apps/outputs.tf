@@ -4,7 +4,6 @@ output "connection_guide" {
     ──────────────────────────────────────────────────────
     Profile: Cloud-Native Apps
     Cluster: ${var.proxy_address}  |  env=${var.env}  |  team=${var.team}
-    Teleport: ${var.teleport_version}
     ──────────────────────────────────────────────────────
 
     1. Login:

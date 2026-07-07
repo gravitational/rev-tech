@@ -74,7 +74,6 @@ module "postgres_instance" {
   user               = var.user
   team               = var.team
   proxy_address      = var.proxy_address
-  teleport_version   = var.teleport_version
   teleport_db_ca     = data.http.teleport_db_ca_cert.response_body
   ami_id             = data.aws_ami.linux.id
   instance_type      = "t3.small"

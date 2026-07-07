@@ -9,11 +9,6 @@ variable "proxy_address" {
   description = "Host of the Teleport Proxy Service"
 }
 
-variable "teleport_version" {
-  type        = string
-  description = "Version of Teleport to install on each agent"
-}
-
 variable "user" {
   type        = string
   description = "username assigned in description for AWS resources"

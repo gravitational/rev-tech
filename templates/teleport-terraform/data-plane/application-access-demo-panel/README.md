@@ -13,6 +13,7 @@ The Flask app lives in a standalone repo (set via `app_repo`) and is cloned at i
 - 1 EC2 instance (t3.micro) running Gunicorn + Flask app service + Teleport app and SSH agents
 - Shared VPC/subnet/security group
 - Dynamic Teleport app registration (`demo-panel-<env>`)
+- Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 ---
 
@@ -32,7 +33,6 @@ eval $(tctl terraform env)
 
 export TF_VAR_user=you@company.com
 export TF_VAR_proxy_address=myorg.teleport.sh
-export TF_VAR_teleport_version=18.6.4
 export TF_VAR_env=dev
 export TF_VAR_team=platform
 export TF_VAR_region=us-east-2
@@ -84,7 +84,6 @@ terraform destroy
 |---|---|---|
 | `user` | Your email — used for tagging | **required** |
 | `proxy_address` | Teleport proxy hostname | **required** |
-| `teleport_version` | Teleport version to install | **required** |
 | `app_repo` | Git URL for the Flask demo panel app | `"https://github.com/tenaciousdlg/app-demo-panel"` |
 | `env` | Environment label | **required** |
 | `team` | Team label | `"platform"` |

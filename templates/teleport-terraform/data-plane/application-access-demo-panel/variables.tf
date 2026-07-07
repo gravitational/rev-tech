@@ -18,11 +18,6 @@ variable "proxy_address" {
   type        = string
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install"
-  type        = string
-}
-
 variable "app_repo" {
   description = "Git URL for the demo panel Flask app"
   type        = string

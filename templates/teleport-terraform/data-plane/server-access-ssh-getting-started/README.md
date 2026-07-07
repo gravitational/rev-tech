@@ -14,6 +14,7 @@ This template deploys a minimal AWS environment with Teleport registered SSH nod
 - AWS networking baseline (VPC, subnets, security group; optional NAT gateway via `create_nat_gateway`)
 - Multi-node deployments via `agent_count` (e.g. 3 SSH nodes)
 - Each EC2 instance also runs **nginx** as a “something is running” service
+- Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 ---
 
@@ -67,7 +68,6 @@ eval $(tctl terraform env)
 ```bash
 export TF_VAR_user="user@example.com"
 export TF_VAR_proxy_address="your-proxy.teleport.sh"
-export TF_VAR_teleport_version="18.6.4"
 export TF_VAR_env="dev"
 export TF_VAR_team="platform"
 export TF_VAR_region="us-east-2"
@@ -127,7 +127,6 @@ tsh ssh ec2-user@dev-ssh-0
 | ------------------ | ------------------------------------------------------------- | ------------ |
 | `user`             | Used for tagging & node name prefix                           | **required** |
 | `proxy_address`    | Teleport proxy hostname (no scheme, no port)                  | **required** |
-| `teleport_version` | Teleport version to install on the nodes                      | **required** |
 | `env`              | Label determining access env (`dev`, `stage`, `prod`)        | `"dev"`      |
 | `team`             | Label determining team ownership (`platform`, `sre`, `app`)   | `"platform"` |
 | `agent_count`      | Number of SSH nodes to deploy                                 | `3`          |

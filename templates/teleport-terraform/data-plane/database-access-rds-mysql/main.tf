@@ -61,7 +61,6 @@ module "rds_mysql" {
   team                 = var.team
   user                 = var.user
   proxy_address        = var.proxy_address
-  teleport_version     = var.teleport_version
   region               = var.region
   vpc_id               = module.network.vpc_id
   db_subnet_group_name = module.network.db_subnet_group_name

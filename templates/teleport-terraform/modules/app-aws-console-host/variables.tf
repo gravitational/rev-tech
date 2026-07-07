@@ -8,11 +8,6 @@ variable "proxy_address" {
   type        = string
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install"
-  type        = string
-}
-
 variable "ami_id" {
   description = "AMI ID for Amazon Linux 2023"
   type        = string

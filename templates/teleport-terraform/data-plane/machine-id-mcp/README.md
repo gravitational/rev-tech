@@ -14,6 +14,7 @@ Follows the official [MCP stdio enrollment guide](https://goteleport.com/docs/en
 - MCP app registered as `mcp-filesystem-<env>` with `env` + `team` labels
 - Machine ID bot and role scoped to MCP access (`mcp.tools = ["*"]`) and matching labels
 - Shared VPC/subnet/security group baseline
+- Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 ---
 
@@ -25,7 +26,6 @@ eval $(tctl terraform env)
 
 export TF_VAR_user=you@company.com
 export TF_VAR_proxy_address=myorg.teleport.sh
-export TF_VAR_teleport_version=18.6.4
 export TF_VAR_env=dev
 export TF_VAR_team=platform
 export TF_VAR_region=us-east-2
@@ -74,7 +74,6 @@ terraform destroy
 |---|---|---|
 | `user` | Your email — used for tagging | **required** |
 | `proxy_address` | Teleport proxy hostname | **required** |
-| `teleport_version` | Teleport version to install | **required** |
 | `env` | Environment label | **required** |
 | `team` | Team label | `"platform"` |
 | `region` | AWS region | **required** |

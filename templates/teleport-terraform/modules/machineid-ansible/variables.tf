@@ -13,11 +13,6 @@ variable "proxy_address" {
   type        = string
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install (e.g., 17.3.3)"
-  type        = string
-}
-
 variable "subnet_id" {
   description = "Subnet ID to launch the instance in"
   type        = string

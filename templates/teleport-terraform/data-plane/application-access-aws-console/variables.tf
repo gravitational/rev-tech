@@ -13,11 +13,6 @@ variable "proxy_address" {
   type        = string
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install on the app host"
-  type        = string
-}
-
 variable "instance_type" {
   description = "EC2 instance type for shared app service host"
   type        = string

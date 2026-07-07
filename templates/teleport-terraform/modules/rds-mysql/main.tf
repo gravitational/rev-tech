@@ -193,15 +193,14 @@ resource "aws_instance" "agent" {
   iam_instance_profile   = aws_iam_instance_profile.ec2_rds_profile.name
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    token            = teleport_provision_token.db.metadata.name
-    proxy_address    = var.proxy_address
-    teleport_version = var.teleport_version
-    rds_endpoint     = aws_db_instance.mysql.endpoint
-    rds_instance_id  = aws_db_instance.mysql.identifier
-    rds_password     = random_password.db_password.result
-    region           = var.region
-    env              = var.env
-    team             = var.team
+    token           = teleport_provision_token.db.metadata.name
+    proxy_address   = var.proxy_address
+    rds_endpoint    = aws_db_instance.mysql.endpoint
+    rds_instance_id = aws_db_instance.mysql.identifier
+    rds_password    = random_password.db_password.result
+    region          = var.region
+    env             = var.env
+    team            = var.team
   })
 
   metadata_options {

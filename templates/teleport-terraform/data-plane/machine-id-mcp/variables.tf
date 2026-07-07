@@ -18,11 +18,6 @@ variable "proxy_address" {
   type        = string
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install"
-  type        = string
-}
-
 variable "team" {
   description = "Team label for MCP server"
   type        = string

@@ -49,7 +49,6 @@ module "machineid_ansible" {
   user               = var.user
   team               = var.team
   proxy_address      = var.proxy_address
-  teleport_version   = var.teleport_version
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
 

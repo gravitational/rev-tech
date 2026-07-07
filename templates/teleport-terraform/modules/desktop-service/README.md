@@ -17,7 +17,6 @@ module "linux_desktop_service" {
   env              = "dev"
   user             = "engineer@company.com"
   proxy_address    = "teleport.company.com"
-  teleport_version = "18.6.4"
   
   ami_id               = data.aws_ami.linux.id
   instance_type        = "t3.small"
@@ -130,7 +129,6 @@ tsh play <session-id>
 | `env` | Environment tag | `string` | - |
 | `user` | Creator tag | `string` | - |
 | `proxy_address` | Teleport proxy address | `string` | - |
-| `teleport_version` | Teleport version to install | `string` | - |
 | `windows_hosts` | List of Windows desktop hosts | `list(object)` | - |
 | `ami_id` | AMI ID for instance | `string` | - |
 | `instance_type` | EC2 instance type | `string` | `"t3.medium"` |

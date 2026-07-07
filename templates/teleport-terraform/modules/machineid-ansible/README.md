@@ -17,7 +17,6 @@ module "machineid_ansible" {
   env              = "dev"
   user             = "engineer@company.com"
   proxy_address    = "teleport.company.com"
-  teleport_version = "18.6.4"
   
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -139,7 +138,6 @@ sudo systemctl status tbot
 | `env` | Environment tag | `string` | - |
 | `user` | Creator tag | `string` | - |
 | `proxy_address` | Teleport proxy address | `string` | - |
-| `teleport_version` | Teleport version to install | `string` | - |
 | `subnet_id` | Subnet for instance | `string` | - |
 | `security_group_ids` | Security group IDs | `list(string)` | - |
 | `team` | Team label | `string` | `"platform"` |

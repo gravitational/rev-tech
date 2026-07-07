@@ -18,7 +18,6 @@ module "demo_panel" {
   team             = var.team
   user             = var.user
   proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
   app_repo         = var.app_repo          # Git URL for the Flask app
   ami_id           = data.aws_ami.linux.id
   instance_type    = "t3.micro"
@@ -50,7 +49,6 @@ module "demo_panel_registration" {
 | `env` | Environment label (e.g., `dev`, `prod`) | **required** |
 | `user` | Tag value for resource creator | **required** |
 | `proxy_address` | Teleport proxy hostname (no `https://`) | **required** |
-| `teleport_version` | Teleport version to install | **required** |
 | `app_repo` | Git URL for the Flask app (e.g., `https://github.com/org/app-demo-panel`) | **required** |
 | `ami_id` | AMI ID for Amazon Linux 2023 | **required** |
 | `instance_type` | EC2 instance type | **required** |

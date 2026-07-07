@@ -4,7 +4,6 @@ output "connection_guide" {
     ──────────────────────────────────────────────────────
     Profile: Dev Demo — Developer Day in the Life
     Cluster: ${var.proxy_address}  |  env=${var.env}  |  team=${var.team}
-    Teleport: ${var.teleport_version}
     ──────────────────────────────────────────────────────
 
     1. Login:

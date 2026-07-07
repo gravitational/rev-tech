@@ -14,6 +14,7 @@ It follows the official [Auto User Provisioning for MySQL guide](https://gotelep
 - **TLS enforcement** - all connections require secure transport
 - **IAM-based authentication** - uses AWS IAM for database access
 - **Label-based access** - database registered with `env` + `team` labels
+- Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 ---
 
@@ -24,7 +25,6 @@ It follows the official [Auto User Provisioning for MySQL guide](https://gotelep
 ```bash
 export TF_VAR_user="engineer@company.com"
 export TF_VAR_proxy_address="teleport.company.com"
-export TF_VAR_teleport_version="18.6.4"
 export TF_VAR_region="us-east-2"
 export TF_VAR_env="dev"
 export TF_VAR_team="platform"

@@ -13,11 +13,6 @@ variable "proxy_address" {
   type        = string
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install (e.g., 17.4.8)"
-  type        = string
-}
-
 variable "windows_hosts" {
   description = "List of Windows desktops to register with"
   type = list(object({

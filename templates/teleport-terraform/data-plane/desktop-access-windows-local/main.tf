@@ -9,6 +9,10 @@ terraform {
       source  = "terraform.releases.teleport.dev/gravitational/teleport"
       version = "~> 18.0"
     }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -67,6 +71,12 @@ data "aws_ami" "windows_server" {
   }
 }
 
+# The Windows auth-setup binary version must match the cluster; ask the proxy
+# which version it is running rather than pinning one by hand.
+data "http" "teleport_ping" {
+  url = "https://${var.proxy_address}/webapi/ping"
+}
+
 module "network" {
   source             = "../../modules/network"
   name_prefix        = "${local.user_prefix}-${var.env}"
@@ -84,7 +94,7 @@ module "windows_instance" {
   env              = var.env
   user             = var.user
   proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
+  teleport_version = jsondecode(data.http.teleport_ping.response_body).server_version
 
   ami_id        = data.aws_ami.windows_server.id
   instance_type = "t3.medium"
@@ -98,11 +108,10 @@ module "windows_instance" {
 module "linux_desktop_service" {
   source = "../../modules/desktop-service"
 
-  env              = var.env
-  user             = var.user
-  team             = var.team
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
+  env           = var.env
+  user          = var.user
+  team          = var.team
+  proxy_address = var.proxy_address
 
   ami_id        = data.aws_ami.linux.id
   instance_type = "t3.small"

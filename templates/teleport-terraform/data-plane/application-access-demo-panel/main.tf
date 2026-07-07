@@ -60,7 +60,6 @@ module "demo_panel" {
   user               = var.user
   team               = var.team
   proxy_address      = var.proxy_address
-  teleport_version   = var.teleport_version
   app_repo           = var.app_repo
   ami_id             = data.aws_ami.linux.id
   instance_type      = "t3.micro"

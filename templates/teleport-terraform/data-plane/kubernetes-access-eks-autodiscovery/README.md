@@ -13,6 +13,7 @@ Deploys a Teleport agent that automatically discovers and enrolls EKS clusters t
 - Shared VPC/subnet/security group
 
 **Does not** create EKS clusters — point it at clusters you already have.
+- Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 ---
 
@@ -38,7 +39,6 @@ eval $(tctl terraform env)
 
 export TF_VAR_user=you@company.com
 export TF_VAR_proxy_address=myorg.teleport.sh
-export TF_VAR_teleport_version=18.6.4
 export TF_VAR_env=dev
 export TF_VAR_team=platform
 export TF_VAR_region=us-east-2      # must match where your EKS clusters live
@@ -116,7 +116,6 @@ The agent's EKS access entries are removed on destroy. The EKS clusters themselv
 |---|---|---|
 | `proxy_address` | Teleport proxy hostname | **required** |
 | `user` | Your email — used for tagging | **required** |
-| `teleport_version` | Teleport version | **required** |
 | `env` | Environment label | `"dev"` |
 | `team` | Team label | `"platform"` |
 | `region` | AWS region (must match EKS clusters) | `"us-east-2"` |

@@ -81,13 +81,12 @@ resource "aws_instance" "ansible_host" {
   vpc_security_group_ids = var.security_group_ids
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    env              = var.env
-    team             = var.team
-    proxy_address    = var.proxy_address
-    teleport_version = var.teleport_version
-    bot_token        = module.machineid_bot.bot_token
-    bot_private_key  = tls_private_key.bound_keypair.private_key_openssh
-    node_token       = teleport_provision_token.main.metadata.name
+    env             = var.env
+    team            = var.team
+    proxy_address   = var.proxy_address
+    bot_token       = module.machineid_bot.bot_token
+    bot_private_key = tls_private_key.bound_keypair.private_key_openssh
+    node_token      = teleport_provision_token.main.metadata.name
   })
 
   metadata_options {

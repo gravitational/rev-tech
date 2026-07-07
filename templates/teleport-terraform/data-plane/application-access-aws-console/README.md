@@ -12,6 +12,7 @@ Deploys a Teleport host running `app_service` + `ssh_service` that federates acc
 - Teleport App Service hosting one or two AWS Console apps
 - Optional IAM target roles (TeleportReadOnlyAccess, TeleportEC2Access, TeleportAdminAccess)
 - Shared VPC/subnet/security group
+- Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 ---
 
@@ -33,7 +34,6 @@ eval $(tctl terraform env)
 
 export TF_VAR_user=you@company.com
 export TF_VAR_proxy_address=myorg.teleport.sh
-export TF_VAR_teleport_version=18.6.4
 export TF_VAR_region=us-east-2
 export TF_VAR_env=dev
 export TF_VAR_team=platform
@@ -161,7 +161,6 @@ terraform destroy
 |---|---|---|
 | `user` | Your email — used for tagging | **required** |
 | `proxy_address` | Teleport proxy hostname | **required** |
-| `teleport_version` | Teleport version | **required** |
 | `app_a_aws_account_id` | 12-digit AWS account ID for same-account Console access | **required** |
 | `region` | AWS region | `"us-east-2"` |
 | `env` | Environment label for app registration | `"dev"` |

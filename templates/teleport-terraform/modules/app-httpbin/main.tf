@@ -46,13 +46,12 @@ resource "aws_instance" "httpbin" {
   associate_public_ip_address = null
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    name             = "${var.env}-httpbin"
-    token            = teleport_provision_token.httpbin.metadata.name
-    proxy_address    = var.proxy_address
-    teleport_version = var.teleport_version
-    env              = var.env
-    user             = local.user
-    team             = var.team
+    name          = "${var.env}-httpbin"
+    token         = teleport_provision_token.httpbin.metadata.name
+    proxy_address = var.proxy_address
+    env           = var.env
+    user          = local.user
+    team          = var.team
   })
 
   metadata_options {

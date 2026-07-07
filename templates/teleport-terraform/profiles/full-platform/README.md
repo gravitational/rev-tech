@@ -36,7 +36,6 @@ eval $(tctl terraform env)
 
 export TF_VAR_proxy_address=myorg.teleport.sh
 export TF_VAR_user=you@company.com
-export TF_VAR_teleport_version=18.7.1
 
 # Optional — demo panel defaults to https://github.com/tenaciousdlg/app-demo-panel
 # export TF_VAR_demo_panel_app_repo=https://github.com/your-org/app-demo-panel
@@ -50,6 +49,8 @@ cd profiles/full-platform
 terraform init
 terraform apply
 ```
+
+Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 Allow 5–8 minutes for all instances to boot and register.
 
@@ -153,7 +154,6 @@ terraform destroy
 |---|---|---|
 | `proxy_address` | Teleport proxy hostname | **required** |
 | `user` | Your email — used for tagging and resource naming | **required** |
-| `teleport_version` | Teleport version to install on all nodes | **required** |
 | `demo_panel_app_repo` | Git URL for the Flask demo panel app | `https://github.com/tenaciousdlg/app-demo-panel` |
 | `env` | Environment label | `"dev"` |
 | `team` | Team label | `"platform"` |

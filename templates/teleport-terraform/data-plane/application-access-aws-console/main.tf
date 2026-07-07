@@ -142,7 +142,6 @@ module "aws_console_host" {
 
   user               = var.user
   proxy_address      = var.proxy_address
-  teleport_version   = var.teleport_version
   ami_id             = data.aws_ami.linux.id
   instance_type      = var.instance_type
   subnet_id          = module.network.subnet_id

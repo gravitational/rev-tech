@@ -21,11 +21,6 @@ variable "proxy_address" {
   type        = string
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install on the nodes"
-  type        = string
-}
-
 variable "region" {
   description = "AWS region to deploy resources in"
   type        = string

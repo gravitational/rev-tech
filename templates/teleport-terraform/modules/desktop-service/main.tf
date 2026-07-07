@@ -50,7 +50,6 @@ resource "aws_instance" "desktop_service" {
     windows_internal_dns = var.windows_internal_dns
     token                = teleport_provision_token.desktop_service.metadata.name,
     proxy_address        = var.proxy_address,
-    teleport_version     = var.teleport_version,
     env                  = var.env,
     team                 = var.team,
     windows_hosts        = jsonencode(var.windows_hosts)

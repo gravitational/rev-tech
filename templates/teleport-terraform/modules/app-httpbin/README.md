@@ -13,7 +13,6 @@ module "httpbin" {
   proxy_address = "teleport.example.com"
   team          = "platform"
 
-  teleport_version   = "18.0.0"
   ami_id             = data.aws_ami.linux.id
   instance_type      = "t3.micro"
   subnet_id          = module.network.subnet_id
@@ -32,7 +31,6 @@ module "httpbin" {
 | `security_group_ids` | Security groups to attach to the instance. | `list(string)` | n/a |
 | `subnet_id` | Subnet where the instance runs. | `string` | n/a |
 | `team` | Team label applied to Teleport and AWS tags. | `string` | `"platform"` |
-| `teleport_version` | Teleport version to install. | `string` | n/a |
 | `user` | Creator email; used for naming and token scoping. | `string` | n/a |
 | `tags` | Extra AWS tags merged into the instance. | `map(string)` | `{}` |
 

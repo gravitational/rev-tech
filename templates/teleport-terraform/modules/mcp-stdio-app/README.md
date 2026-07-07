@@ -11,7 +11,6 @@ module "mcp_stdio_app" {
   env              = "dev"
   user             = "engineer@example.com"
   proxy_address    = "teleport.example.com"
-  teleport_version = "18.6.4"
 
   ami_id             = data.aws_ami.linux.id
   instance_type      = "t3.small"

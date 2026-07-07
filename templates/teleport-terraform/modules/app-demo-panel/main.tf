@@ -43,13 +43,12 @@ resource "aws_instance" "demo_panel" {
   associate_public_ip_address = null
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    name             = "${var.env}-demo-panel"
-    token            = teleport_provision_token.demo_panel.metadata.name
-    proxy_address    = var.proxy_address
-    teleport_version = var.teleport_version
-    app_repo         = var.app_repo
-    env              = var.env
-    team             = var.team
+    name          = "${var.env}-demo-panel"
+    token         = teleport_provision_token.demo_panel.metadata.name
+    proxy_address = var.proxy_address
+    app_repo      = var.app_repo
+    env           = var.env
+    team          = var.team
   })
 
   metadata_options {

@@ -8,11 +8,6 @@ variable "user" {
   type        = string
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install on all nodes"
-  type        = string
-}
-
 variable "env" {
   description = "Environment label for dev resources (e.g., dev)"
   type        = string

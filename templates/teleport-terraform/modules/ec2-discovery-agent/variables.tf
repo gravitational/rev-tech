@@ -18,11 +18,6 @@ variable "proxy_address" {
   type        = string
 }
 
-variable "teleport_version" {
-  description = "Teleport version to install on the agent"
-  type        = string
-}
-
 variable "region" {
   description = "AWS region to scan for EC2 instances"
   type        = string

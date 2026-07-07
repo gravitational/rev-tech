@@ -15,7 +15,6 @@
 # Deploy:
 #   export TF_VAR_proxy_address=myorg.teleport.sh
 #   export TF_VAR_user=you@company.com
-#   export TF_VAR_teleport_version=18.0.0
 #   terraform init && terraform apply
 #
 # NOTE: This profile creates significant AWS resources (~$5-10/day).
@@ -142,21 +141,26 @@ data "http" "teleport_db_ca" {
   url = "https://${var.proxy_address}/webapi/auth/export?type=db-client"
 }
 
+# The Windows auth-setup binary version must match the cluster; ask the proxy
+# which version it is running rather than pinning one by hand.
+data "http" "teleport_ping" {
+  url = "https://${var.proxy_address}/webapi/ping"
+}
+
 # ---------------------------------------------------------------------------
 # Server Access: SSH nodes.
 # ---------------------------------------------------------------------------
 module "ssh_nodes" {
   source = "../../modules/ssh-node"
 
-  env              = var.env
-  team             = var.team
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  tags             = local.resource_tags
-  agent_count      = 2
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.micro"
+  env           = var.env
+  team          = var.team
+  user          = var.user
+  proxy_address = var.proxy_address
+  tags          = local.resource_tags
+  agent_count   = 2
+  ami_id        = data.aws_ami.linux.id
+  instance_type = "t3.micro"
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -168,15 +172,14 @@ module "ssh_nodes" {
 module "postgres" {
   source = "../../modules/self-database"
 
-  db_type          = "postgres"
-  env              = var.env
-  team             = var.team
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  teleport_db_ca   = data.http.teleport_db_ca.response_body
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.small"
+  db_type        = "postgres"
+  env            = var.env
+  team           = var.team
+  user           = var.user
+  proxy_address  = var.proxy_address
+  teleport_db_ca = data.http.teleport_db_ca.response_body
+  ami_id         = data.aws_ami.linux.id
+  instance_type  = "t3.small"
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -199,15 +202,14 @@ module "postgres_registration" {
 module "mongodb" {
   source = "../../modules/self-database"
 
-  db_type          = "mongodb"
-  env              = var.env
-  team             = var.team
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  teleport_db_ca   = data.http.teleport_db_ca.response_body
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.small"
+  db_type        = "mongodb"
+  env            = var.env
+  team           = var.team
+  user           = var.user
+  proxy_address  = var.proxy_address
+  teleport_db_ca = data.http.teleport_db_ca.response_body
+  ami_id         = data.aws_ami.linux.id
+  instance_type  = "t3.small"
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -234,7 +236,6 @@ module "rds_mysql" {
   team                 = var.team
   user                 = var.user
   proxy_address        = var.proxy_address
-  teleport_version     = var.teleport_version
   region               = var.region
   ami_id               = data.aws_ami.linux.id
   vpc_id               = module.network.vpc_id
@@ -249,14 +250,13 @@ module "rds_mysql" {
 module "grafana" {
   source = "../../modules/app-grafana"
 
-  env              = var.env
-  team             = var.team
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.small"
-  tags             = local.resource_tags
+  env           = var.env
+  team          = var.team
+  user          = var.user
+  proxy_address = var.proxy_address
+  ami_id        = data.aws_ami.linux.id
+  instance_type = "t3.small"
+  tags          = local.resource_tags
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -277,14 +277,13 @@ module "grafana_registration" {
 module "httpbin" {
   source = "../../modules/app-httpbin"
 
-  env              = var.env
-  team             = var.team
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.micro"
-  tags             = local.resource_tags
+  env           = var.env
+  team          = var.team
+  user          = var.user
+  proxy_address = var.proxy_address
+  ami_id        = data.aws_ami.linux.id
+  instance_type = "t3.micro"
+  tags          = local.resource_tags
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -305,15 +304,14 @@ module "httpbin_registration" {
 module "demo_panel" {
   source = "../../modules/app-demo-panel"
 
-  env              = var.env
-  team             = var.team
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  app_repo         = var.demo_panel_app_repo
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.micro"
-  tags             = local.resource_tags
+  env           = var.env
+  team          = var.team
+  user          = var.user
+  proxy_address = var.proxy_address
+  app_repo      = var.demo_panel_app_repo
+  ami_id        = data.aws_ami.linux.id
+  instance_type = "t3.micro"
+  tags          = local.resource_tags
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -338,7 +336,6 @@ module "aws_console_host" {
 
   user                 = var.user
   proxy_address        = var.proxy_address
-  teleport_version     = var.teleport_version
   ami_id               = data.aws_ami.linux.id
   instance_type        = "t3.micro"
   tags                 = local.resource_tags
@@ -365,7 +362,7 @@ module "windows_instance" {
   env              = var.env
   user             = var.user
   proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
+  teleport_version = jsondecode(data.http.teleport_ping.response_body).server_version
   ami_id           = data.aws_ami.windows_server.id
   instance_type    = "t3.medium"
 
@@ -376,13 +373,12 @@ module "windows_instance" {
 module "desktop_service" {
   source = "../../modules/desktop-service"
 
-  env              = var.env
-  team             = var.team
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.small"
+  env           = var.env
+  team          = var.team
+  user          = var.user
+  proxy_address = var.proxy_address
+  ami_id        = data.aws_ami.linux.id
+  instance_type = "t3.small"
 
   subnet_id            = module.network.subnet_id
   security_group_ids   = [module.network.security_group_id]
@@ -407,16 +403,15 @@ resource "random_string" "bot_suffix" {
 module "mcp_app" {
   source = "../../modules/mcp-stdio-app"
 
-  env              = var.env
-  team             = var.team
-  user             = var.user
-  proxy_address    = var.proxy_address
-  teleport_version = var.teleport_version
-  ami_id           = data.aws_ami.linux.id
-  instance_type    = "t3.small"
-  app_name         = "mcp-filesystem"
-  app_description  = "MCP filesystem demo server"
-  tags             = local.resource_tags
+  env             = var.env
+  team            = var.team
+  user            = var.user
+  proxy_address   = var.proxy_address
+  ami_id          = data.aws_ami.linux.id
+  instance_type   = "t3.small"
+  app_name        = "mcp-filesystem"
+  app_description = "MCP filesystem demo server"
+  tags            = local.resource_tags
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]

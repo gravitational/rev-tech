@@ -14,6 +14,7 @@ Mirrors the official [Configure access for local Windows users](https://gotelepo
 - 1 Linux Desktop Service instance (t3.small) — Teleport `windows_desktop_service`
 - Teleport desktop registration with `env`/`team` labels
 - Shared VPC/subnet/security group
+- Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 ---
 
@@ -25,7 +26,6 @@ eval $(tctl terraform env)
 
 export TF_VAR_user=you@company.com
 export TF_VAR_proxy_address=myorg.teleport.sh
-export TF_VAR_teleport_version=18.6.4
 export TF_VAR_env=dev
 export TF_VAR_team=platform
 export TF_VAR_region=us-east-2
@@ -93,7 +93,6 @@ terraform destroy
 |---|---|---|
 | `user` | Your email — used for tagging and resource naming | **required** |
 | `proxy_address` | Teleport proxy hostname | **required** |
-| `teleport_version` | Teleport version for the Desktop Service | **required** |
 | `env` | Environment label | `"dev"` |
 | `team` | Team label | `"platform"` |
 | `region` | AWS region | `"us-east-2"` |

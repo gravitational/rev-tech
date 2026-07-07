@@ -60,7 +60,6 @@ module "httpbin_app" {
   user               = var.user
   team               = var.team
   proxy_address      = var.proxy_address
-  teleport_version   = var.teleport_version
   ami_id             = data.aws_ami.linux.id
   instance_type      = "t3.micro"
   subnet_id          = module.network.subnet_id
