@@ -17,64 +17,11 @@ eval $(tctl terraform env)              # exports TELEPORT_* env vars for the pr
 
 ---
 
-## One-Time Setup: Okta SCIM Integration
+## Okta SCIM Integration and Slack Plugin (moved)
 
-Required for the `3-rbac` access lists to work. Teleport access lists use SCIM group membership from Okta to drive role assignment.
+The Okta SCIM setup (API integration + Push Groups) and the Slack plugin bot invite applied only to the EKS control plane, which is no longer part of this repo — the eks control plane (Slack plugin, SCIM, Access Graph) now lives in github.com/tenaciousdlg/teleport-terraform. See that repo's runbook for those steps.
 
-### Step 1 — Generate SCIM credentials from Teleport
-
-Run this inside the Teleport auth pod (EKS) or directly on the auth node (standalone):
-
-```bash
-# EKS
-kubectl exec -n teleport-cluster \
-  $(kubectl get pod -n teleport-cluster -l app.kubernetes.io/component=auth -o jsonpath='{.items[0].metadata.name}') \
-  -- tctl plugins install scim --connector=okta-integrator
-```
-
-The output includes four values you will need in the next step:
-- **Base URL** (e.g., `https://presales.teleportdemo.com/v1/webapi/scim/okta-integrator`)
-- **Token URL**
-- **Client ID**
-- **Client Secret**
-
-Save these — Teleport will not show the client secret again.
-
-### Step 2 — Configure API Integration in Okta UI
-
-1. Okta Admin → Applications → Teleport app → Provisioning tab
-2. Click **Configure API Integration**
-3. Select **OAuth 2.0** (not Bearer token)
-4. Enter Base URL, Token URL, Client ID, Client Secret from step 1
-5. Click **Test API Credentials** → should show a green success indicator
-6. Click **Save**
-
-### Step 3 — Configure Push Groups
-
-Push Groups must be added manually — the Okta Terraform provider does not support this resource.
-
-1. Okta Admin → Applications → Teleport app → Push Groups tab
-2. Add each of the following groups:
-   - `devs`
-   - `senior-devs`
-   - `engineers`
-3. Click **Save**
-
-> The Okta built-in "Everyone" group cannot be pushed via SCIM and is not needed here — access list `everyone` in `3-rbac` uses `type: scim` but relies on any authenticated user.
-
----
-
-## One-Time Setup: Slack Plugin Bot Invite
-
-Required after deploying `4-plugins` (EKS control plane only).
-
-After `helm upgrade --install` (or `terraform apply` for the plugin layer) succeeds:
-
-1. Open the Slack channel designated for access request notifications
-2. Type `/invite @<bot-name>` (the bot name is set in the Helm values for `4-plugins`)
-3. Confirm the bot appears as a member of the channel
-
-Access request notifications will not route until the bot is in the channel.
+The `control-plane/cloud` and `control-plane/standalone` `3-rbac` layers use static, Terraform-managed access-list membership (set in `terraform.tfvars`) — no SCIM setup is required.
 
 ---
 
@@ -119,25 +66,16 @@ Then configure four secrets in the GitHub repo (Settings → Secrets and variabl
 
 After completing setup, verify each integration:
 
-### Teleport + Okta SCIM
+### Access Lists (cloud / standalone `3-rbac`)
 
 ```bash
 tsh login --proxy=<cluster>
-tsh status                                   # confirms auth connector is okta-integrator
-tctl get access_list                         # lists access lists; members should reflect Okta groups
-```
-
-### Slack Plugin
-
-Submit a test access request and confirm a notification appears in the channel:
-
-```bash
-tsh request create --roles=prod-readonly-access --reason="runbook test"
+tctl get access_list                         # members should reflect the tfvars membership lists
 ```
 
 ### GitHub Actions
 
-Actions → **Deploy Teleport Demo** → Run workflow → pick `server-access-ssh-getting-started`, env `dev`.
+Actions → **Deploy Teleport Demo** → Run workflow → pick profile `dev-demo`, env `dev`. Profiles are preset tfvars files under `profiles/presets/` applied to the single Terraform root at `profiles/`.
 
 Then verify:
 ```bash

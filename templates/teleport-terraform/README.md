@@ -8,20 +8,18 @@ Terraform templates and reusable modules for demonstrating Teleport features on 
 
 ```
 templates/teleport-terraform/
-├── control-plane/    # control plane blueprints (EKS, roles, SSO, plugins)
-├── data-plane/       # individual use case demos (one Teleport feature per template)
-├── profiles/         # multi-use-case compositions for prospect archetypes
+├── profiles/         # THE deployment surface — one composable root + presets per demo
+├── data-plane/       # special-case templates a preset can't express (discovery, AWS console IAM)
+├── control-plane/    # cluster blueprints (Teleport Cloud config, standalone self-hosted)
 ├── modules/          # shared building blocks (networking, nodes, databases, apps, desktop)
 └── tools/            # validation, smoke tests, and OPA policy checks
 ```
 
-**data-plane vs. profiles:**
-- **data-plane** — demo a single Teleport feature. Each template creates its own VPC.
-- **profiles** — demo multiple features for a specific prospect archetype. All use cases share one VPC, one `terraform apply`, one `terraform destroy`.
+**Start with profiles.** Every demo — single feature or full archetype — is a preset of the one profiles root: shared VPC, one `terraform apply`, one `terraform destroy`, demo RBAC included. The data-plane templates remain only for the flows a flag can't express (auto-discovery workflows, the AWS Console IAM ownership model) plus the SSH getting-started tutorial.
 
 ---
 
-## Quick Start (any template)
+## Quick Start
 
 ```bash
 tsh login --proxy=myorg.teleport.sh
@@ -30,52 +28,38 @@ eval $(tctl terraform env)
 export TF_VAR_proxy_address=myorg.teleport.sh
 export TF_VAR_user=you@company.com
 
-cd data-plane/server-access-ssh-getting-started   # or any template
-terraform init && terraform apply
+cd profiles
+terraform init
+terraform apply -var-file=presets/dev-demo.tfvars   # or any preset — see profiles/README.md
 ```
 
 ---
 
 ## Templates
 
+### Profiles (start here)
+
+One composable root; a preset per demo. Archetypes: `dev-demo` (~$5–7/day), `full-platform` (~$8–12/day), `cloud-native-apps` (~$3–5/day). Single-feature presets: `ssh`, `postgres`, `mysql`, `mongodb`, `cassandra`, `rds-mysql`, `grafana`, `httpbin`, `demo-panel`, `aws-console`, `windows`, `mcp`, `ansible`.
+
+See [profiles/README.md](profiles/README.md) for usage, the preset table, demo RBAC (Bob), and the dev-demo talk track.
+
+### Data Plane (special cases)
+
+| Template | What It Shows | Tested |
+|---|---|---|
+| `server-access-ssh-getting-started` | The tutorial: SSH nodes on Amazon Linux 2023, session recording, dynamic host users | ✅ |
+| `server-access-ec2-autodiscovery` | EC2 auto-discovery via SSM + IAM joining — tag an instance, it enrolls automatically | — |
+| `kubernetes-access-eks-autodiscovery` | EKS auto-discovery agent — tag a cluster, it enrolls automatically | ✅ |
+| `application-access-aws-console` | AWS Console federation with per-role IAM assume — first-deploy IAM ownership model | ✅ |
+
 ### Control Plane
 
 | Template | Description |
 |---|---|
-| `control-plane/eks` | EKS-based Teleport control plane: infra, Teleport, RBAC, Slack plugin, Access Graph (5 layers). |
+| `control-plane/cloud` | Teleport Cloud tenant configuration (Teleport provider only, no infra layer) — the common SE path. |
 | `control-plane/standalone` | Single-node EC2 Teleport cluster — fastest path to a working self-hosted cluster. |
-| `control-plane/proxy-peer` | Self-hosted Teleport cluster with proxy peering. |
-| `control-plane/cloud` | Teleport Cloud tenant configuration (Teleport provider only, no infra layer). |
 
-### Data Plane
-
-| Template | What It Shows | Tested |
-|---|---|---|
-| `server-access-ssh-getting-started` | SSH nodes on Amazon Linux 2023, session recording, dynamic host users | ✅ |
-| `server-access-ec2-autodiscovery` | EC2 auto-discovery via SSM + IAM joining — tag an instance, it enrolls automatically | — |
-| `application-access-grafana` | Grafana behind Teleport app service with JWT identity injection | ✅ |
-| `application-access-httpbin` | HTTPBin for inspecting Teleport-injected headers in real time | ✅ |
-| `application-access-aws-console` | AWS Console federation with per-role IAM assume via EC2 instance profile | ✅ |
-| `application-access-demo-panel` | Flask identity panel — shows the logged-in user's Teleport identity, roles, and traits | ✅ |
-| `database-access-postgres-self-managed` | Self-hosted PostgreSQL with TLS cert auth (no passwords) | ✅ |
-| `database-access-mysql-self-managed` | Self-hosted MySQL with TLS cert auth | ✅ |
-| `database-access-mongodb-self-managed` | Self-hosted MongoDB with TLS cert auth | ✅ |
-| `database-access-cassandra-self-managed` | Self-hosted Cassandra with TLS cert auth | ✅ |
-| `database-access-rds-mysql` | RDS MySQL with IAM authentication and auto user provisioning | ✅ |
-| `desktop-access-windows-local` | Windows Server via browser-based RDP (no AD, local users) | ✅ |
-| `machine-id-ansible` | Machine ID bot + Ansible host — certificate-based automation, no static keys | ✅ |
-| `machine-id-mcp` | MCP stdio server + Machine ID bot — Claude/AI access via Teleport with full audit | ✅ |
-| `kubernetes-access-eks-autodiscovery` | EKS auto-discovery agent — tag a cluster, it enrolls automatically | ✅ |
-
-### Profiles
-
-| Profile | Archetype | Cost | Tested |
-|---|---|---|---|
-| `profiles/dev-demo` | Developer "day in the life" — Bob (dev) + engineer, access requests, session locking | ~$5–7/day | ✅ |
-| `profiles/cloud-native-apps` | Modern cloud shop — Grafana + HTTPBin + RDS MySQL + AWS Console | ~$3–5/day | — |
-| `profiles/full-platform` | All-up POC — every Teleport feature in one deployment | ~$8–12/day | ✅ |
-
-See [profiles/README.md](profiles/README.md) for usage and demo flows.
+The EKS control plane (Slack plugin, SCIM, Access Graph) and the proxy-peer variant now live in [tenaciousdlg/teleport-terraform](https://github.com/tenaciousdlg/teleport-terraform), which runs `presales.teleportdemo.com`.
 
 ---
 

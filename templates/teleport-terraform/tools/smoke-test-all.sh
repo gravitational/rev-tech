@@ -17,11 +17,8 @@ destroy_flag=""
 verify_flag=""
 mode="full"
 templates_arg=""
-ssh_login_arg=""
-verify_timeout_arg=""
-verify_interval_arg=""
 
-quick_templates="server-access-ssh-getting-started,application-access-httpbin,machine-id-ansible"
+quick_templates="server-access-ssh-getting-started"
 
 usage() {
   cat <<'EOF'
@@ -31,10 +28,7 @@ options:
   --quick                 Run a focused smoke set for fast validation.
   --full                  Run all data-plane smoke tests (default).
   --templates=<list>      Comma-separated template names to run.
-                          Example: --templates=machine-id-ansible,application-access-httpbin
-  --ssh-login=<login>     SSH login used for machine-id checks (default: ec2-user).
-  --verify-timeout=<sec>  Max seconds to wait for machine-id node visibility/readiness.
-  --verify-interval=<sec> Seconds between machine-id readiness checks.
+                          Example: --templates=server-access-ssh-getting-started,application-access-aws-console
   --no-destroy            Keep deployed resources for inspection.
   --skip-verify           Skip tsh verification checks.
   -h, --help              Show this help.
@@ -55,15 +49,6 @@ for arg in "$@"; do
       ;;
     --templates=*)
       templates_arg="${arg#*=}"
-      ;;
-    --ssh-login=*)
-      ssh_login_arg="--ssh-login=${arg#*=}"
-      ;;
-    --verify-timeout=*)
-      verify_timeout_arg="--verify-timeout=${arg#*=}"
-      ;;
-    --verify-interval=*)
-      verify_interval_arg="--verify-interval=${arg#*=}"
       ;;
     --no-destroy)
       destroy_flag="--no-destroy"
@@ -122,7 +107,7 @@ while IFS= read -r dir; do
 
   echo ""
   echo "==> ${template}"
-  if "${smoke_script}" "data-plane/${template}" ${destroy_flag} ${verify_flag} ${ssh_login_arg} ${verify_timeout_arg} ${verify_interval_arg}; then
+  if "${smoke_script}" "data-plane/${template}" ${destroy_flag} ${verify_flag}; then
     passed+=("${template}")
   else
     failed+=("${template}")

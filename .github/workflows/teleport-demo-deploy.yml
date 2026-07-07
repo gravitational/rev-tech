@@ -3,12 +3,14 @@
 # Manual one-click demo deployment workflow for Solutions Engineers.
 #
 # USAGE: GitHub → Actions tab → "Deploy Teleport Demo" → "Run workflow"
-# Pick a profile and environment, then click Run. The workflow provisions
-# all use cases in that profile against your Teleport Cloud cluster.
+# Pick a profile and environment, then click Run. The workflow runs the single
+# composable Terraform root at templates/teleport-terraform/profiles/ and
+# selects the deployment with -var-file=presets/<profile>.tfvars.
 #
-# PROFILES:
-#   dev-demo           — SSH, DB, App, K8s, MCP, access requests (recommended starting point)
-#   full-platform      — All of the above + Windows, AWS Console, RDS
+# PROFILES (preset tfvars under templates/teleport-terraform/profiles/presets/):
+#   dev-demo           — SSH (dev+prod), Postgres, MongoDB, Grafana, HTTPBin,
+#                        Windows, MCP, Ansible (recommended starting point)
+#   full-platform      — All-up POC: SSH, DBs, RDS, apps, AWS Console, Windows, MCP
 #   cloud-native-apps  — Grafana + HTTPBin + RDS MySQL + AWS Console
 #
 # REQUIRED SECRETS (Settings → Secrets and variables → Actions):
@@ -83,12 +85,6 @@ on:
           - eu-west-1
           - ap-southeast-1
 
-      teleport_version:
-        description: "Teleport version to install on nodes (e.g., 18.6.4)"
-        required: true
-        default: "18.6.4"
-        type: string
-
       destroy:
         description: "Destroy deployed resources instead of applying"
         required: false
@@ -101,7 +97,6 @@ env:
   TF_VAR_team: ${{ inputs.team_label }}
   TF_VAR_region: ${{ inputs.aws_region }}
   TF_VAR_proxy_address: ${{ secrets.TELEPORT_PROXY }}
-  TF_VAR_teleport_version: ${{ inputs.teleport_version }}
   # user is derived from the GitHub actor who triggered the workflow.
   TF_VAR_user: ${{ github.actor }}@github-actions
   # Optional: S3 bucket for persisting Terraform state across runs.
@@ -151,11 +146,12 @@ jobs:
       - name: Deploy / Destroy profile
         run: |
           profile="${{ inputs.profile }}"
-          workdir="templates/teleport-terraform/profiles/${profile}"
+          workdir="templates/teleport-terraform/profiles"
+          preset="presets/${profile}.tfvars"
           action="${{ inputs.destroy == true && 'destroy' || 'apply' }}"
 
-          if [[ ! -d "${workdir}" ]]; then
-            echo "::error::Profile directory not found: ${workdir}"
+          if [[ ! -f "${workdir}/${preset}" ]]; then
+            echo "::error::Profile preset not found: ${workdir}/${preset}"
             exit 1
           fi
 
@@ -171,7 +167,7 @@ jobs:
           fi
 
           terraform -chdir="${workdir}" init -input=false ${init_args}
-          terraform -chdir="${workdir}" "${action}" -auto-approve -input=false
+          terraform -chdir="${workdir}" "${action}" -auto-approve -input=false -var-file="${preset}"
 
       - name: Summary
         if: always()
@@ -185,7 +181,6 @@ jobs:
           echo "| Environment | \`${{ inputs.env_label }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Team | \`${{ inputs.team_label }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Region | \`${{ inputs.aws_region }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Teleport version | \`${{ inputs.teleport_version }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Triggered by | \`${{ github.actor }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "To verify: \`tsh ls env=${{ inputs.env_label }},team=${{ inputs.team_label }}\`" >> "$GITHUB_STEP_SUMMARY"
