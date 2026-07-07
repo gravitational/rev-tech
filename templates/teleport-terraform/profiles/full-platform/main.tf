@@ -107,6 +107,21 @@ data "aws_ami" "windows_server" {
 data "aws_caller_identity" "current" {}
 
 # ---------------------------------------------------------------------------
+# Demo RBAC — a user-prefixed dev role plus a local demo user with standing
+# access to everything this profile deploys (env/team labels always match).
+# Activate the user after apply: tctl users reset bob (see demo_user_setup).
+# ---------------------------------------------------------------------------
+module "demo_rbac" {
+  count  = var.create_demo_rbac ? 1 : 0
+  source = "../../modules/demo-rbac"
+
+  name_prefix    = local.user_prefix
+  env            = var.env
+  team           = var.team
+  demo_user_name = var.demo_user_name
+}
+
+# ---------------------------------------------------------------------------
 # Shared network with secondary subnet for RDS.
 # ---------------------------------------------------------------------------
 module "network" {

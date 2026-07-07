@@ -66,3 +66,15 @@ variable "cidr_secondary_subnet" {
   type        = string
   default     = "10.0.2.0/24"
 }
+
+variable "create_demo_rbac" {
+  description = "Create a user-prefixed demo role and local demo user matching this profile's labels. Set to false if your cluster already has the control-plane RBAC roles."
+  type        = bool
+  default     = true
+}
+
+variable "demo_user_name" {
+  description = "Name of the local demo user (developer persona). Usernames are cluster-global — override on shared clusters."
+  type        = string
+  default     = "bob"
+}

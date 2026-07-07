@@ -5,9 +5,8 @@
 # walk through a realistic "developer day in the life" narrative with two personas.
 #
 # Demo personas:
-#   Bob  (bob@...)  — devs group  → dev-access, dev-requester
-#   Alex (alex@...)  — engineers   → platform-dev-access, prod-readonly-access,
-#                                    prod-requester, prod-reviewer
+#   Bob  — local user, created by create_demo_rbac → <you>-dev-access, <you>-dev-requester
+#   Alex — played by the SE's own login             → existing roles + <you>-prod-reviewer
 #
 # Demo flow:
 #   1.  Bob logs in — sees only dev-labeled resources (2 SSH nodes, postgres,
@@ -18,8 +17,8 @@
 #   4.  Bob opens Grafana via the web UI — JWT header shows his identity to the app
 #   5.  Bob submits an access request for prod-readonly-access
 #   6.  Alex receives a Slack notification, reviews, approves
-#   7.  Bob now sees `prod-server` in `tsh ls` — nothing else changed in his session
-#   8.  Bob SSHs to prod-server — Alex can see the live session and lock it
+#   7.  Bob now sees `prod-ssh-0` in `tsh ls` — nothing else changed in his session
+#   8.  Bob SSHs to prod-ssh-0 — Alex can see the live session and lock it
 #   9.  Alex walks through the audit log in the UI to show the full trail
 #  10.  Alex demos the Ansible Machine ID bot and MCP AI integration for automation
 #
@@ -135,6 +134,27 @@ data "aws_ami" "windows_server" {
 }
 
 # ---------------------------------------------------------------------------
+# Demo RBAC — the roles and local user the demo narrative depends on.
+# Role names are prefixed with the SE's username so concurrent deployments
+# on a shared cluster don't collide. Disable if your cluster already has
+# the control-plane role set (control-plane/*/3-rbac).
+#
+# After apply, activate the demo user once:
+#   tctl users reset bob        # reset link → set password + MFA
+#   tsh login --user=bob --auth=local
+# ---------------------------------------------------------------------------
+module "demo_rbac" {
+  count  = var.create_demo_rbac ? 1 : 0
+  source = "../../modules/demo-rbac"
+
+  name_prefix    = local.user_prefix
+  env            = var.env
+  prod_env       = var.prod_env
+  team           = var.team
+  demo_user_name = var.demo_user_name
+}
+
+# ---------------------------------------------------------------------------
 # Shared network — one VPC for the whole profile.
 # ---------------------------------------------------------------------------
 module "network" {
@@ -178,10 +198,10 @@ module "ssh_nodes_dev" {
 # Server Access: 1 prod SSH node — Bob cannot see this without approval.
 # Used to demonstrate the full access request → approve → lock flow:
 #   tsh ls                            # Bob sees only dev nodes
-#   tsh request create --roles=prod-readonly-access
-#   (Alex approves in Slack)
-#   tsh ls                            # prod-server appears
-#   tsh ssh ec2-user@prod-server      # session is recorded
+#   tsh request create --roles=<you>-prod-readonly
+#   (Alex approves in Slack or the Web UI)
+#   tsh ls                            # prod-ssh-0 appears
+#   tsh ssh ec2-user@prod-ssh-0       # session is recorded
 #   (Alex locks the session from the Teleport UI)
 # ---------------------------------------------------------------------------
 module "ssh_node_prod" {

@@ -124,6 +124,13 @@ See [profiles/README.md](profiles/README.md) for usage and demo flows.
 | `kube-discovery-agent` | Discovery Service agent that auto-enrolls tagged EKS clusters. |
 | `dynamic-registration` | Teleport resource registration helper — creates `teleport_db` or `teleport_app` resources. |
 
+### RBAC
+
+| Module | Description |
+|---|---|
+| `teleport-rbac` | Canonical 12-role demo set. Deploy-once from the control-plane `3-rbac` layers; static names and labels. |
+| `demo-rbac` | Per-profile demo roles + local demo user. Role names are user-prefixed so concurrent SEs don't collide; labels always match the profile's `env`/`team`. |
+
 Each module has its own README with variables, outputs, and usage examples.
 
 ---

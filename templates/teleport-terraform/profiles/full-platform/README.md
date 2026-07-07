@@ -163,3 +163,7 @@ terraform destroy
 | `cidr_subnet` | Private subnet CIDR | `"10.0.1.0/24"` |
 | `cidr_public_subnet` | Public subnet CIDR (NAT) | `"10.0.0.0/24"` |
 | `cidr_secondary_subnet` | Secondary subnet for RDS | `"10.0.2.0/24"` |
+| `create_demo_rbac` | Create a prefixed demo role + local demo user | `true` |
+| `demo_user_name` | Name of the local demo user | `"bob"` |
+
+With `create_demo_rbac = true` (default), the profile also creates a `<you>-dev-access` role and a local `bob` user with standing access to everything it deploys. Activate bob once after apply — the exact commands are in the `demo_user_setup` output (`tctl users reset bob`, then `tsh login --user=bob --auth=local`).

@@ -28,11 +28,14 @@ Use this for focused POCs or live demos where you walk through a realistic "deve
 
 ## Prerequisites
 
-This profile deploys **infrastructure only** — the demo flow below also needs the demo RBAC and users on your cluster:
+By default (`create_demo_rbac = true`) the profile creates everything the demo flow needs: the roles (prefixed with your username, e.g. `chris-dev-access`), and a local `bob` user. Two one-time steps remain after `terraform apply` — both are printed in the `demo_user_setup` output:
 
-1. **Roles + access lists** — apply [`control-plane/cloud/3-rbac`](../../control-plane/cloud/3-rbac/) first. It creates the roles this flow uses (`dev-access`, `prod-readonly-access`, requesters/reviewers) and the `devs` / `engineers` access lists. Set `devs = ["bob"]` and `engineers = ["<your-username>"]` in its variables.
-2. **Users** — `bob` and your approver identity must exist on the cluster: via your IdP, or locally with `tctl users add bob --logins=ec2-user` (roles are granted through the access lists above).
-3. **Slack approvals (optional)** — step 7 works in the Web UI or `tsh request review` without any plugin; the Slack notification requires the Access Request plugin to be configured on your cluster.
+1. **Activate bob** — `tctl users reset bob` prints a reset link; open it to set a password + MFA. Then `tsh login --user=bob --auth=local` (the `--auth=local` flag matters on SSO-default clusters).
+2. **Grant yourself the reviewer role** — approving bob's request requires `<you>-prod-reviewer`. Local admin: `tctl users update <you> --set-roles=<existing>,<you>-prod-reviewer`. SSO user: add it via your connector mapping or an access list.
+
+Set `create_demo_rbac = false` if your cluster already runs the canonical role set from [`control-plane/cloud/3-rbac`](../../control-plane/cloud/3-rbac/) — the flow then uses those role names (`prod-readonly-access`) instead.
+
+**Slack approvals (optional)** — step 7 works in the Web UI or `tsh request review` without any plugin; the Slack notification requires the Access Request plugin to be configured on your cluster.
 
 ## Deploy
 
@@ -66,18 +69,18 @@ tsh apps ls                         # grafana-dev, httpbin-dev, mcp-filesystem-d
 
 ### Personas
 
-| Persona | Identity | Groups | Access |
+| Persona | Identity | Roles | Access |
 |---|---|---|---|
-| Bob | `bob@...` | devs | Dev-labeled SSH, databases, apps — **no prod** |
-| Alex | `alex@...` | engineers | All dev resources + prod (standing access) + approver |
+| Bob | local user `bob` | `<you>-dev-access`, `<you>-dev-requester` | Dev-labeled SSH, databases, apps — **no prod** |
+| Alex (played by you) | your own login | your roles + `<you>-prod-reviewer` | Everything you already have + approver |
 
 ### Step-by-Step
 
 **1. Bob logs in — sees only dev resources**
 
 ```bash
-tsh login --proxy=myorg.teleport.sh --user=bob
-tsh ls                              # dev-ssh-0, dev-ssh-1 only — no prod-server
+tsh login --proxy=myorg.teleport.sh --user=bob --auth=local
+tsh ls                              # dev-ssh-0, dev-ssh-1 only — no prod-ssh-0
 tsh db ls                           # postgres-dev, mongodb-dev
 tsh apps ls                         # grafana-dev, httpbin-dev
 ```
@@ -121,7 +124,8 @@ Open `https://httpbin-dev.<proxy>/headers` in browser. Look for:
 **6. Bob submits an access request**
 
 ```bash
-tsh request create --roles=prod-readonly-access --reason="need to check prod logs"
+tsh request create --roles=<you>-prod-readonly --reason="need to check prod logs"
+# (role is prod-readonly-access when create_demo_rbac=false)
 # Bob gets a request ID
 ```
 
@@ -136,8 +140,8 @@ tsh request review <request-id> --approve --reason="approved for the session"
 
 ```bash
 # In Bob's terminal (no re-login needed)
-tsh ls                              # prod-server now appears
-tsh ssh ec2-user@prod-server        # Bob is in
+tsh ls                              # prod-ssh-0 now appears
+tsh ssh ec2-user@prod-ssh-0         # Bob is in
 ```
 
 **9. Alex watches the live session — then locks it**
@@ -199,3 +203,5 @@ terraform destroy
 | `cidr_vpc` | VPC CIDR | `"10.0.0.0/16"` |
 | `cidr_subnet` | Private subnet CIDR | `"10.0.1.0/24"` |
 | `cidr_public_subnet` | Public subnet CIDR (NAT) | `"10.0.0.0/24"` |
+| `create_demo_rbac` | Create the prefixed demo roles + local demo user | `true` |
+| `demo_user_name` | Name of the local demo user | `"bob"` |

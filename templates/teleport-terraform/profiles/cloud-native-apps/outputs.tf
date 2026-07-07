@@ -9,6 +9,10 @@ output "connection_guide" {
 
     1. Login:
        tsh login --proxy=${var.proxy_address}:443
+    %{~if var.create_demo_rbac}
+       # as the developer persona (activate first — see the demo_user_setup output):
+       tsh login --proxy=${var.proxy_address}:443 --user=${var.demo_user_name} --auth=local
+    %{~endif}
 
     2. Applications:
        tsh apps ls env=${var.env},team=${var.team}
@@ -31,4 +35,9 @@ output "connection_guide" {
 output "rds_endpoint" {
   description = "RDS MySQL endpoint address"
   value       = module.rds_mysql.rds_endpoint
+}
+
+output "demo_user_setup" {
+  description = "One-time activation steps for the demo user (null when create_demo_rbac is false)"
+  value       = var.create_demo_rbac ? module.demo_rbac[0].demo_user_setup : null
 }
