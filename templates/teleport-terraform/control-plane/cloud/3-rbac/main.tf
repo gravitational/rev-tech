@@ -31,7 +31,8 @@ module "rbac" {
 ##################################################################################
 # ACCESS LISTS — static (Terraform-managed membership)
 #
-# These mirror the SCIM-driven access lists in the EKS control plane.
+# These mirror the SCIM-driven access lists in the eks control plane
+# (now in github.com/tenaciousdlg/teleport-terraform).
 # Populate var.devs / var.senior_devs / var.engineers in terraform.tfvars.
 #
 # The SAML connector's attributes_to_roles handles base-user assignment

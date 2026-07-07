@@ -2,8 +2,9 @@
 # modules/teleport-rbac/main.tf
 #
 # Canonical Teleport RBAC role set for demo environments.
-# Used by control-plane/cloud and control-plane/proxy-peer.
-# (control-plane/eks manages the same roles via TeleportRoleV7 CRDs.)
+# Used by control-plane/cloud and control-plane/standalone.
+# (The eks control plane — now in github.com/tenaciousdlg/teleport-terraform —
+# manages the same roles via TeleportRoleV7 CRDs.)
 #
 # No variables — all role definitions are static. Label values are the
 # canonical demo defaults: dev/dev and prod/platform.

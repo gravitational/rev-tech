@@ -2,7 +2,7 @@
 
 The simplest self-hosted Teleport deployment: a single EC2 instance running all Teleport services (auth, proxy, SSH agent). Good for learning, development environments, and demos where EKS overhead isn't justified.
 
-For proxy peering across multiple proxy nodes, see `control-plane/proxy-peer`.
+For proxy peering across multiple proxy nodes, see the `proxy-peer` control plane in github.com/tenaciousdlg/teleport-terraform.
 
 ## Layout
 
@@ -78,7 +78,7 @@ terraform apply
 - **ACME/Let's Encrypt TLS** — no certificate management needed
 - **auditd** installed and running — Teleport SSH service writes session events to the Linux Audit System automatically
 - **Enhanced session recording** (BPF/eBPF) enabled — captures commands, arguments, and network connections; AL2023 ships kernel 6.x so this always works
-- **SAML + Okta** — connector in 3-rbac, same as proxy-peer
+- **SAML + Okta** — connector in 3-rbac
 - **Static access lists** — `devs`, `senior-devs`, `engineers` with Terraform-managed membership (no SCIM required)
 - **Agent managed updates** — `teleport_autoupdate_config` resource enables automatic rolling updates for all connected agents on a weekday schedule
 
