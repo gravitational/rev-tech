@@ -80,7 +80,7 @@ Access request notifications will not route until the bot is in the channel.
 
 ## One-Time Setup: GitHub Actions CI Bot
 
-Required only if using the GitHub Actions deploy/teardown workflows. See the full setup guide at [`docs/github-actions-setup.md`](../../docs/github-actions-setup.md).
+Required only if using the GitHub Actions deploy/teardown workflows. See the full setup guide at [`docs/github-actions-setup.md`](../../../docs/github-actions-setup.md).
 
 Summary of what must be done manually:
 

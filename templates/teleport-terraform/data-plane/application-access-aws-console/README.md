@@ -67,12 +67,25 @@ export TF_VAR_app_b_aws_account_id=<12-digit-account-b-id>
 export TF_VAR_app_b_external_id=my-external-id
 ```
 
-After apply, attach the trust policy output to each account B role manually:
+After apply, attach a trust policy to each account B role allowing the host role to assume it:
 
 ```bash
-terraform output -raw account_b_trust_policy_json
-# Attach this to the target roles in account B
+terraform output -raw host_iam_role_arn   # use this ARN as the principal below
 ```
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": { "AWS": "<host_iam_role_arn>" },
+    "Action": "sts:AssumeRole",
+    "Condition": { "StringEquals": { "sts:ExternalId": "<app_b_external_id>" } }
+  }]
+}
+```
+
+(Drop the `Condition` block if you did not set `app_b_external_id`.)
 
 ---
 
@@ -80,8 +93,8 @@ terraform output -raw account_b_trust_policy_json
 
 ```bash
 tsh apps ls env=dev,team=platform
-tsh apps login awsconsole-dev
-tsh apps config awsconsole-dev
+tsh apps login awsconsole-a     # or your app_a_name override
+tsh apps config awsconsole-a
 # Open the browser URL from the config output
 ```
 
@@ -118,9 +131,9 @@ terraform apply
 ## Useful Outputs
 
 ```bash
-terraform output -raw account_a_trust_policy_json   # reference trust policy for account A
 terraform output -raw host_iam_role_arn             # EC2 instance profile role ARN
 terraform output managed_account_a_roles            # ARNs of roles created by this stack
+terraform output apps                               # registered Teleport app names
 ```
 
 ---

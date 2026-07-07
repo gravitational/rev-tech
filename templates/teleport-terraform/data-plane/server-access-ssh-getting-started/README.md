@@ -11,7 +11,7 @@ This template deploys a minimal AWS environment with Teleport registered SSH nod
 - Environment-aware labeling for RBAC:
   - `env = dev | stage | prod`
   - `team = platform | sre | app-team`
-- AWS networking baseline (VPC, subnets, NAT gateway, security group)
+- AWS networking baseline (VPC, subnets, security group; optional NAT gateway via `create_nat_gateway`)
 - Multi-node deployments via `agent_count` (e.g. 3 SSH nodes)
 - Each EC2 instance also runs **nginx** as a “something is running” service
 
@@ -67,6 +67,7 @@ eval $(tctl terraform env)
 ```bash
 export TF_VAR_user="user@example.com"
 export TF_VAR_proxy_address="your-proxy.teleport.sh"
+export TF_VAR_teleport_version="18.6.4"
 export TF_VAR_env="dev"
 export TF_VAR_team="platform"
 export TF_VAR_region="us-east-2"
@@ -126,11 +127,13 @@ tsh ssh ec2-user@dev-ssh-0
 | ------------------ | ------------------------------------------------------------- | ------------ |
 | `user`             | Used for tagging & node name prefix                           | **required** |
 | `proxy_address`    | Teleport proxy hostname (no scheme, no port)                  | **required** |
+| `teleport_version` | Teleport version to install on the nodes                      | **required** |
 | `env`              | Label determining access env (`dev`, `stage`, `prod`)        | `"dev"`      |
 | `team`             | Label determining team ownership (`platform`, `sre`, `app`)   | `"platform"` |
 | `agent_count`      | Number of SSH nodes to deploy                                 | `3`          |
 | `instance_type`    | EC2 type                                                      | `t3.micro`   |
 | `region`           | AWS region                                                    | `us-east-2`  |
+| `create_nat_gateway` | Private subnet + NAT gateway egress (adds ~$32/mo)          | `false`      |
 
 ### RBAC Examples
 
@@ -170,7 +173,7 @@ allow:
 - VPC (`10.0.0.0/16`)
 - Public subnet 
 - Private subnet 
-- NAT Gateway
+- NAT gateway — **only if `create_nat_gateway=true`**; by default nodes launch in the public subnet with public IPs for egress (inbound is still blocked by the security group)
 - Route tables
 - Security group
 - EC2 instances running Teleport node service and nginx process

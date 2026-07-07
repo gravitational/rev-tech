@@ -1,8 +1,8 @@
 # Profile: dev-demo — Developer Day in the Life
 
-**Archetype:** Any Alexing org evaluating Teleport for day-to-day developer access.
+**Archetype:** Any engineering org evaluating Teleport for day-to-day developer access.
 
-Use this for focused POCs or live demos where you walk through a realistic "developer day in the life" with two personas — Bob (a developer) and Alex (a platform Alex).
+Use this for focused POCs or live demos where you walk through a realistic "developer day in the life" with two personas — Bob (a developer) and Alex (a platform engineer).
 
 **Cost:** ~$5–7/day. Destroy after the demo.
 
@@ -25,6 +25,14 @@ Use this for focused POCs or live demos where you walk through a realistic "deve
 | NAT Gateway | 1 | — | ~$1.20/day fixed |
 
 ---
+
+## Prerequisites
+
+This profile deploys **infrastructure only** — the demo flow below also needs the demo RBAC and users on your cluster:
+
+1. **Roles + access lists** — apply [`control-plane/cloud/3-rbac`](../../control-plane/cloud/3-rbac/) first. It creates the roles this flow uses (`dev-access`, `prod-readonly-access`, requesters/reviewers) and the `devs` / `engineers` access lists. Set `devs = ["bob"]` and `engineers = ["<your-username>"]` in its variables.
+2. **Users** — `bob` and your approver identity must exist on the cluster: via your IdP, or locally with `tctl users add bob --logins=ec2-user` (roles are granted through the access lists above).
+3. **Slack approvals (optional)** — step 7 works in the Web UI or `tsh request review` without any plugin; the Slack notification requires the Access Request plugin to be configured on your cluster.
 
 ## Deploy
 
@@ -61,7 +69,7 @@ tsh apps ls                         # grafana-dev, httpbin-dev, mcp-filesystem-d
 | Persona | Identity | Groups | Access |
 |---|---|---|---|
 | Bob | `bob@...` | devs | Dev-labeled SSH, databases, apps — **no prod** |
-| Alex | `Alex@...` | Alexs | All dev resources + prod (standing access) + approver |
+| Alex | `alex@...` | engineers | All dev resources + prod (standing access) + approver |
 
 ### Step-by-Step
 
@@ -138,7 +146,7 @@ In the Teleport Web UI: **Activity → Active Sessions** → find Bob's prod ses
 
 ```bash
 # Or lock via CLI
-tsh request lock --user=bob --reason="demo complete"
+tctl lock --user=bob --message="demo complete"
 ```
 
 **10. Ansible Machine ID demo**

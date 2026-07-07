@@ -1,5 +1,5 @@
 variable "region" {
-  description = "AWS region to deploy MySQL in"
+  description = "AWS region to deploy PostgreSQL in"
   type        = string
 }
 
@@ -19,7 +19,7 @@ variable "proxy_address" {
 }
 
 variable "teleport_version" {
-  description = "Teleport version to install on the MySQL host"
+  description = "Teleport version to install on the PostgreSQL host"
   type        = string
 }
 

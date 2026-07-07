@@ -10,7 +10,7 @@ Mirrors the official [Self-Hosted MySQL guide](https://goteleport.com/docs/enrol
 
 ## What It Deploys
 
-- 1 EC2 instance running MySQL (MariaDB) on Ubuntu 22.04
+- 1 EC2 instance running MariaDB on Amazon Linux 2023
 - Custom CA and server TLS certificate for mTLS connectivity
 - Teleport agent with `db_service` and `ssh_service`
 - Dynamic database registration (`mysql-<env>`) with `env` + `team` labels
@@ -43,13 +43,13 @@ Allow 3–5 minutes for the instance to boot, configure MySQL, and register.
 
 ```bash
 tsh db ls env=dev,team=platform        # mysql-dev
-tsh db connect mysql-dev --db-user=alice
+tsh db connect mysql-dev --db-user=writer
 ```
 
 To connect as a different user:
 
 ```bash
-tsh db connect mysql-dev --db-user=bob
+tsh db connect mysql-dev --db-user=reader
 ```
 
 ---
@@ -57,7 +57,7 @@ tsh db connect mysql-dev --db-user=bob
 ## Demo Points
 
 - **No database password** — Teleport issues short-lived X.509 certificates; MySQL validates the Teleport DB CA, not a password
-- **Role-based access** — `alice` and `bob` database users are mapped from Teleport roles using certificate CN matching; the user never sees a credential
+- **Role-based access** — `writer` and `reader` database users are mapped from Teleport roles using certificate CN matching; the user never sees a credential
 - **Session recording** — every query is captured in the Teleport audit log tied to the Teleport username, not a shared DB account
 - **Credential-free** — certificates are generated on-demand and expire when the session ends; there is nothing to rotate or leak
 

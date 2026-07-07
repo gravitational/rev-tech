@@ -74,7 +74,6 @@ terraform init && terraform apply
 | Profile | Archetype | Cost | Tested |
 |---|---|---|---|
 | `profiles/dev-demo` | Developer "day in the life" — Bob (dev) + engineer, access requests, session locking | ~$5–7/day | ✅ |
-| `profiles/windows-mongodb-ssh` | Traditional enterprise — Windows + MongoDB + Linux SSH | ~$2–4/day | — |
 | `profiles/cloud-native-apps` | Modern cloud shop — Grafana + HTTPBin + RDS MySQL + AWS Console | ~$3–5/day | — |
 | `profiles/full-platform` | All-up POC — every Teleport feature in one deployment | ~$8–12/day | ✅ |
 
@@ -156,7 +155,7 @@ Deploy a full profile without local Terraform setup — useful for spinning up a
 # Create the CI bot with access to the Terraform provider
 tctl bots add github-ci --roles=terraform-provider
 
-# Create the GitHub join token (see docs/github-actions-setup.md for full YAML)
+# Create the GitHub join token (see docs/github-actions-setup.md at the repo root for full YAML)
 tctl create github-join-token.yaml
 ```
 

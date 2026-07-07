@@ -28,9 +28,9 @@ Profiles compose multiple data-plane use cases into a single Terraform root modu
 2. Bob SSHs to a dev node — Teleport creates a host user dynamically
 3. Bob connects to postgres-dev via `tsh db connect` — no password
 4. Bob submits an access request for prod access
-5. $USER approves in Slack — prod-server appears in Bob's `tsh ls`
-6. Bob SSHs to prod-server — $USER watches the live session and can lock it
-7. $USER walks the audit trail in the UI
+5. Alex approves in Slack — prod-server appears in Bob's `tsh ls`
+6. Bob SSHs to prod-server — Alex watches the live session and can lock it
+7. Alex walks the audit trail in the UI
 
 **Deploy:** See [dev-demo/README.md](dev-demo/README.md).
 
@@ -96,7 +96,7 @@ After `apply`, Teleport resources are registered and labeled. Use `tsh ls`, `tsh
 
 ## One-Click Deployment via GitHub Actions
 
-Deploy any profile without a local Terraform setup using the [`teleport-demo-deploy`](../../../.github/workflows/teleport-demo-deploy.yml) workflow. Go to **Actions → Deploy Teleport Demo → Run workflow** and fill in the form. Requires `AWS_ROLE_ARN` and `TELEPORT_IDENTITY` secrets.
+Deploy any profile without a local Terraform setup using the [`teleport-demo-deploy`](../../../.github/workflows/teleport-demo-deploy.yml) workflow. Go to **Actions → Deploy Teleport Demo → Run workflow** and fill in the form. Requires the `AWS_ROLE_ARN`, `TELEPORT_PROXY`, and `TF_STATE_BUCKET` secrets (see the root README's GitHub Actions section).
 
 ## Adding a New Profile
 

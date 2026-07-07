@@ -104,9 +104,9 @@ Each engine is configured with demo users for connecting through Teleport:
 | Engine | Users |
 |---|---|
 | PostgreSQL | `reader`, `writer` |
-| MySQL | `alice`, `bob` |
+| MySQL | `reader`, `writer` |
 | MongoDB | `reader`, `writer` |
-| Cassandra | `teleport` |
+| Cassandra | `writer` |
 
 The `--db-user` flag in `tsh db login` maps to these. Teleport issues a short-lived client cert with the CN matching the DB user — no passwords are stored anywhere.
 
@@ -120,7 +120,7 @@ tsh db login postgres-dev --db-user=writer --db-name=postgres
 tsh db connect postgres-dev
 
 # MySQL
-tsh db login mysql-dev --db-user=alice --db-name=mysql
+tsh db login mysql-dev --db-user=writer --db-name=mysql
 tsh db connect mysql-dev
 
 # MongoDB
@@ -128,6 +128,6 @@ tsh db login mongodb-dev --db-user=writer
 tsh db connect mongodb-dev
 
 # Cassandra
-tsh db login cassandra-dev --db-user=teleport
+tsh db login cassandra-dev --db-user=writer
 tsh db connect cassandra-dev
 ```

@@ -45,7 +45,7 @@ Allow 3–5 minutes. Cassandra startup takes longer than other engines due to JV
 
 ```bash
 tsh db ls env=dev,team=platform             # cassandra-dev
-tsh db login cassandra-dev --db-user=teleport
+tsh db login cassandra-dev --db-user=writer
 tsh db connect cassandra-dev
 # Connected to Test Cluster at <...>.
 # [cqlsh 6.x.x | Cassandra 4.x.x | CQL spec 3.4.7 | Native protocol v5]
@@ -56,7 +56,7 @@ tsh db connect cassandra-dev
 
 ## Demo Points
 
-- **Certificate-based auth** — Teleport generates a client cert with CN=teleport; Cassandra validates against the custom CA
+- **Certificate-based auth** — Teleport generates a client cert with CN matching the `--db-user`; Cassandra validates against the custom CA
 - **No passwords in the chain** — no DB passwords stored in Teleport, Terraform, or the application
 - **Short-lived certs** — the cert expires when the Teleport session expires
 - **Full audit** — every query session is captured in the Teleport audit log
@@ -78,9 +78,9 @@ terraform destroy
 | `user` | Your email — used for tagging | **required** |
 | `proxy_address` | Teleport proxy hostname | **required** |
 | `teleport_version` | Teleport version to install | **required** |
-| `env` | Environment label | `"dev"` |
+| `env` | Environment label | **required** |
 | `team` | Team label | `"platform"` |
-| `region` | AWS region | `"us-east-2"` |
+| `region` | AWS region | **required** |
 | `cidr_vpc` | VPC CIDR | `"10.0.0.0/16"` |
 | `cidr_subnet` | Private subnet CIDR | `"10.0.1.0/24"` |
 | `cidr_public_subnet` | Public subnet CIDR (NAT) | `"10.0.0.0/24"` |
