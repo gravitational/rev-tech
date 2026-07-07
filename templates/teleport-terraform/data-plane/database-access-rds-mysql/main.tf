@@ -51,6 +51,7 @@ module "network" {
   create_secondary_subnet = true
   cidr_secondary_subnet   = var.cidr_secondary_subnet
   create_db_subnet_group  = true
+  create_nat_gateway      = var.create_nat_gateway
 }
 
 module "rds_mysql" {

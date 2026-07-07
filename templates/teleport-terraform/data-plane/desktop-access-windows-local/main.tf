@@ -75,6 +75,7 @@ module "network" {
   cidr_vpc           = var.cidr_vpc
   cidr_subnet        = var.cidr_subnet
   cidr_public_subnet = var.cidr_public_subnet
+  create_nat_gateway = var.create_nat_gateway
 }
 
 module "windows_instance" {

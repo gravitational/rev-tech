@@ -50,3 +50,9 @@ variable "cidr_secondary_subnet" {
   description = "CIDR block for secondary private subnet (for RDS)"
   default     = "10.1.32.0/20"
 }
+
+variable "create_nat_gateway" {
+  description = "Create a NAT gateway for private subnet egress. Set to false to save ~$32/mo."
+  type        = bool
+  default     = false
+}

@@ -85,6 +85,7 @@ module "network" {
   cidr_vpc           = var.cidr_vpc
   cidr_subnet        = var.cidr_subnet
   cidr_public_subnet = var.cidr_public_subnet
+  create_nat_gateway = var.create_nat_gateway
 }
 
 # ---------------------------------------------------------------------------
@@ -124,8 +125,8 @@ resource "aws_instance" "target" {
   vpc_security_group_ids = [module.network.security_group_id]
   iam_instance_profile   = aws_iam_instance_profile.target.name
 
-  # Teleport nodes register via outbound reverse tunnel — no public IP needed.
-  associate_public_ip_address = false
+  # Teleport connects outbound; SSM needs internet access when no NAT gateway.
+  associate_public_ip_address = !var.create_nat_gateway
 
   metadata_options {
     http_tokens                 = "required" # IMDSv2

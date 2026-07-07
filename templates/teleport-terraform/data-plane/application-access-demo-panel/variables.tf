@@ -52,3 +52,9 @@ variable "cidr_public_subnet" {
   type        = string
   default     = "10.0.0.0/24"
 }
+
+variable "create_nat_gateway" {
+  description = "Create a NAT gateway for private subnet egress. Set to false to save ~$32/mo."
+  type        = bool
+  default     = false
+}
