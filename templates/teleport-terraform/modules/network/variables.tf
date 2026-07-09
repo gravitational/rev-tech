@@ -19,6 +19,12 @@ variable "cidr_vpc" {
   description = "CIDR block for the VPC"
 }
 
+variable "create_nat_gateway" {
+  type        = bool
+  description = "Create a NAT gateway for private subnet egress. Set to false for single-instance deployments to save ~$32/mo."
+  default     = true
+}
+
 variable "create_db_subnet_group" {
   type        = bool
   description = "Create a DB subnet group for RDS"

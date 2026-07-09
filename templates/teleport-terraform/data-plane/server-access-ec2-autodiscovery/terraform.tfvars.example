@@ -1,0 +1,14 @@
+export TF_VAR_proxy_address="teleport.example.com"
+export TF_VAR_user="engineer@example.com"
+export TF_VAR_region="us-east-2"
+export TF_VAR_env="dev"
+export TF_VAR_team="platform"
+
+# Number of bare EC2 instances to create as auto-discovery targets.
+export TF_VAR_target_count="2"
+
+# Tag key/value used to select EC2 instances for auto-discovery.
+# Instances tagged with this key=value will be enrolled automatically.
+# Defaults match env/dev so instances tagged env=dev are picked up.
+export TF_VAR_ec2_tag_key="env"
+export TF_VAR_ec2_tag_value="dev"

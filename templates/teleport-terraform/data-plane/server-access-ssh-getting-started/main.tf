@@ -17,7 +17,7 @@ locals {
   user_prefix = lower(split("@", var.user)[0])
   resource_tags = {
     "teleport.dev/creator" = var.user
-    "tier"                 = var.env
+    "env"                  = var.env
     "Example"              = "server-access-ssh-getting-started"
   }
 }
@@ -28,7 +28,8 @@ provider "aws" {
   default_tags {
     tags = {
       "teleport.dev/creator" = var.user
-      "tier"                 = var.env
+      "env"                  = var.env
+      "team"                 = var.team
       "ManagedBy"            = "terraform"
       "Example"              = "server-access-ssh-getting-started"
     }
@@ -62,14 +63,15 @@ data "aws_ami" "linux" {
 
 module "network" {
   # Resolves to: templates/teleport-terraform/modules/network
-  source = "../modules/network"
+  source = "../../modules/network"
 
   name_prefix        = "${local.user_prefix}-${var.env}"
   tags               = local.resource_tags
   env                = var.env
-  cidr_vpc           = "10.0.0.0/16"
-  cidr_subnet        = "10.0.1.0/24" # private
-  cidr_public_subnet = "10.0.0.0/24" # public
+  cidr_vpc           = var.cidr_vpc
+  cidr_subnet        = var.cidr_subnet
+  cidr_public_subnet = var.cidr_public_subnet
+  create_nat_gateway = var.create_nat_gateway
 
   # RDS-related flags left at defaults:
   # create_secondary_subnet = false
@@ -78,17 +80,17 @@ module "network" {
 }
 
 # ---------------------------------------------------------------------------
-# SSH nodes: sources config for ssh nodes teleport will be installed on 
+# SSH nodes: sources config for ssh nodes teleport will be installed on
 # ---------------------------------------------------------------------------
 
 module "ssh_nodes" {
   # Resolves to: templates/teleport-terraform/modules/ssh-node
-  source = "../modules/ssh-node"
+  source = "../../modules/ssh-node"
 
-  env              = var.env # "dev" default in variables.tf
-  proxy_address    = var.proxy_address
-  team             = var.team
-  user             = var.user 
+  env           = var.env # "dev" default in variables.tf
+  proxy_address = var.proxy_address
+  team          = var.team
+  user          = var.user
 
   tags          = local.resource_tags
   agent_count   = var.agent_count # "3" default in variables.tf
@@ -97,4 +99,6 @@ module "ssh_nodes" {
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
+
+  depends_on = [module.network]
 }
