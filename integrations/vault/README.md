@@ -22,20 +22,22 @@ every step of that flow hands-on, from configuring Teleport RBAC through reading
 back out of Vault with the issued token. The sections below explain *why* each piece exists; follow
 along in the notebook to see each one *work*.
 
-## Why Not Just Proxy Through Application Access?
+## Application Access Proxy vs. Workload Identity
 
 Registering Vault as a Teleport Application and routing `tsh apps login` traffic through the
-Application Access proxy is a perfectly reasonable pattern — it gives you Teleport's audit log and
-access controls over who can reach Vault at all, which is exactly what you want for humans logging
-into the Vault UI or CLI via SSO. But Vault itself still authenticates that traffic with its own
-native auth methods once the connection lands, and every request makes an extra hop through
-Teleport's proxy.
+Application Access proxy is still the right call when a workload or user doesn't have a direct
+network path to Vault — Teleport gives you that path, plus an audit log and access controls over
+who can reach Vault at all. That's exactly what you want for humans logging into the Vault UI or
+CLI via SSO, or for reaching a Vault instance that's otherwise unreachable from where the caller
+sits.
 
-For machine-to-machine workload authentication, that extra hop and the reliance on Vault-native
-credentials behind it are exactly what you'd rather avoid. This pattern skips the proxy layer
-entirely: Vault validates the Teleport CA and the SPIFFE ID directly at the TLS layer, and Vault's
-own policies govern what the authenticated identity can touch. Fewer moving parts, no proxy in the
-data path, and Vault's RBAC stays the single source of truth for authorization.
+What the proxy *doesn't* do is authenticate you to Vault. It solves network access, not Vault
+identity — once the connection lands, Vault still authenticates it with its own native auth method
+(token, userpass, and so on), so you need a separate credential either way. This pattern is for the
+case where a workload already has direct network access to Vault: it skips the proxy layer
+entirely and lets Vault validate the Teleport CA and the SPIFFE ID directly at the TLS layer, so
+network access and authentication happen in one step instead of two. Vault's own policies still
+govern what the authenticated identity can touch either way.
 
 | | App Access Proxy | Workload Identity (this demo) |
 |---|---|---|
@@ -44,7 +46,7 @@ data path, and Vault's RBAC stays the single source of truth for authorization.
 | **Audit log** | Teleport logs HTTP requests | Vault audit log + Teleport logs SVID issuance |
 | **SVID renewal** | Not applicable | Required — `tsh` for one-off issuance, `tbot` for automated workloads |
 | **Vault config changes** | Register Vault as a Teleport app only | Export the SPIFFE CA, configure a cert auth role and policy |
-| **Best for** | Human SSO access to Vault UI/CLI | Machine-to-machine workload auth |
+| **Best for** | No direct network path to Vault; human SSO access to Vault UI/CLI | Machine-to-machine workload auth with direct network access to Vault |
 
 ## How It Works
 
