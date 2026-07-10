@@ -1,3 +1,6 @@
+# IDE
+.idea/
+
 # Local env & artifacts
 .env
 *.log
