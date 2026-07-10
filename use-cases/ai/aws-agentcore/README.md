@@ -116,7 +116,7 @@ Center Trusted Token Issuers:
 - Creates a Customer Managed Application with a `jwt-bearer` grant
 - Creates IC users from `DEMO_USER_EMAILS` and assigns them to the application
 
-**Steps 1–7** (IAM wiring + Lambda deployment):
+**Steps 1–6** (IAM wiring + Lambda deployment):
 - Creates `agentcore-user-role` trusted by the interceptor Lambda's execution role
 - Grants the interceptor `sso-oauth:CreateTokenWithIAM` + `sts:AssumeRole`
 - Updates the Application Actor Policy to include the interceptor role
