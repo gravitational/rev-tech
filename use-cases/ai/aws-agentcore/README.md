@@ -185,7 +185,7 @@ Edit `teleport.yaml` and set:
 
 ```yaml
 teleport:
-  proxy_server: <your-cluster>:443   # e.g. ellinj.teleport.sh:443
+  proxy_server: <your-cluster>:443   # e.g. example.teleport.sh:443
   auth_token: <token-from-step-3a>
   data_dir: /path/to/data            # writable directory for agent state
 
@@ -262,3 +262,11 @@ bash test-mcp.sh
 | `test-mcp.sh` | Shell script to test the MCP endpoint directly via `tsh mcp connect` |
 | `DEMO-PLAN.md` | Full architecture doc including Scenario 2 (RFC 8693 / Keycloak OBO) |
 | `.env.example` | Template for AWS credential environment variables |
+
+## References
+
+- RFC 8693 OAuth 2.0 Token Exchange: https://datatracker.ietf.org/doc/html/rfc8693
+- AWS AgentCore OBO docs: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/on-behalf-of-token-exchange.html
+- Teleport AgentCore Gateway integration: https://goteleport.com/docs/enroll-resources/mcp-access/integration-guides/aws-bedrock-gateway/
+- AWS IAM Identity Center TTI setup: https://docs.aws.amazon.com/singlesignon/latest/userguide/setuptrustedtokenissuer.html
+- Teleport Identity Center integration: https://goteleport.com/docs/identity-governance/integrations/aws-iam-identity-center/
