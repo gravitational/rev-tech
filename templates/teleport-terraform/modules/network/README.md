@@ -9,18 +9,18 @@ module "network" {
   source = "../modules/network"
 
   env                = "dev"
-  name_prefix        = "dlg-dev"
+  name_prefix        = "engineer-dev"
   cidr_vpc           = "10.0.0.0/16"
   cidr_subnet        = "10.0.1.0/24" # private
   cidr_public_subnet = "10.0.0.0/24" # public
 
   tags = {
-    owner = "dlg@example.com"
+    owner = "engineer@example.com"
   }
 }
 ```
 
-Set `name_prefix` to a unique `<user>-<env>` string (for example `dlg-dev`) so multiple engineers can run the module inside the same AWS account without colliding resource names.
+Set `name_prefix` to a unique `<user>-<env>` string (for example `engineer-dev`) so multiple engineers can run the module inside the same AWS account without colliding resource names.
 
 ## Inputs
 

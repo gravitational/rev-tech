@@ -1,0 +1,12 @@
+export TF_VAR_user="engineer@example.com"
+export TF_VAR_proxy_address="teleport.example.com"
+export TF_VAR_region="us-east-2"
+
+# Your 12-digit AWS account ID
+export TF_VAR_app_a_aws_account_id="123456789012"
+
+# Set to true to let Terraform create the default IAM roles
+# (TeleportReadOnlyAccess, TeleportEC2Access, TeleportAdminAccess)
+# in this account and wire them to the app host's instance profile.
+# Set to false only if the roles already exist (e.g. managed separately).
+export TF_VAR_manage_account_a_roles="true"

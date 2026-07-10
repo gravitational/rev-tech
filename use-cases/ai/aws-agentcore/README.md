@@ -77,6 +77,19 @@ Bridges the identity gap — AgentCore validates the JWT but doesn't forward it 
   into every `tools/call` invocation
 - After this notebook, `whoami_tool` returns the real Teleport identity
 
+### 03 — Cedar Policy Authorization via Amazon Verified Permissions
+`03-cedar-avp-authorization.ipynb`
+
+Adds policy enforcement on top of identity — the interceptor now calls AVP before
+forwarding any tool call:
+- Creates an Amazon Verified Permissions policy store
+- Defines Cedar policies mapping Teleport roles to permitted tools
+  (`mcp-user` → `whoami_tool`, `get_order_tool`; `order-admin` → `update_order_tool`)
+- Deploys an updated interceptor (`lambda_interceptor_avp.py`) that calls `IsAuthorized`
+  before forwarding; denied calls never reach the tool Lambda
+- Demonstrates live policy changes: grants and revokes `update_order_tool` access
+  without any Lambda redeployment
+
 ## Prerequisites
 
 - AWS credentials with permissions for Lambda, IAM, bedrock-agentcore
@@ -99,7 +112,7 @@ cp .env.example .env
 
 ### 2. Run the notebooks
 
-Run in order: **01 → 02**. Each notebook is idempotent — re-running a cell that already
+Run in order: **01 → 02 → 03**. Each notebook is idempotent — re-running a cell that already
 created a resource will skip creation gracefully.
 
 After notebook 01 completes and prints the gateway URL, complete the Teleport agent
@@ -203,5 +216,5 @@ bash test-mcp.sh
 |:-----|:--------|
 | `lambda_tool.py` | Tool Lambda handler (whoami, get_order, update_order) |
 | `lambda_interceptor.py` | REQUEST interceptor — decodes Teleport JWT and injects caller identity |
-| `test-mcp.sh` | Shell script to test the MCP endpoint directly via `tsh mcp connect` |
+| `lambda_interceptor_avp.py` | Updated interceptor — adds AVP `IsAuthorized` check before forwarding tool calls |
 | `.env.example` | Template for AWS credential environment variables |

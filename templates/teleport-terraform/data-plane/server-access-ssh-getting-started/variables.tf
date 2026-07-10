@@ -30,10 +30,34 @@ variable "region" {
 variable "team" {
   description = "Team label for SSH nodes (e.g., platform, sre, app-team)"
   type        = string
-  # default     = "platform"
+  default     = "platform"
 }
 
 variable "user" {
   description = "Username or identifier for resource tagging"
   type        = string
+}
+
+variable "cidr_vpc" {
+  description = "CIDR block for the VPC"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "cidr_subnet" {
+  description = "CIDR block for the private subnet"
+  type        = string
+  default     = "10.0.1.0/24"
+}
+
+variable "cidr_public_subnet" {
+  description = "CIDR block for the public subnet (NAT gateway)"
+  type        = string
+  default     = "10.0.0.0/24"
+}
+
+variable "create_nat_gateway" {
+  description = "Create a NAT gateway for private subnet egress. Set to false to save ~$32/mo."
+  type        = bool
+  default     = false
 }
