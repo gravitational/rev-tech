@@ -4,7 +4,7 @@ This demo will cover how to use Ansible in conjunction with Teleport/tbot to pro
 
 Ansible will be responsible for installing Teleport and generating the associated Teleport configuration file. Most of this can be done with Ansible alone. However, one of the components of the config file is the join token that Teleport uses to join a resource to Teleport. This join token can be obtained by running `tctl tokens add --type=node`, but this command requires an authenticated Teleport identity to execute. This is where tbot comes in: it issues a short-lived identity with the requisite permission to generate join tokens. This identity is then used to run the `tctl tokens add` command and the resulting token is used by Ansible. 
 
-An alternative join method option is TPM joining, but this demo focuses on the ephemeral join token method explained above. 
+An alternative join method option is [TPM-joining](https://goteleport.com/docs/reference/deployment/join-methods/#trusted-platform-module-tpm), but this demo focuses on the ephemeral join token method explained above. 
 
 > [!CAUTION]
 > Please note that this repository was developed for testing environments and should not be used as is in your production environment. It is intended to serve as a reference or example. Use at your own risk; no support or warranty provided.
@@ -12,7 +12,8 @@ An alternative join method option is TPM joining, but this demo focuses on the e
 
 1. You will need a server that will be running Ansible and tbot. If you don’t already have a server, you can launch an EC2 instance for this purpose. 
 2. Attach an AWS IAM role to this server so that you can make use of `iam-joining`. This makes managing of tbot simpler in the event that the Linux server stops/restarts/etc.
-3. Install Teleport on the server
+> Note: No specific permissions or IAM policy is required: an IAM role with no attached policies is sufficient. Teleport processes prove that they are running in your AWS account by sending a pre-signed sts:GetCallerIdentity request to the Teleport Auth Service. The service's identity must match an allow rule configured in your AWS service joining token.
+4. Install Teleport on the server
 
 ## Deploying Tbot on Linux ([doc](https://goteleport.com/docs/machine-workload-identity/deployment/linux/))
 
