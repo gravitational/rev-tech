@@ -6,8 +6,8 @@ Ansible will be responsible for installing Teleport and generating the associate
 
 An alternative join method option is TPM joining, but this demo focuses on the ephemeral join token method explained above. 
 
-Please note that this guide is meant as a demo, and that modificiations may likely be necessary in a production environment. 
-
+> [!CAUTION]
+> Please note that this repository was developed for testing environments and should not be used as is in your production environment. It is intended to serve as a reference or example. Use at your own risk; no support or warranty provided.
 ## Preparing the EC2 Instance
 
 1. You will need a server that will be running Ansible and tbot. If you don’t already have a server, you can launch an EC2 instance for this purpose. 
