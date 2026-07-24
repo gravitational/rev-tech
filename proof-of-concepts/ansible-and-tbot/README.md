@@ -19,7 +19,10 @@ An alternative join method option is [TPM-joining](https://goteleport.com/docs/r
 
 On a local machine with Teleport admin access (i.e. access to the `tctl` CLI):
 
-1. Create a role which allows the ability to create and modify tokens, a bot user who will utilize this role, and an iam-join token for that bot. 
+1. Create a yaml file defining a role which allows the ability to create and modify tokens, a bot user who will utilize this role, and an iam-join token for that bot. 
+    ```bash
+    vi role-bot-and-token.yaml
+    ```
     
     ```yaml
     kind: role
@@ -51,6 +54,10 @@ On a local machine with Teleport admin access (i.e. access to the `tctl` CLI):
       roles:
       - Bot
     version: v2
+    ```
+
+    ```bash
+    tctl create -f role-bot-and-token.yaml
     ```
     
 
@@ -153,7 +160,7 @@ ssh_args = -F /opt/machine-id/ssh_config
     
     ```yaml
     [unenrolled]
-    [private-ip of the servers I want to connect to]
+    <private-ip of the servers you want to connect to>
     
     [unenrolled:vars]
     #this allows the unenrolled to connect using the private key, and allows it to specify it in the known hosts
