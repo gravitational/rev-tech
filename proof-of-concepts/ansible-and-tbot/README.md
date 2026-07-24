@@ -25,7 +25,6 @@ On a local machine with Teleport admin access (i.e. access to the `tctl` CLI):
     ```jsx
     kind: token
     metadata:
-      expires: "0001-01-01T00:00:00Z"
       name: iam-token-bot
     spec:
       allow:
