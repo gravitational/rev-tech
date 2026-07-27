@@ -13,9 +13,9 @@ An alternative join method option is [TPM-joining](https://goteleport.com/docs/r
 1. You will need a server that will be running Ansible and tbot. If you don’t already have a server, you can launch an EC2 instance for this purpose. 
 2. Attach an AWS IAM role to this server so that you can make use of `iam-joining`. This makes managing of tbot simpler in the event that the Linux server stops/restarts/etc.
 > Note: No specific permissions or IAM policy is required: an IAM role with no attached policies is sufficient. Teleport processes prove that they are running in your AWS account by sending a pre-signed sts:GetCallerIdentity request to the Teleport Auth Service. The service's identity must match an allow rule configured in your AWS service joining token.
-4. Install Teleport on the server
+3. Install Teleport on the server ([doc](https://goteleport.com/docs/installation/single-machine/linux/#run-the-cluster-specific-installation-script))
 
-## Deploying Tbot on Linux ([doc](https://goteleport.com/docs/machine-workload-identity/deployment/linux/))
+## Deploying Tbot on Linux ([doc](https://goteleport.com/docs/machine-workload-identity/deployment/linux/)) for reference
 
 On a local machine with Teleport admin access (i.e. access to the `tctl` CLI):
 
