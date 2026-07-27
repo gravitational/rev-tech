@@ -15,7 +15,7 @@ An alternative join method option is [TPM-joining](https://goteleport.com/docs/r
 > Note: No specific permissions or IAM policy is required: an IAM role with no attached policies is sufficient. Teleport processes prove that they are running in your AWS account by sending a pre-signed sts:GetCallerIdentity request to the Teleport Auth Service. The service's identity must match an allow rule configured in your AWS service joining token.
 3. Install Teleport on the server ([doc](https://goteleport.com/docs/installation/single-machine/linux/#run-the-cluster-specific-installation-script))
 
-## Deploying Tbot on Linux ([doc](https://goteleport.com/docs/machine-workload-identity/deployment/linux/)) for reference
+## Deploying Tbot on Linux ([doc](https://goteleport.com/docs/machine-workload-identity/deployment/linux/) for reference)
 
 On a local machine with Teleport admin access (i.e. access to the `tctl` CLI):
 
@@ -63,8 +63,10 @@ On a local machine with Teleport admin access (i.e. access to the `tctl` CLI):
 
 On the Linux machine (that will be running Ansible/tbot):
 
-1. Configure tbot.yaml file (we will use iam-joining here)
-    - `vi /etc/tbot`
+1. Configure the tbot.yaml file (we will use iam-joining here)
+    ```bash
+    sudo vi /etc/tbot.yaml
+    ```
     
     ```yaml
     version: v2
@@ -82,45 +84,14 @@ On the Linux machine (that will be running Ansible/tbot):
         path: /opt/machine-id
     ```
     
-2. Tbot will write identity files to the /opt/machine-id directory. As needed, grant the necessary permissions to the appropriate user (i.e. Ubuntu in this case)
+2. Tbot will write identity files to the /opt/machine-id directory. Create the necessary file paths for tbot. 
     
     ```bash
     sudo mkdir -p /var/lib/teleport/bot
     sudo mkdir -p /opt/machine-id
-    sudo chown ubuntu:ubuntu /var/lib/teleport /var/lib/teleport/bot /opt/machine-id
-    sudo chmod +x /var/lib/teleport /var/lib/teleport/bot /opt/machine-id
     ```
     
-3. Create the systemd file for the Linux user (i.e. ubuntu)
-
-    ```bash
-    sudo tbot install systemd \
-    --write \
-    --config /etc/tbot.yaml \
-    --user ubuntu \
-    --group ubuntu \
-    --pid-file /run/tbot/tbot.pid \
-    --anonymous-telemetry
-    ```
-
-1. Add the overrides so that ubuntu can write in the folder
-    - `sudo systemctl edit tbot`
-    
-    #### Add the following lines
-    
-    ```yaml
-    ### Editing /etc/systemd/system/tbot.service.d/override.conf
-    ### Anything between here and the comment below will become the contents of the drop-in file
-    
-    [Service]
-    User=ubuntu
-    Group=ubuntu
-    RuntimeDirectory=tbot
-    ExecStart=
-    ExecStart=/usr/local/bin/tbot start -c /etc/tbot.yaml --diag-socket-for-updater=/var/lib/teleport/bot/debug.sock --pid-file=/run/tbot/tbot.pid
-    ```
-    
-2. Confirm that tbot is working
+3. Confirm that tbot is working
     - `sudo systemctl daemon-reload`
     - `sudo systemctl enable tbot`
     - `sudo systemctl start tbot`
@@ -142,22 +113,27 @@ On the Linux machine:
     ```
     
 2. Create an ansible.cfg file
+    ```bash
+    vi ansible.cfg
+    ```
 
-```yaml
-[defaults]
-host_key_checking = True
-inventory=./hosts
-remote_tmp=/tmp
+    ```yaml
+    [defaults]
+    host_key_checking = True
+    inventory=./hosts
+    remote_tmp=/tmp
 
-[ssh_connection]
-scp_if_ssh = True
-#note: the ssh_args is from the doc, but isn't necessary for this config
-ssh_args = -F /opt/machine-id/ssh_config
-```
+    [ssh_connection]
+    scp_if_ssh = True
+    ```
 
-1. Ansible will need to connect via SSH to the nodes. Thus, it needs the private key of the nodes. Transfer these keys to the Ansible node (i.e. via scp)
-2. Create a `hosts` file with the name of the hosts you want to connect to:
-    
+3. During the first connection, Ansible will need to connect via SSH to the nodes. Thus, it needs the private SSH key of the nodes. Make sure that this node has access through the key (i.e. through agent forwarding, or if needed, through scp transfer of the key). If transfering to the requisite node via scp, then take the necessary precautions afterwards (i.e. delete and rotate the key).
+
+4. Create a `hosts` file with the name of the hosts you want to connect to:
+    ```bash
+    vi hosts
+    ```
+
     ```yaml
     [unenrolled]
     <private-ip of the servers you want to connect to>
@@ -168,13 +144,15 @@ ssh_args = -F /opt/machine-id/ssh_config
     ansible_ssh_extra_args=-o UserKnownHostsFile=/home/ubuntu/.ssh/known_hosts
     ```
     
-3. Create an Ansible Playbook. An example playbook is given below.
+5. Create an Ansible Playbook. An example playbook is given below. Replace the auth-server, proxy_server, teleport_version, and label with the appropriate values.
     
-    #### Playbook
+    ```bash
+    vi playbook.yaml
+    ```
     
     ```yaml
     - hosts: localhost
-      become: false
+      become: true
       tasks:
         - name: Generate node join token
           command: tctl tokens add --type=node --ttl=1h --format=text -i /opt/machine-id/identity --auth-server=[your-teleport-auth-server-address]:443
@@ -245,7 +223,11 @@ ssh_args = -F /opt/machine-id/ssh_config
     ```
     
 4. Install Ansible on the Linux machine
-    1. `sudo apt update && sudo apt install ansible-core -y`
+    ```bash
+    sudo apt update && sudo apt install ansible-core -y
+    ```
 5. Run the Ansible playbook
-    1. `ansible-playbook playbook.yaml`
+    ```bash
+    ansible-playbook playbook.yaml
+    ```
 6. The previously `unenrolled hosts` specified in the `host` file should now be visible!
