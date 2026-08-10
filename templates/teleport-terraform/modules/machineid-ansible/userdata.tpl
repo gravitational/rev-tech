@@ -53,6 +53,8 @@ proxy_server: ${proxy_address}:443
 onboarding:
   join_method: bound_keypair
   token: ${bot_token}
+  bound_keypair:
+    registration_secret: ${registration_secret}
 storage:
   type: directory
   path: /var/lib/teleport/bot
@@ -70,15 +72,12 @@ useradd --system --shell /bin/false teleport || true
 mkdir -p /var/lib/teleport/bot
 mkdir -p /opt/machine-id
 
-# Seed preregistered bound keypair private key expected by tbot.
-cat <<-EOF >/var/lib/teleport/bot/id_bkp
-${bot_private_key}
-EOF
+# No key seeding: tbot redeems the one-time registration secret from
+# /etc/tbot.yaml on first start and generates its keypair locally.
 
 # Set up proper group ownership for machine-id directory
 chown -R teleport:teleport /var/lib/teleport/
 chown -R teleport:teleport /opt/machine-id
-chmod 600 /var/lib/teleport/bot/id_bkp
 
 # Add ec2-user to teleport group for access
 usermod -aG teleport ec2-user
