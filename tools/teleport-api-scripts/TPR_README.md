@@ -70,7 +70,8 @@ cd "teleport-api-scripts-$TELEPORT_VERSION-windows-amd64\teleport-api-scripts-$T
 ## Prerequisites (when building from source)
 
 - Go 1.24+ installed
-- Access to a Teleport cluster with audit log read permissions
+- Access to a Teleport cluster with audit log read permissions and 
+  wildcard (`'*': '*'`) label permissions for app/db/kube/ssh/desktop resources
 - Valid Teleport credentials (see [Authentication](#authentication) section below)
 - Network connectivity to your Teleport proxy and to github.com/golang.org repositories
 
