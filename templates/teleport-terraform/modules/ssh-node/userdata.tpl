@@ -42,7 +42,9 @@ ssh_service:
       command: ["/bin/sh", "-c", "cut -d' ' -f1 /proc/loadavg"]
       period: "30s"
     - name: "disk_used"
-      command: ["/bin/sh", "-c", "df -hTP / | awk '{print \$6}' | egrep '^[0-9][0-9]'"]
+      # NR==2 selects the data row; the old egrep '^[0-9][0-9]' filter exited 1
+      # (label shows "exit status 1") whenever disk usage dropped to single digits
+      command: ["/bin/sh", "-c", "df -hTP / | awk 'NR==2 {print \$6}'"]
       period: "2m0s"
 proxy_service:
   enabled: false

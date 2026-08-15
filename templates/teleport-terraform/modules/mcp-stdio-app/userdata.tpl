@@ -44,10 +44,14 @@ teleport:
 app_service:
   enabled: true
   resources:
+    # Scope to THIS host's app only. A broad selector (e.g. teleport.dev/origin:
+    # dynamic) claims every dynamic app in the env, and the proxy then routes
+    # other apps' sessions here, where their upstreams don't exist -> Connection
+    # Refused for ~half of all app sessions.
     - labels:
         env: "${env}"
         team: "${team}"
-        teleport.dev/origin: "dynamic"
+        teleport.dev/app: "${app_name}"
 ssh_service:
   enabled: true
   labels:
