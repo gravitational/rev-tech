@@ -119,6 +119,12 @@ variable "enable_windows" {
   default     = false
 }
 
+variable "enable_linux_desktop" {
+  description = "Linux desktop host (Ubuntu + Xfce over Xvfb, browser-based). Requires Teleport 19+ and the v19 provider."
+  type        = bool
+  default     = false
+}
+
 variable "enable_mcp" {
   description = "MCP stdio server + Machine ID bot (AI/Claude access, read-only tools)"
   type        = bool
@@ -167,6 +173,36 @@ variable "demo_user_name" {
   description = "Name of the local demo user (developer persona). Usernames are cluster-global — override on shared clusters."
   type        = string
   default     = "bob"
+}
+
+variable "extra_demo_user_names" {
+  description = "Additional local demo users (same roles as demo_user_name) — one persona per demo workstation so concurrent demos don't collide."
+  type        = list(string)
+  default     = []
+}
+
+variable "demo_rbac_role_prefix" {
+  description = "Role-name prefix for the demo RBAC. Default (null) uses your username so concurrent SEs don't collide. Set to \"\" on a dedicated cluster for the canonical unprefixed names (dev-access, staging-access, prod-access, prod-access-mfa)."
+  type        = string
+  default     = null
+}
+
+variable "auto_approve_reason" {
+  description = "When set, staging-access requests whose reason contains this phrase are auto-approved by policy (access_monitoring_rule, builtin integration). Requires enable_ssh_prod + create_demo_rbac."
+  type        = string
+  default     = null
+}
+
+variable "request_max_duration" {
+  description = "Maximum duration of an approved access request (JIT window)"
+  type        = string
+  default     = "1h"
+}
+
+variable "mcp_tools" {
+  description = "MCP tool allowlist for the demo dev role (glob patterns). Default allows all tools."
+  type        = list(string)
+  default     = ["*"]
 }
 
 # ---------------------------------------------------------------------------
