@@ -72,6 +72,13 @@ resource "teleport_provision_token" "main" {
 }
 
 resource "aws_instance" "ansible_host" {
+  # Demo hosts keep the AMI they were created with — data.aws_ami uses
+  # most_recent, and a new upstream image must not replace healthy
+  # instances on the next apply (e.g. mid-event).
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
   # Ensure bot role/user resources exist in Teleport before tbot starts on boot.
   depends_on = [module.machineid_bot]
 
