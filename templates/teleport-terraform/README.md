@@ -39,7 +39,7 @@ terraform apply -var-file=presets/dev-demo.tfvars   # or any preset — see prof
 
 ### Profiles (start here)
 
-One composable root; a preset per demo. Archetypes: `dev-demo` (~$5–7/day), `full-platform` (~$8–12/day), `cloud-native-apps` (~$3–5/day). Single-feature presets: `ssh`, `postgres`, `mysql`, `mongodb`, `cassandra`, `rds-mysql`, `grafana`, `httpbin`, `demo-panel`, `aws-console`, `windows`, `mcp`, `ansible`.
+One composable root; a preset per demo. Archetypes: `dev-demo` (~$5–7/day), `full-platform` (~$8–12/day), `cloud-native-apps` (~$3–5/day). Single-feature presets: `ssh`, `postgres`, `mysql`, `mongodb`, `cassandra`, `rds-mysql`, `grafana`, `httpbin`, `demo-panel`, `aws-console`, `windows`, `linux-desktop` (Teleport 19+), `mcp`, `ansible`.
 
 See [profiles/README.md](profiles/README.md) for usage, the preset table, demo RBAC (Bob), and the dev-demo talk track.
 
@@ -73,6 +73,7 @@ The EKS control plane (Slack plugin, SCIM, Access Graph) and the proxy-peer vari
 | `ssh-node` | EC2 instances running Teleport SSH service with dynamic host user creation. |
 | `windows-instance` | Windows Server 2022 host pre-configured for Teleport Desktop Access. |
 | `desktop-service` | Linux host running `windows_desktop_service` — RDP proxy with full session recording. |
+| `linux-desktop` | Ubuntu host running `linux_desktop_service` (Teleport 19+) — Xfce over Xvfb, browser-based, session recording. Owns its own access role (needs the v19 provider). |
 
 ### Database
 
