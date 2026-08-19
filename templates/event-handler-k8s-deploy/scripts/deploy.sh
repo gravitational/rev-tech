@@ -151,13 +151,19 @@ echo "==> 5  tbot (Machine ID)"
 TBOT_STORAGE_TYPE="memory"
 [[ "$JOIN_METHOD" == "bound_keypair" ]] && TBOT_STORAGE_TYPE="kubernetes_secret"
 
+# eks/gcp/aks only affect the token spec (static JWKS embedded server-side);
+# tbot itself joins with the plain "kubernetes" method and rejects the cloud
+# aliases ("unrecognized join method").
+TBOT_JOIN_METHOD="$JOIN_METHOD"
+case "$JOIN_METHOD" in eks|gcp|aks|oidc) TBOT_JOIN_METHOD="kubernetes" ;; esac
+
 helm upgrade --install tbot teleport/tbot \
   --namespace "$NAMESPACE" \
   --version "$TELEPORT_VERSION" \
   -f "$ROOT_DIR/helm/tbot/values.yaml" \
   --set teleportProxyAddress="$TELEPORT_ADDRESS" \
   --set clusterName="$CLUSTER_NAME" \
-  --set joinMethod="$JOIN_METHOD" \
+  --set joinMethod="$TBOT_JOIN_METHOD" \
   --set token="$TBOT_TOKEN" \
   --set storage.destination.type="$TBOT_STORAGE_TYPE" \
   --wait

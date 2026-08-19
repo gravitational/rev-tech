@@ -32,9 +32,16 @@ streams Teleport audit events into a log pipeline of your choice.
 - [Machine ID (tbot)](https://goteleport.com/docs/machine-id/) managing the
   Teleport identity — short-lived certificates, auto-renewed, no static secrets
   committed to the cluster
-- A configurable join method (`eks`, `gcp`, `aks`, `token`, `bound_keypair`) so
-  tbot can authenticate to Teleport using your cloud provider's native workload
-  identity rather than a long-lived secret
+- A configurable join method (`oidc`, `eks`, `gcp`, `aks`, `token`,
+  `bound_keypair`) so tbot can authenticate to Teleport using your cloud
+  provider's native workload identity rather than a long-lived secret.
+  **Prefer `oidc`** (Teleport >=18.1.5) when your cluster's OIDC issuer is
+  publicly reachable: the Auth Service fetches signing keys dynamically, so
+  provider key rotation never breaks the join. The `eks`/`gcp`/`aks` methods
+  embed a static JWKS *snapshot* that silently rots when the provider rotates
+  keys (EKS does this frequently) — use them only for private issuers, and
+  re-generate the token after any rotation. Self-hosted Teleport running in
+  the same cluster should use `kubernetes` (in-cluster TokenReview)
 - A pluggable output — default is stdout, swap in OpenSearch, Splunk, Loki,
   Kafka, S3, or any other Fluent Bit / Fluentd destination without changing
   anything else in the pipeline

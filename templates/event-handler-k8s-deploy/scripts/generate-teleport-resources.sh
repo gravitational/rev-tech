@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Writes Teleport role + bot + join token YAML to stdout.
 # Usage: generate-teleport-resources.sh <join_method> <cluster_name> <namespace> <bot_name>
-#   join_method: eks | gcp | aks | kubernetes
+#   join_method: oidc | eks | gcp | aks | kubernetes (oidc recommended for cloud control planes, Teleport >=18.1.5)
 set -euo pipefail
 
 JOIN_METHOD="${1:?join_method required}"
@@ -38,9 +38,42 @@ EOF
 
 # ── Join token (varies by method) ────────────────────────────────────────────
 case "$JOIN_METHOD" in
+  oidc)
+    # Kubernetes OIDC join (Teleport >=18.1.5): the Auth Service fetches the
+    # cluster's public signing keys from the issuer DYNAMICALLY, so provider
+    # key rotation (which EKS does frequently) never invalidates the token.
+    # Prefer this over eks/gcp/aks static_jwks whenever the issuer URL is
+    # publicly reachable by the Teleport Auth Service.
+    echo "Discovering OIDC issuer..." >&2
+    ISSUER=$(kubectl get --raw /.well-known/openid-configuration \
+      | python3 -c "import sys,json; print(json.load(sys.stdin)['issuer'])")
+    echo "OIDC issuer : $ISSUER" >&2
+
+    cat <<EOF
+kind: token
+version: v2
+metadata:
+  name: ${TOKEN_NAME}
+spec:
+  roles: [Bot]
+  join_method: kubernetes
+  bot_name: ${BOT_NAME}
+  kubernetes:
+    type: oidc
+    oidc:
+      issuer: ${ISSUER}
+    allow:
+      - service_account: "${NAMESPACE}:tbot"
+EOF
+    ;;
+
   eks|gcp|aks)
     # Fetch both the issuer and JWKS via kubectl — no external curl needed,
     # so this works on private clusters (AKS, GKE private, EKS private endpoint).
+    # WARNING: the embedded JWKS is a SNAPSHOT — it silently rots when the
+    # provider rotates signing keys (EKS rotated twice in one week, Aug 2026,
+    # taking the bot down each time). If your issuer is publicly reachable,
+    # use join_method "oidc" instead; static_jwks is the private-cluster fallback.
     echo "Fetching OIDC config and JWKS for $JOIN_METHOD cluster..." >&2
     ISSUER=$(kubectl get --raw /.well-known/openid-configuration \
       | python3 -c "import sys,json; print(json.load(sys.stdin)['issuer'])")
