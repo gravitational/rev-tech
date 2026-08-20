@@ -1,0 +1,66 @@
+nameOverride: ""
+fullnameOverride: "postgres-wi-tbot"
+
+image:
+  # tbot's version must match your Teleport cluster's version --
+  # setup.sh sets this via --set image.tag from /webapi/ping's
+  # server_version unless TBOT_IMAGE_TAG is set in .env.
+  #
+  # "-distroless" confirmed as the correct repo for Teleport 18.x
+  # (checked 18.0.0/18.7.3/18.9.1/18.10.4 directly against
+  # public.ecr.aws) -- the plain "tbot" repo (no suffix) 404s for all of
+  # those. If you're deploying against an older Teleport cluster and
+  # this image doesn't resolve, try
+  # `public.ecr.aws/gravitational/tbot` instead (confirmed NOT to exist
+  # for 17.5.0, so the distroless rename happened somewhere in the 17->18
+  # transition -- exact cutover version unconfirmed).
+  repository: public.ecr.aws/gravitational/tbot-distroless
+  tag: "18.10.4"
+  pullPolicy: IfNotPresent
+
+teleport:
+  # e.g. "example.teleport.sh:443"
+  proxyAddress: "example.teleport.sh:443"
+  # The literal join token secret, created as a `kind: token` resource
+  # bound to <BOT_NAME> (see ../teleport/token.yaml and ../setup.sh's
+  # generate_join_token -- there's no `tctl tokens add` equivalent for
+  # a bot-scoped token). Only needed for tbot's very first join -- pass
+  # it with `--set-string teleport.joinToken=...` at install time, don't commit
+  # a real value here. ../setup.sh does this for you.
+  #
+  # Only consumed once: after the first successful join, tbot renews
+  # using its own bot certificate (persisted via the PVC below), not
+  # this token, so it's safe for the token to expire shortly after
+  # `helm install` completes.
+  joinToken: ""
+  # Name of the `kind: workload_identity` resource created by
+  # ../teleport/workload_identity.yaml.
+  workloadIdentityName: "postgres-demo-client"
+
+# Where tbot writes the issued SVID. The `kubernetes_secret`
+# destination names the keys svid.pem / svid_key.pem / svid_bundle.pem
+# (plus svid_crl.pem and an internal .write-test marker) -- confirmed
+# against a live Secret; don't confuse this with the *directory*
+# destination's naming (svid.pem/svid.key/bundle.pem), which is
+# different and not used anywhere in this demo. Client charts
+# (../clients/*/chart) mount this Secret by name.
+svidOutput:
+  secretName: "postgres-wi-svid"
+  credentialTTL: "1h"
+  renewalInterval: "20m"
+
+# tbot's own bot identity/certificate, persisted across pod restarts so
+# it doesn't need `teleport.joinToken` (which may have already expired)
+# again after the first successful join.
+persistence:
+  enabled: true
+  size: 64Mi
+  storageClassName: ""
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: postgres-wi-tbot
+description: >
+  Deploys `tbot` to issue Teleport Workload Identity X.509-SVIDs, written to
+  a Kubernetes Secret other workloads in the cluster (Python/Go client
+  demos) mount and use as their client certificate to connect straight to
+  Postgres -- no Teleport-mediated network hop, no `tsh`, no shared password.
+type: application
+version: 0.1.0
+appVersion: "16"

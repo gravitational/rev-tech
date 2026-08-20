@@ -1,0 +1,10 @@
+# Rendered by ../setup.sh from ${...} placeholders (see ../.env.example)
+# and applied with: tctl create -f bot.yaml
+# Equivalent one-liner: tctl bots add ${BOT_NAME} --roles=${BOT_NAME}
+kind: bot
+version: v1
+metadata:
+  name: ${BOT_NAME}
+spec:
+  roles:
+    - ${BOT_NAME}

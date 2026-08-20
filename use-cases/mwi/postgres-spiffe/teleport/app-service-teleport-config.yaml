@@ -1,0 +1,40 @@
+# Reference only -- ../setup.sh does NOT render this file. When it
+# deploys its own agent (the default, DEPLOY_TELEPORT_AGENT=true), it
+# builds the equivalent config directly as the teleport-kube-agent
+# chart's own top-level `apps:` value instead: that chart validates its
+# `app_service`/`db_service` state from `apps:`/`databases:` directly,
+# not from whatever ends up inside its `teleportConfig:` passthrough, so
+# handing it this `app_service:`-shaped block that way fails with "no
+# application source is enabled" (confirmed by actually dry-running it
+# against a live cluster).
+#
+# This file exists for the DEPLOY_TELEPORT_AGENT=false path: if you'd
+# rather point an agent you already run elsewhere (with a real
+# `teleport.yaml`, not this chart's flattened values) at Postgres,
+# substitute the ${...} placeholders yourself (see ../.env.example) and
+# merge this block into it directly.
+#
+# Registers Postgres as a raw TCP Application (protocol is inferred from
+# the "tcp://" URI scheme -- there is no explicit `protocol:` field for
+# TCP apps). Used by the human/CLI path only (`tsh vnet`, see
+# ../clients/cli/README.md) -- ../tbot-chart's Workload Identity clients
+# connect straight to Postgres' Service instead, no TCP Application
+# involved.
+#
+# The target is "postgres" (not e.g. "postgres-primary"): with
+# `postgresql.architecture: standalone` and `fullnameOverride: postgres`
+# set in ../postgres-chart/values.yaml, the bitnami/postgresql subchart
+# names its Service after the fullname directly -- the "-primary" suffix
+# only shows up under `architecture: replication`, where primary and
+# read-replica Services need distinct names. If you change that
+# override, update the URI below to match.
+#
+# Confirmed against:
+# https://goteleport.com/docs/enroll-resources/application-access/protect-apps/tcp/
+app_service:
+  enabled: true
+  apps:
+    - name: "${APP_NAME}"
+      uri: "tcp://postgres.${NAMESPACE}.svc.cluster.local:5432"
+      labels:
+        demo: "${DEMO_LABEL_VALUE}"

@@ -1,0 +1,50 @@
+# Rendered by ../setup.sh from ${...} placeholders (see ../.env.example)
+# and applied with: tctl create -f workload_identity.yaml
+#
+# Defines the SPIFFE identity issued to Postgres clients -- both tbot
+# (for the always-on Python/Go Deployment, joining via the plain
+# `token` method -- see ../token.yaml) and a human running
+# `tsh workload-identity issue-x509` directly (see ../clients/cli/README.md).
+#
+# The `common_name` here MUST match the app user created in
+# ../../postgres-chart/values.yaml (default "app_user"): Postgres' `cert`
+# auth method authenticates a connecting client by matching the
+# requested username against this field.
+#
+# Access control for who can issue this identity is RBAC, not a
+# `rules.allow` block: only a caller whose Teleport role grants
+# `workload_identity_labels` matching this resource's labels can request
+# it at all (../role-tbot.yaml for the bot, ../role-human-cli.yaml for a
+# human). There's deliberately no `spec.rules` here -- confirmed against
+# a live cluster that an empty `conditions: []` is rejected outright
+# ("must be non-empty"), and omitting `rules` entirely is what actually
+# means "no extra condition beyond RBAC", not an empty-but-present rule.
+# The plain `token` join method used here doesn't produce rich
+# per-caller attributes the way `kubernetes`/`iam`/etc. joins do, so
+# there isn't a meaningful extra condition to add anyway. If you later
+# switch tbot to a delegated join method, add a `spec.rules.allow` here
+# (e.g. conditioning on `workload.kubernetes.namespace`) for
+# defense-in-depth on top of the RBAC gate.
+#
+# NOTE: confirm this shape against `tctl workload-identity get -h` / the
+# Workload Identity resource reference for your Teleport version --
+# field names here were verified against docs current as of 2026-08 but
+# have moved across releases, and `maximum_ttl` specifically must be a
+# protobuf.Duration string ("3600s"), not a Go-style "1h"/"20m" -- that
+# format is only accepted by CLI --ttl flags, not resource spec fields
+# applied via `tctl create -f` (confirmed against a live cluster, which
+# rejected "1h" with `invalid google.protobuf.Duration value "1h"`).
+kind: workload_identity
+version: v1
+metadata:
+  name: ${WORKLOAD_IDENTITY_NAME}
+  labels:
+    demo: ${DEMO_LABEL_VALUE}
+spec:
+  spiffe:
+    id: /postgres-demo/client
+    hint: "Teleport Workload Identity demo: Postgres client (CLI/Python/Go)"
+    x509:
+      subject_template:
+        common_name: ${POSTGRES_DB_USER}
+      maximum_ttl: 3600s
