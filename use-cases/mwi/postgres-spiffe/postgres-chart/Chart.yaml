@@ -1,0 +1,23 @@
+apiVersion: v2
+name: postgres-wi-demo
+description: >
+  Thin wrapper around the bitnami/postgresql chart that adds mTLS
+  enforcement against a Teleport Workload Identity trust bundle: clients
+  authenticate with a SPIFFE X.509-SVID instead of a password.
+type: application
+version: 0.1.0
+appVersion: "16"
+keywords:
+  - postgres
+  - teleport
+  - workload-identity
+  - spiffe
+dependencies:
+  # Pinned as of 2026-08 (artifacthub.io/packages/helm/bitnami/postgresql).
+  # Bitnami's chart distribution has been in flux (OCI-only, "Bitnami
+  # Secure Images" tiers) -- if `helm dependency update` can't resolve
+  # this, check that page for the current version/registry and update
+  # here.
+  - name: postgresql
+    version: "18.8.11"
+    repository: "oci://registry-1.docker.io/bitnamicharts"

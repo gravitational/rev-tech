@@ -1,0 +1,33 @@
+# Only applied when ENABLE_DB_SERVICE=true in ../.env -- ../setup.sh
+# applies this alongside db.yaml, and removes both if you flip the
+# toggle back off. Rendered from ${...} placeholders and applied with:
+# tctl create -f role-db-access.yaml
+# Assign to yourself with: tctl users update <you> --set-roles=<existing-roles>,${CLI_ROLE_NAME}
+#
+# Grants regular Teleport Database Access (as opposed to the Workload
+# Identity path) to the "demo" Postgres database, with automatic user
+# provisioning: connecting users get their own Postgres login created on
+# demand (named after their Teleport username) instead of sharing
+# "app_user" -- see ../postgres-chart/values.yaml's
+# "03-teleport-db-service.sql" for the "reader"/"writer" privilege groups
+# referenced by `db_roles` below.
+#
+# NOTE: `create_db_user_mode` values (off/keep/best_effort_drop) and the
+# db_roles/db_labels/db_names shape were verified against
+# goteleport.com/docs current as of 2026-08 but not against a live
+# cluster -- see ../README.md.
+kind: role
+version: v7
+metadata:
+  name: ${CLI_ROLE_NAME}-db-access
+spec:
+  options:
+    create_db_user_mode: keep
+  allow:
+    db_labels:
+      demo: ["${DEMO_LABEL_VALUE}"]
+    db_names:
+      - demo
+    db_roles:
+      - reader
+      - writer

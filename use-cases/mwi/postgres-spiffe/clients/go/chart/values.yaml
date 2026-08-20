@@ -1,0 +1,68 @@
+nameOverride: ""
+fullnameOverride: "postgres-wi-client-go"
+
+# Default: no registry needed. The Job pulls a stock `ubuntu` image and
+# installs Go + this chart's own app/ source (via a ConfigMap) at
+# container start, building the binary on the fly -- confirmed working
+# locally (`docker run ubuntu:24.04` + apt-get install golang-go +
+# `GOTOOLCHAIN=auto go build`, which transparently downloads a newer Go
+# toolchain since Ubuntu's packaged golang-go is older than go.mod
+# requires). Slower cold start than a pre-built image (~15-30s for
+# apt/toolchain download/build), but works on any cluster with outbound
+# internet access and never needs anywhere to push an image to.
+selfCompile:
+  enabled: true
+  baseImage: "ubuntu:24.04"
+
+# Alternative: build ../Dockerfile yourself, push it somewhere your
+# cluster can pull from, and set selfCompile.enabled=false to use it
+# instead, e.g.: docker build -t <registry>/postgres-wi-client-go:0.1.0 ..
+image:
+  repository: "postgres-wi-client-go"
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+# Where the SVID (svid.pem/svid_key.pem/svid_bundle.pem) issued by ../../../tbot-chart
+# lands. Defaults match that chart's `svidOutput.secretName`.
+svidSecretName: "postgres-wi-svid"
+
+# Postgres' own server CA, so this client can verify Postgres' server
+# certificate. Defaults match ../../../postgres-chart's generated Secret.
+postgresCASecretName: "postgres-server-ca"
+
+postgres:
+  # Postgres' own Service (../../../postgres-chart), connected to
+  # directly -- no Teleport-mediated network hop. Once this client
+  # holds its SVID (mounted below via svidSecretName), that certificate
+  # is all it needs to authenticate; Teleport isn't in the data path at
+  # all. Fixed regardless of Helm release name/suffix, since
+  # postgres-chart pins `fullnameOverride: "postgres"`.
+  host: "postgres"
+  port: 5432
+  database: "demo"
+  user: "app_user"
+
+# Sized for the selfCompile path (apt-get golang-go + GOTOOLCHAIN=auto
+# downloading a newer Go + `go build`, which is considerably heavier
+# than running a static pre-built binary) -- lower these if you switch
+# to a pre-built image (selfCompile.enabled=false), which needs much
+# less.
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1
+    memory: 1Gi
+
+# Runs one transaction and exits, on this schedule -- CronJob syntax,
+# standard cron minimum granularity is one minute (no sub-minute
+# schedules exist). concurrencyPolicy: Forbid in cronjob.yaml skips a
+# run if the previous one is still going, so a slow self-compile can't
+# pile up overlapping runs.
+schedule: "*/2 * * * *"
+
+# Kept low: each run does one transaction and exits. Raise it if you're
+# debugging a flaky cluster and want Kubernetes to retry a given run for
+# you.
+backoffLimit: 2
