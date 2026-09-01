@@ -107,12 +107,10 @@ rendered files.
 |---|---|---|
 | `full-enterprise` | 5 | 73 |
 | `oss-postgres` | 4 | 39 — Identity Security omitted entirely |
-| `cloud` | 1 | 5 — Executive only |
 
-The `cloud` row is worth dwelling on. Teleport Cloud exposes no scrapeable diagnostics endpoint and
-no backend database, so **every panel here lost its datasource and that profile rendered nothing at
-all**. The usage exporter reads the API instead, which Cloud does expose, so Cloud now gets a real
-executive view. That is the clearest argument for the exporter existing.
+A profile that supports none of the required capabilities renders nothing at all, and the renderer
+says so rather than emitting an empty dashboard. That is the intended behaviour: the executive board
+is the only one that survives partially, because it is the only one composing from all four sources.
 
 Profiles are documented in [`profiles/README.md`](profiles/README.md).
 

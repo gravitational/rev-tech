@@ -26,7 +26,6 @@ Rendered per profile by `scripts/render-dashboards.py`:
 |---|---|
 | `full-enterprise` | 17 of 17 |
 | `oss-postgres` | 11 — no Access Graph |
-| `cloud` | 5 — exporter only, and the only dashboard Cloud gets at all |
 
 **Panels are omitted, never left empty.** A stat tile drawing a large `0` because its datasource is
 absent is indistinguishable from a real measurement of zero. On a board people make decisions from,
@@ -130,7 +129,7 @@ with `max_over_time`, not `increase()`.
 **Monitoring Target Availability** · Prometheus · *Approximate*
 Scrape-target availability as a proxy for service availability. It does not distinguish a scrape
 failure from an outage and carries no error budget; a real SLO with burn rate is a recording-rule job.
-Not available on Teleport Cloud.
+Requires a scrapeable Prometheus.
 
 ---
 

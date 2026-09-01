@@ -37,10 +37,10 @@ measurement of zero. Concretely:
 
 - **No Postgres audit backend** (DynamoDB, Firestore, file): the two login tiles disappear and the
   board goes to 7 panels. There is no correct Prometheus substitute; see the two login panels below.
-- **No kube-state-metrics / cAdvisor** (Teleport Cloud, or a non-Kubernetes install): the node and
+- **No kube-state-metrics / cAdvisor** (a non-Kubernetes install): the node and
   resource tiles disappear and the board goes to 6.
-- **`cloud` profile**: almost nothing survives, because Teleport Cloud exposes neither a scrapeable
-  diagnostics endpoint nor a backend database.
+- **Neither Prometheus nor an audit database**: nothing on this board survives, and the renderer
+  skips it rather than publishing an empty shell.
 
 **Template variables**
 

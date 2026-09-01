@@ -20,7 +20,7 @@ Teleport-raised security alert.
 | Teleport Enterprise | Access Graph / Identity Security is an Enterprise feature. There is no OSS equivalent of this data. |
 
 Consequences on a deployment that lacks Access Graph: `scripts/render-dashboards.py`
-**skips this file entirely** under both the `oss-postgres` and `cloud` profiles — the
+**skips this file entirely** under the `oss-postgres` profile — the
 board is not emitted at all rather than shipped as 24 empty panels. That is
 deliberate; a stat tile with a dead datasource renders a large `0`, which on a
 security board is indistinguishable from a real measurement of zero. See

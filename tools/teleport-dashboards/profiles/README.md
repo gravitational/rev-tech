@@ -17,7 +17,7 @@ was dropped, and why, in its description.
 
 | Capability | How to check it on a target cluster |
 |---|---|
-| `prometheus` | Is the Teleport diagnostics endpoint scraped? `count(teleport_build_info) > 0`. **False on Teleport Cloud** — the endpoint is not exposed. |
+| `prometheus` | Is the Teleport diagnostics endpoint scraped? `count(teleport_build_info) > 0`. False wherever the diagnostics endpoint is not scraped. |
 | `audit.postgres` | Is the audit backend Postgres, with `public.events` readable by the Grafana user? `SELECT 1 FROM public.events LIMIT 1`. False for DynamoDB, Athena, S3 and Cloud. |
 | `accessGraph` | Is Identity Security licensed and running, with a `tenant_*` schema in the `access_graph` database? Enterprise only. |
 | `cnpg` | Is Postgres managed by CloudNativePG with `spec.monitoring.enablePodMonitor: true`? `count(cnpg_pg_database_size_bytes) > 0`. |
@@ -42,16 +42,17 @@ because Prometheus returns a result computed over whatever it still has.
 |---|---|---|
 | `full-enterprise` | 5 of 5 dashboards, all panels | The reference cluster |
 | `oss-postgres` | 4 dashboards | Identity Security skipped entirely (no Access Graph); executive board keeps 6 of 12 panels |
-| `cloud` | **nothing** | See below |
 
-### Why `cloud` renders nothing
+### When a profile renders nothing
 
-That is the honest answer, not a bug. Teleport Cloud exposes no scrapeable diagnostics endpoint
-and no backend database, so every panel in the current set loses its datasource. The profile exists
-so that fact is visible and testable now rather than discovered by a customer on install day.
+A profile supporting none of the required capabilities produces no dashboards, and the renderer says
+so explicitly rather than emitting empty shells. That is intended: an empty board in the Grafana nav
+reads as a broken install rather than an unsupported one.
 
-Making Cloud viable requires the `teleport-usage` exporter, which reaches the Teleport API rather
-than a datastore and therefore works on any edition or backend. That is Phase 3.
+The executive board is the only one that degrades gracefully rather than disappearing, because it is
+the only one composing from all four sources. Deployments that cannot scrape Prometheus or reach an
+audit database still get the exporter-sourced panels, since the exporter reads the Teleport API
+rather than a datastore and therefore works on any edition and any audit backend.
 
 ## Adding a profile
 

@@ -26,7 +26,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Scrape targets up in the Teleport namespace, as a fraction of the expected target count ($expected_targets). Deliberately NOT avg(up): avg only averages series that still exist, so a Deployment scaled to 0 makes its series vanish and leaves the survivors averaging 1.0/green. Dividing by an absolute expected count makes a vanished target drop the tile. Also no longer filtered by $teleport_job \u2014 that variable derives from teleport_build_info, which the audit backend (job=\"teleport/teleport-postgres\") does not export, so the database used to sit outside this health check. Update $expected_targets whenever you add or remove a scrape target.",
+      "description": "**Fraction of this namespace's scrape targets that are up.**\n\nThe denominator is the PEAK target count seen over the retention window, not a hand-maintained number. That matters for two reasons:\n\n- `avg(up)` cannot detect a target that *vanishes*. Scale a Deployment to zero and its series disappears entirely, so the average of the survivors stays at 1.0 and the tile reads a confident 100% while something is gone.\n- A hardcoded expected count goes stale the moment anyone adds a scrape target. This panel briefly read **114%** for exactly that reason: deploying the usage exporter took the namespace from 7 targets to 8 while the constant still said 7.\n\nUsing the observed peak fixes both. It is clamped to the CURRENT count because the subquery only samples hourly: without the clamp, a target added minutes ago is not yet in the peak and the tile reads over 100% until the next sample. That is how this panel was caught reading 112% moments after the exporter was deployed. A target that vanishes still counts against the denominator until it ages out, and a newly added target raises the peak on its own.\n\n\u26a0\ufe0f Deliberately removing a target holds this below 100% until the peak ages out of `$prom_retention`. That is the honest reading \u2014 the target really did go away \u2014 but expect it after a planned decommission.\n\nAnchored on `$namespace` rather than `$teleport_job`: the latter derives from `teleport_build_info`, which the Postgres exporter does not emit, so the target feeding the whole database row was outside this health check.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -87,7 +87,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(up{namespace=~\"$namespace\"}) / $expected_targets",
+          "expr": "sum(up{namespace=~\"$namespace\"}) / clamp_min(max_over_time(count(up{namespace=~\"$namespace\"})[$prom_retention:1h]), scalar(count(up{namespace=~\"$namespace\"})))",
           "legendFormat": "Cluster Up",
           "range": true,
           "refId": "A"
@@ -716,26 +716,6 @@
         "type": "datasource"
       },
       {
-        "current": {
-          "text": "7",
-          "value": "7"
-        },
-        "description": "Number of Prometheus scrape targets expected in the Teleport namespace. Drives the Cluster Status tile so a target that disappears entirely (e.g. a Deployment scaled to 0) drags the tile down instead of vanishing from the average. Currently 7: auth, 2 proxies, ssh-node, grafana-agent, prometheus-agent, postgres.",
-        "hide": 0,
-        "label": "Expected scrape targets",
-        "name": "expected_targets",
-        "options": [
-          {
-            "selected": true,
-            "text": "7",
-            "value": "7"
-          }
-        ],
-        "query": "7",
-        "skipUrlSync": false,
-        "type": "textbox"
-      },
-      {
         "allowCustomValue": false,
         "datasource": {
           "type": "prometheus",
@@ -782,6 +762,26 @@
         "skipUrlSync": false,
         "sort": 1,
         "type": "query"
+      },
+      {
+        "current": {
+          "text": "7d",
+          "value": "7d"
+        },
+        "description": "Prometheus retention on this cluster. The Cluster Status denominator looks back over this window for the peak target count, so it must not exceed what Prometheus actually holds.",
+        "hide": 0,
+        "label": "Prometheus retention",
+        "name": "prom_retention",
+        "options": [
+          {
+            "selected": true,
+            "text": "7d",
+            "value": "7d"
+          }
+        ],
+        "query": "7d",
+        "skipUrlSync": false,
+        "type": "textbox"
       }
     ]
   },

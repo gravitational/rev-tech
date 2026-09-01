@@ -178,6 +178,47 @@
           "expr": "vector(1)"
         }
       ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "BUG D4 value exceeds declared max",
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "vector(1.14)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "description": "BUG D4: declares max 1 but returns 1.14. Grafana clamps to the bound, so the tile renders a plausible 100% while the query is wrong -- typically a ratio whose denominator has gone stale."
     }
   ]
 }

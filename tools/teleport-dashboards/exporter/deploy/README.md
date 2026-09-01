@@ -1,8 +1,8 @@
 # Deploying the Teleport usage exporter
 
 The exporter reads the Teleport API and serves Prometheus metrics. It works on
-**any edition and any audit backend, including Teleport Cloud**, because it asks
-the API rather than reading a datastore.
+**any edition and any audit backend**, because it asks the API rather than
+reading a datastore.
 
 Nothing here is licence-restricted: the binary links only
 `github.com/gravitational/teleport/api`, which is Apache 2.0, and no Enterprise
@@ -249,7 +249,6 @@ version-matched.
 | Kubernetes | tbot, `kubernetes` join | above |
 | EC2 / VM | tbot, `iam` join → file | systemd unit — Phase 3b |
 | Docker | mounted identity file | compose — Phase 3b |
-| **Teleport Cloud** | tbot against the Cloud proxy | works today; the API is the only usable source there, which is why the `cloud` capability profile is no longer empty |
 
 Configuration precedence is flag → env → default, so a container needs no flags:
 

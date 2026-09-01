@@ -36,6 +36,8 @@ CROSS-SOURCE (needs cluster; see corroborations.json)
 LIVE (needs cluster)
   D1  every query executes without error
   D2  result is not empty
+  D4  result falls outside the panel's own declared min/max. Grafana clamps to
+      the bound, so a stale denominator renders as a plausible number.
   D3  result is neither NaN nor Inf. 0/0 and x/0 both render as plausible
       values in Grafana and mislead identically.
 
@@ -57,17 +59,13 @@ Self-test
   ./validate-dashboards.py scripts/testdata/dashboard-selftest.json
 
 That fixture contains one deliberately broken panel per check, drawn from bugs
-that were actually found in these dashboards. It must report exactly 8 errors
-(S2, S3, S5, S6, L1, L2, L3, D3). If it reports fewer, a check has regressed and the
+that were actually found in these dashboards. It must report exactly 9 errors
+(S2, S3, S5, S6, L1, L2, L3, D3, D4). If it reports fewer, a check has regressed and the
 harness is no longer protecting you — fix the harness before trusting a pass.
 
-Postgres queries run via `kubectl exec` into a Postgres pod, so the check needs
-no database credentials of its own. The dashboard's datasource name maps to a
-database through DB_FOR_DATASOURCE below. Point it at a different cluster with:
-
-  TELEPORT_PG_NAMESPACE=teleport TELEPORT_PG_POD=my-pg-1 \
-  TELEPORT_PG_CONTAINER=postgres PROM_URL=http://localhost:9090 \
-  ./validate-dashboards.py
+Postgres queries are executed via `kubectl exec` into the CNPG pod, so the
+datasource name in the dashboard is mapped to a database by DB_FOR_DATASOURCE
+below. Adjust that map (and PG_POD/TENANT_SQL) when this moves to another repo.
 """
 
 from __future__ import annotations
@@ -79,9 +77,7 @@ from dataclasses import dataclass, field
 PROM_DEFAULT = os.environ.get("PROM_URL", "http://localhost:9090")
 
 # SQL panels are executed by shelling into a Postgres pod, because that needs no
-# credentials of its own and works on any cluster running Teleport's backend in
-# Kubernetes. Override for a differently-named cluster, or point PG_EXEC at a
-# psql wrapper of your own if your database is not in Kubernetes at all.
+# credentials of its own. Override for a differently-named cluster.
 PG_NS = os.environ.get("TELEPORT_PG_NAMESPACE", "teleport")
 PG_POD = os.environ.get("TELEPORT_PG_POD", "teleport-postgres-1")
 PG_CONTAINER = os.environ.get("TELEPORT_PG_CONTAINER", "postgres")
@@ -496,7 +492,26 @@ def subst_scalars(q: str, scalars: dict[str, str]) -> str:
     return q
 
 
-def run_promql(ctx: Ctx, name: str, title: str, expr: str, scalars: dict) -> None:
+def _out_of_declared_range(panel: dict, v: float):
+    """Return (min, max) when a value falls outside the panel's declared bounds.
+
+    A panel that declares max: 1 and renders 1.14 is not a display quirk -- the
+    query is wrong. Grafana clamps to the bound, so the tile looks reasonable
+    while the underlying number is not. This caught a Cluster Status tile
+    reading 114% because its denominator was a hardcoded target count that went
+    stale when a new scrape target was added.
+    """
+    d = (panel or {}).get("fieldConfig", {}).get("defaults", {})
+    lo, hi = d.get("min"), d.get("max")
+    if hi is not None and v > float(hi) * 1.001:
+        return (lo, hi)
+    if lo is not None and v < float(lo) - abs(float(lo)) * 0.001 - 1e-9:
+        return (lo, hi)
+    return None
+
+
+def run_promql(ctx: Ctx, name: str, title: str, expr: str, scalars: dict,
+               panel: dict | None = None) -> None:
     q = expr
     q = q.replace("$__range", "1h").replace("$__rate_interval", "5m").replace("$__interval", "5m")
     q = subst_scalars(q, scalars)
@@ -523,6 +538,13 @@ def run_promql(ctx: Ctx, name: str, title: str, expr: str, scalars: dict) -> Non
             if math.isnan(v):
                 ctx.add(SEV_ERROR, name, title, "D3-NaN",
                         "result is NaN (typically 0/0) — renders as a threshold colour and misleads")
+            elif _out_of_declared_range(panel, v) is not None:
+                lo, hi = _out_of_declared_range(panel, v)
+                ctx.add(SEV_ERROR, name, title, "D4-out-of-range",
+                        f"result {v:g} falls outside the panel's own declared range "
+                        f"[{lo}, {hi}]. Grafana clamps to the bound, so the tile renders a "
+                        f"plausible value while the real number is wrong -- usually a ratio "
+                        f"whose denominator has gone stale.")
             elif math.isinf(v):
                 # Division by an unset dashboard variable is the common cause.
                 # Grafana renders +Inf as a real-looking value, so it misleads
@@ -593,7 +615,7 @@ def validate(ctx: Ctx, path: str, known_uids: set | None = None) -> None:
             if expr:
                 check_promql_lint(ctx, name, title, expr, panel_range_s, scalars)
                 if not ctx.offline:
-                    run_promql(ctx, name, title, expr, scalars)
+                    run_promql(ctx, name, title, expr, scalars, p)
             elif sql and not ctx.offline:
                 run_sql(ctx, name, title, subst_scalars(sql, scalars), ds_var_of(t) or ds_var_of(p))
 

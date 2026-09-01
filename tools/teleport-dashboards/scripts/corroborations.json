@@ -35,17 +35,17 @@
     "skip_if_b_missing": true
   },
   {
-    "name": "Exporter collectors are all reporting",
-    "why": "A collector that stops is supposed to WITHDRAW its metrics, so absence is the correct signal rather than a zero. That makes it invisible to any check that only looks at values. collector_up is the explicit health signal; this asserts every collector is up. The old tracker's month of silent zeros is exactly what this catches on the first scrape rather than the first quarterly review.",
+    "name": "No exporter collector is reporting down",
+    "why": "A collector that stops WITHDRAWS its metrics, so absence is the correct signal and no value-based check can see it. collector_up is the explicit health signal.\n\nCounts collectors reporting down rather than summing collector_up: the sum scales with the number of exporter instances, so it broke during a rollout when two pods briefly reported at once (6 instead of 3) and would break permanently under HA. This form is 0 regardless of instance count.",
     "a": {
       "kind": "constant",
-      "label": "expected collectors up",
-      "value": 3
+      "label": "expected collectors down",
+      "value": 0
     },
     "b": {
       "kind": "promql",
-      "label": "collectors currently up",
-      "query": "sum(teleport_usage_collector_up)"
+      "label": "collectors reporting down",
+      "query": "count(teleport_usage_collector_up == 0) or vector(0)"
     },
     "tolerance": 0.0,
     "severity": "ERROR",

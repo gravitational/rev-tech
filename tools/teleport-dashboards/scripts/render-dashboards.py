@@ -14,7 +14,7 @@ like a measurement of zero.
 
 Usage:
   ./render-dashboards.py --profile profiles/oss-postgres.yaml --out rendered/oss-postgres
-  ./render-dashboards.py --profile profiles/cloud.yaml --out rendered/cloud --in dashboards
+  ./render-dashboards.py --profile profiles/oss-postgres.yaml --out rendered/oss --in dashboards
 """
 from __future__ import annotations
 import argparse, json, os, re, sys

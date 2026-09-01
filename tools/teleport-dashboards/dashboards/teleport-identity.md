@@ -42,7 +42,7 @@ Capability annotations (`x-requires`, consumed by `scripts/render-dashboards.py`
 |---|---|
 | `full-enterprise` / `oss-postgres` | 9/9 panels |
 | prometheus only, no `audit.postgres` | 7/9 — both login panels omitted |
-| `cloud` | dashboard SKIPPED entirely (0 of 9 supported) |
+| neither Prometheus nor audit | dashboard SKIPPED entirely (0 of 9 supported) |
 
 Panels are *omitted*, not left to render "No data". On a deployment without a
 Postgres audit backend you lose the login view outright. That is the intended

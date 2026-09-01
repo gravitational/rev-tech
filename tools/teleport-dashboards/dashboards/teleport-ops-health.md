@@ -55,10 +55,10 @@ Concretely, against the profiles in `profiles/`:
   "Postgres (CNPG)" row header disappear; 10 panels survive. The Backend
   Performance row still works: `backend_*` comes from Teleport, not from the
   database operator.
-- **`cloud`** — Teleport Cloud exposes no scrapeable diagnostics endpoint, so
-  the profile has neither `prometheus` nor `kubeStateMetrics` nor `cnpg`. Every
-  panel is dropped and the renderer skips the dashboard entirely rather than
-  publishing an empty shell.
+- **No scrapeable Prometheus** — with none of `prometheus`, `kubeStateMetrics`
+  or `cnpg`, every panel is dropped and the renderer skips the dashboard
+  entirely rather than publishing an empty shell. This board is the most
+  Prometheus-dependent of the set and degrades least gracefully.
 
 One naming wrinkle worth knowing: the `kubeStateMetrics` capability is used as
 shorthand for "kube-state-metrics **and** cAdvisor are scraped". The restart
