@@ -1,0 +1,106 @@
+[
+  {
+    "name": "TPR total: exporter (Teleport API) vs Prometheus gauge",
+    "why": "Two independent measurements of the same quantity. The exporter asks the Teleport API directly; teleport_connected_resources is emitted by auth from heartbeat state. They should agree, and when they do not, one of them is wrong in a way no single-source check can see. This replaced a comparison against the usage tracker's tpr_history table, which had recorded 720 consecutive zeros because the tracker's identity expired and it swallowed every fetch error. The tracker was retired on 2026-09-01 and the exporter replaces it.",
+    "a": {
+      "kind": "promql",
+      "label": "exporter (Teleport API)",
+      "query": "teleport_usage_protected_resources_total"
+    },
+    "b": {
+      "kind": "promql",
+      "label": "teleport_connected_resources gauge",
+      "query": "sum(teleport_connected_resources{namespace=~\"teleport\"})"
+    },
+    "tolerance": 0.25,
+    "severity": "ERROR",
+    "skip_if_b_missing": true
+  },
+  {
+    "name": "TPR total: exporter vs Access Graph inventory",
+    "why": "A third independent view of the same quantity. The exporter lists resources through the Teleport API; the Access Graph builds its own inventory from a separate ingestion path. They derive the number differently, so agreement is meaningful and divergence usually means the Access Graph has gone stale. Enterprise-only, so this skips cleanly on OSS.",
+    "a": {
+      "kind": "promql",
+      "label": "exporter (Teleport API)",
+      "query": "teleport_usage_protected_resources_total"
+    },
+    "b": {
+      "kind": "sql",
+      "db": "access_graph",
+      "label": "Access Graph resource nodes",
+      "query": "SET search_path TO ${tenant}; SELECT count(*) FROM nodes WHERE kind='resource'"
+    },
+    "tolerance": 0.25,
+    "severity": "WARN",
+    "skip_if_b_missing": true
+  },
+  {
+    "name": "Exporter collectors are all reporting",
+    "why": "A collector that stops is supposed to WITHDRAW its metrics, so absence is the correct signal rather than a zero. That makes it invisible to any check that only looks at values. collector_up is the explicit health signal; this asserts every collector is up. The old tracker's month of silent zeros is exactly what this catches on the first scrape rather than the first quarterly review.",
+    "a": {
+      "kind": "constant",
+      "label": "expected collectors up",
+      "value": 3
+    },
+    "b": {
+      "kind": "promql",
+      "label": "collectors currently up",
+      "query": "sum(teleport_usage_collector_up)"
+    },
+    "tolerance": 0.0,
+    "severity": "ERROR",
+    "skip_if_b_missing": true
+  },
+  {
+    "name": "Freshness: the exporter is still collecting",
+    "why": "A collector that hangs rather than errors keeps its last value on the dashboard indefinitely, which reads as a current measurement. Compares the age of the newest successful collection against a threshold. Collectors run on a 5 minute cadence, so 15 minutes is three missed cycles.",
+    "a": {
+      "kind": "constant",
+      "label": "max acceptable staleness (seconds)",
+      "value": 900
+    },
+    "b": {
+      "kind": "promql",
+      "label": "age of the newest successful collection (seconds)",
+      "query": "time() - max(teleport_usage_collector_last_success_timestamp_seconds)"
+    },
+    "comparison": "b_at_most_a",
+    "severity": "WARN",
+    "skip_if_b_missing": true
+  },
+  {
+    "name": "Teleport API version matches the exporter build",
+    "why": "New resource kinds land in MINOR Teleport releases, so a binary built against an older minor under-counts a newer cluster and publishes the shortfall as fact. The exporter detects this at startup and sets the metric; this surfaces it as a validation failure rather than leaving it in a log line nobody reads.",
+    "a": {
+      "kind": "constant",
+      "label": "expected mismatch flag",
+      "value": 0
+    },
+    "b": {
+      "kind": "promql",
+      "label": "teleport_usage_version_mismatch",
+      "query": "max(teleport_usage_version_mismatch)"
+    },
+    "tolerance": 0.0,
+    "severity": "ERROR",
+    "skip_if_b_missing": true
+  },
+  {
+    "name": "MWI bots: exporter vs distinct bots seen joining",
+    "why": "The exporter lists bots from the API; the audit log records bot.join events. These measure related but not identical things -- a configured bot that never joins appears in one and not the other -- so the tolerance is loose. It is here to catch a collector reading zero, not to police an off-by-one.",
+    "a": {
+      "kind": "promql",
+      "label": "exporter ListBots",
+      "query": "teleport_usage_bots"
+    },
+    "b": {
+      "kind": "sql",
+      "db": "teleport",
+      "label": "distinct bots seen joining in 30d",
+      "query": "SELECT count(DISTINCT event_data->>'bot_name') FROM public.events WHERE event_type='bot.join' AND event_time > now() - interval '30 days'"
+    },
+    "tolerance": 0.6,
+    "severity": "WARN",
+    "skip_if_b_missing": true
+  }
+]

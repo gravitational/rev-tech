@@ -1,0 +1,1788 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Executive summary of Teleport access-control posture, coverage and control-plane assurance. Entry point for the Teleport dashboard set; every tile drills into an analyst-grade board.\n\nPanel-by-panel reasoning, what was deliberately left off, and the validation history: see dashboards/teleport-executive.md.",
+  "editable": true,
+  "graphTooltip": 0,
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [
+        "teleport"
+      ],
+      "targetBlank": false,
+      "title": "Teleport dashboards",
+      "tooltip": "Drill into the analyst-grade boards",
+      "type": "dashboards",
+      "url": ""
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "panels": [],
+      "title": "Posture \u2014 are we getting safer?",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "**Percentage of human users holding privileged access standing, rather than earning it just-in-time.**\n\nConfidence: **Measured** (Access Graph, current state).\n\nBot and system identities (`@...`, `bot-...`) are excluded from the denominator \u2014 including them dilutes the ratio with identities that are *supposed* to hold standing grants.\n\n\u26a0\ufe0f No period-over-period delta: the Access Graph is point-in-time. Deltas arrive with the rollup sink.\n\n\u26a0\ufe0f Small denominator on this cluster \u2014 read the trend, not the digit.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 20
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "id": 1,
+      "links": [
+        {
+          "title": "Drill down: Users \u2014 Standing Privileges & MFA",
+          "url": "/d/teleport-identity-security/teleport-identity-security?var-tenant=${tenant}"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT round(100.0\n  * count(*) FILTER (WHERE (value->'properties'->>'standing_privileges')::int > 0)\n  / NULLIF(count(*), 0), 1) AS \"Standing Privilege %\"\nFROM nodes WHERE kind='identity' AND subkind='user'\n  AND value->>'name' NOT LIKE '@%' AND value->>'name' NOT LIKE 'bot-%'",
+          "refId": "A"
+        }
+      ],
+      "title": "Standing Privilege Ratio (humans)",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "**Percentage of human users with an MFA device registered in Teleport.**\n\nConfidence: **Approximate** \u2014 this is *device enrolment in Teleport*, which is NOT the same as MFA coverage.\n\n\u26a0\ufe0f **Three known ways this understates reality:**\n1. **SSO users** whose IdP enforces MFA upstream have no Teleport-registered device and are counted here as not-enrolled. On this cluster that is a real case, not a hypothetical.\n2. Identities with the property absent entirely (unknown state) are counted as not-enrolled.\n3. `weakest_mfa_device_kind` reports the *weakest* factor, so an all-OTP fleet scores 100%.\n\nBot and system identities are excluded from the denominator.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 95
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "id": 2,
+      "links": [
+        {
+          "title": "Drill down: Users \u2014 Standing Privileges & MFA",
+          "url": "/d/teleport-identity-security/teleport-identity-security?var-tenant=${tenant}"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT round(100.0\n  * count(*) FILTER (WHERE value->'properties'->>'weakest_mfa_device_kind' NOT IN ('UNSET',''))\n  / NULLIF(count(*), 0), 1) AS \"MFA Enrolled %\"\nFROM nodes WHERE kind='identity' AND subkind='user'\n  AND value->>'name' NOT LIKE '@%' AND value->>'name' NOT LIKE 'bot-%'",
+          "refId": "A"
+        }
+      ],
+      "title": "MFA Device Enrolled (humans)",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "**Percentage of *operator-created* roles that grant wildcard (`*:*`) access to some resource kind.**\n\nConfidence: **Measured** (Access Graph, current state).\n\n**Built-in roles are excluded**, and this matters: Teleport ships presets (`access`, `editor`, `requester`, `terraform-provider`, \u2026) that hold wildcards *by design*. Counting them measures Teleport's defaults, not your policy. Roles are classified by the `teleport.internal/resource-type` label \u2014 `preset` and `system` are built-in; auto-generated `bot-*` roles are excluded too.\n\nSee the *Role Inventory by Origin* table below for the split.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "id": 3,
+      "links": [
+        {
+          "title": "Drill down: Wildcard-Access Roles",
+          "url": "/d/teleport-identity-security/teleport-identity-security?var-tenant=${tenant}"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nWITH created AS (\n  SELECT DISTINCT value->>'name' AS name, id\n  FROM nodes WHERE kind='identity_group' AND subkind='role'\n    AND coalesce(value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system') AND value->>'name' NOT LIKE 'bot-%'\n)\nSELECT round(100.0 * (\n  SELECT count(DISTINCT c.name)\n  FROM created c\n  JOIN edges e1 ON e1.from_node = c.id\n  JOIN nodes a  ON a.id = e1.to_node  AND a.kind='action'\n  JOIN edges e2 ON e2.from_node = a.id\n  JOIN nodes rg ON rg.id = e2.to_node AND rg.kind='resource_group'\n  WHERE rg.value->>'name' = '{\"*\":\"*\"}'\n) / NULLIF((SELECT count(DISTINCT name) FROM created), 0), 1) AS \"Wildcard Role %\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Over-Permissioned Roles (created)",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "**Number of roles your team actually authored** \u2014 the surface area of policy you own and must review.\n\nConfidence: **Measured** (Access Graph, current state).\n\nExcludes Teleport `preset` and `system` roles and auto-generated `bot-*` roles. The full split is in the *Role Inventory by Origin* table below.\n\n**This tile replaced a 'Dead Roles' ratio, which was removed as unsound** \u2014 it relied on `member_of` edges, and roles granted to SSO users through login rules produce no such edge, so live roles were reported as dead. See the spec for detail.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "id": 4,
+      "links": [
+        {
+          "title": "Drill down: Role Inventory by Origin",
+          "url": "/d/teleport-identity-security/teleport-identity-security?var-tenant=${tenant}"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(DISTINCT value->>'name') AS \"Operator-Created Roles\"\nFROM nodes WHERE kind='identity_group' AND subkind='role'\n  AND coalesce(value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system') AND value->>'name' NOT LIKE 'bot-%'",
+          "refId": "A"
+        }
+      ],
+      "title": "Roles: Operator-Created",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "**Every second factor Teleport supports, and which this cluster accepts.**\n\nConfidence: **Measured** (Teleport API, via the usage exporter).\n\nAll three types are listed whether or not they are configured \u2014 an inventory, not just what happens to be on \u2014 so a type that is off is a visible gap rather than something inferred from an absence.\n\nColour reflects how much Teleport can actually vouch for:\n\n- **WebAuthn \u2014 green.** The strongest factor Teleport verifies itself.\n- **OTP \u2014 amber.** Accepted, but weaker than WebAuthn, which is available and unused.\n- **SSO \u2014 blue, not amber.** SSO is *not a factor Teleport checks*. It delegates the entire MFA ceremony to the identity provider and accepts whatever the IdP enforces. That could be hardware keys and device trust (stronger than anything Teleport verifies on its own) or it could be SMS. **Teleport cannot see which**, so the honest reading is *unknown*, not *weak*. If SSO is in use, audit the IdP's own MFA policy \u2014 this tile cannot do it for you. Teleport's docs note the flexibility \"presents the possibility of insecure misconfigurations\". Enterprise-only, OIDC and SAML connectors only.\n\nThis layer is unreachable from any Grafana datasource: `cluster_auth_preference` is API-only, and the `auth_preference.update` audit event records that MFA changed, not what it changed to.\n\nThree related questions, deliberately kept apart:\n- **this tile**: which factors does the cluster *accept*?\n- **MFA Device Enrolled**: have users actually *registered* one?\n- **Session MFA Required**: is a fresh check demanded before privileged access?\n\nHardware-key policies (`HARDWARE_KEY_TOUCH`, `HARDWARE_KEY_PIN`) live on `require_mfa_type` rather than the second-factor enum and are not yet exported \u2014 a Phase 3b addition.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "not in use",
+                  "color": "text",
+                  "index": 0
+                },
+                "1": {
+                  "text": "IN USE",
+                  "color": "orange",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "WebAuthn"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "not in use",
+                        "color": "text",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "IN USE",
+                        "color": "green",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SSO"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "not in use",
+                        "color": "text",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "DELEGATED TO IdP",
+                        "color": "blue",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OTP"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "not in use",
+                        "color": "text",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "IN USE",
+                        "color": "orange",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 7
+      },
+      "id": 14,
+      "x-requires": [
+        "usageExporter"
+      ],
+      "links": [
+        {
+          "title": "Drill down: Per-Role Session MFA Enforcement",
+          "url": "/d/teleport-identity-security/teleport-identity-security?var-tenant=${tenant}"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max(teleport_usage_auth_second_factor_enabled{type=\"webauthn\"})",
+          "instant": true,
+          "legendFormat": "WebAuthn",
+          "range": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max(teleport_usage_auth_second_factor_enabled{type=\"sso\"})",
+          "instant": true,
+          "legendFormat": "SSO",
+          "range": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max(teleport_usage_auth_second_factor_enabled{type=\"otp\"})",
+          "instant": true,
+          "legendFormat": "OTP",
+          "range": false,
+          "refId": "C"
+        }
+      ],
+      "title": "Second Factors \u2014 inventory of what Teleport supports",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "**Does the cluster require a fresh MFA check before a privileged session, rather than only at login?**\n\nConfidence: **Measured** (Teleport API, via the usage exporter).\n\n`require_session_mfa` at the cluster level. Roles can also set this individually \u2014 see the per-role breakdown on the Identity Security board, where the reference cluster has **0 of 35** roles enforcing it.\n\nLogin-time MFA proves who started the session. Session MFA proves who is using it *now*, which is what limits the value of a stolen session.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Not required",
+                  "color": "orange",
+                  "index": 0
+                },
+                "1": {
+                  "text": "Required",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 7
+      },
+      "id": 15,
+      "x-requires": [
+        "usageExporter"
+      ],
+      "links": [
+        {
+          "title": "Drill down: Per-Role Session MFA Enforcement",
+          "url": "/d/teleport-identity-security/teleport-identity-security?var-tenant=${tenant}"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max(teleport_usage_auth_require_session_mfa)",
+          "instant": true,
+          "legendFormat": "Session MFA",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Session MFA Required (cluster)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 500,
+      "panels": [],
+      "title": "Role Inventory \u2014 what we authored vs what Teleport ships",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "**Every role, split by who created it.**\n\nTeleport ships roles of its own, and conflating them with yours makes every role-based ratio meaningless \u2014 `access`, `editor`, `requester` and `terraform-provider` hold wildcards *by design*, and most presets are unassigned on a normal cluster.\n\nClassification uses the `teleport.internal/resource-type` label on the role:\n- **preset** \u2014 shipped and created by Teleport on first start.\n- **system** \u2014 Teleport-managed integration roles (Okta, AWS IC, access-approver).\n- **bot-generated** \u2014 created automatically per Machine ID bot (`bot-*`).\n- **operator-created** \u2014 authored by your team. **This is the only group the posture tiles measure.**\n\n`Assigned (graph)` counts `member_of` / `impersonator_of` / `requester_of` edges. \u26a0\ufe0f **It undercounts.** Roles granted to SSO users via login rules produce no graph edge, so a role can read `0` here and still be live \u2014 verified on this cluster, where `role-base` is assigned to an SSO user but shows no edge. Do not treat `0` as 'safe to delete'.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Origin"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 13,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Origin"
+          }
+        ]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nWITH roles AS (\n  SELECT DISTINCT ON (value->>'name')\n    value->>'name' AS name, id,\n    CASE\n      WHEN coalesce(value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','')\n           = 'preset' THEN 'Teleport preset'\n      WHEN coalesce(value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','')\n           = 'system' THEN 'Teleport system'\n      WHEN value->>'name' LIKE 'bot-%' THEN 'Bot-generated'\n      ELSE 'Operator-created'\n    END AS origin\n  FROM nodes WHERE kind='identity_group' AND subkind='role'\n)\nSELECT r.origin AS \"Origin\",\n       r.name   AS \"Role\",\n       (SELECT count(*) FROM edges e\n          WHERE e.to_node = r.id\n            AND e.kind IN ('member_of','impersonator_of','requester_of')) AS \"Assigned (graph)\",\n       CASE WHEN EXISTS (\n         SELECT 1 FROM edges e1\n         JOIN nodes a  ON a.id = e1.to_node  AND a.kind='action'\n         JOIN edges e2 ON e2.from_node = a.id\n         JOIN nodes rg ON rg.id = e2.to_node AND rg.kind='resource_group'\n         WHERE e1.from_node = r.id AND rg.value->>'name' = '{\"*\":\"*\"}'\n       ) THEN 'yes' ELSE '' END AS \"Wildcard access\"\nFROM roles r\nORDER BY (r.origin = 'Operator-created') DESC, r.origin, r.name",
+          "refId": "A"
+        }
+      ],
+      "title": "Role Inventory by Origin",
+      "type": "table",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 200,
+      "panels": [],
+      "title": "Coverage & Adoption \u2014 are we getting what we bought?",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "**Resources enrolled in Teleport as a share of the known estate.** The gap is the shadow estate \u2014 the part of the environment where none of the other tiles apply.\n\nConfidence: **Measured** numerator (Teleport API, via the usage exporter) \u00f7 **operator-supplied** denominator.\n\nThe numerator was previously the Access Graph's resource count. It agrees today, but the Access Graph is Enterprise-only, so sourcing from it denied this panel to OSS and Cloud for no reason. The exporter reads the same resources through the API and is also the billing-relevant definition.\n\n\u26a0\ufe0f The denominator is the `known_estate_size` variable, maintained by hand \u2014 Teleport cannot know how big your estate is. Update it quarterly along with `known_estate_updated`; a stale denominator yields a confidently wrong percentage. Shows *Not configured* while it is 0.\n\n**On the expression:** the `and on() (vector(...) > 0)` guard makes the query return nothing when `known_estate_size` is 0, so the tile reads *Not configured*. Dividing by 0 in PromQL yields `+Inf`, which Grafana renders as a real-looking value.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "text",
+                  "index": 0,
+                  "text": "Not configured"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "max": 100,
+          "min": 0,
+          "noValue": "Not configured",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 60
+              },
+              {
+                "color": "green",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 23
+      },
+      "id": 5,
+      "links": [
+        {
+          "title": "Drill down: Resource Inventory",
+          "url": "/d/teleport-identity-security/teleport-identity-security?var-tenant=${tenant}"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "(100 * teleport_usage_protected_resources_total / ${known_estate_size}) and on() (vector(${known_estate_size}) > 0)",
+          "instant": true,
+          "legendFormat": "Estate coverage",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Estate Coverage (estate as of ${known_estate_updated})",
+      "type": "stat",
+      "x-requires": [
+        "usageExporter"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "**Distinct human users with at least one session in the selected period.**\n\nBots are excluded \u2014 they do not count toward billable MAU and including them here would misrepresent adoption.\n\nConfidence: **Approximate**. Derived by classifying audit events; `user_kind` is known to be inconsistent, so treat this as investigative rather than authoritative. The license portal remains the authoritative source.\n\nBot rule (matching the tracker): bot iff `user_kind` contains `bot` or equals `2`.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 23
+      },
+      "id": 6,
+      "links": [
+        {
+          "title": "Drill down: Identity & Access \u2014 login and session activity",
+          "url": "/d/teleport-identity/teleport-identity"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(DISTINCT event_data->>'user') AS \"Human Active Users\"\nFROM public.events\nWHERE event_type IN ('session.start','db.session.start','app.session.start','windows.desktop.session.start','kube.request')\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND NOT (lower(coalesce(event_data->>'user_kind','')) LIKE '%bot%' OR event_data->>'user_kind' = '2')",
+          "refId": "A"
+        }
+      ],
+      "title": "Human Active Users (period)",
+      "type": "stat",
+      "x-requires": [
+        "audit.postgres"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "**Share of sessions by protocol over the selected period.**\n\nAnswers \"did we buy a platform and deploy one protocol?\" A healthy rollout broadens past SSH over time.\n\nConfidence: **Approximate** (audit-event classification). Kubernetes sessions are `session.start` events carrying a `kubernetes_cluster` field, plus `kube.request`; SSH is `session.start` without one.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 23
+      },
+      "id": 7,
+      "links": [],
+      "options": {
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true,
+          "values": []
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  count(*) FILTER (WHERE event_type='session.start' AND event_data->>'kubernetes_cluster' IS NULL)  AS \"SSH\",\n  count(*) FILTER (WHERE (event_type='session.start' AND event_data->>'kubernetes_cluster' IS NOT NULL)\n                      OR event_type='kube.request')                                                 AS \"Kubernetes\",\n  count(*) FILTER (WHERE event_type='db.session.start')                                             AS \"Database\",\n  count(*) FILTER (WHERE event_type='app.session.start')                                            AS \"Application\",\n  count(*) FILTER (WHERE event_type='windows.desktop.session.start')                                AS \"Desktop\"\nFROM public.events\nWHERE event_time >= $__timeFrom() AND event_time <= $__timeTo()",
+          "refId": "A"
+        }
+      ],
+      "title": "Protocol Mix (share of sessions)",
+      "type": "piechart",
+      "x-requires": [
+        "audit.postgres"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "**Total resources Teleport protects.** This is the TPR figure billing is based on.\n\nConfidence: **Measured** (Teleport API, via the usage exporter).\n\nRead from the API rather than inferred from heartbeat gauges or audit events. Three independent sources agree on this cluster \u2014 the exporter, `teleport_connected_resources`, and the Access Graph \u2014 and `scripts/validate-dashboards.py` asserts the first two stay in agreement (C1).\n\nA predecessor to this panel read a tracker table that had recorded 0 for a month after its credentials expired, while labelled *faithful*. If this collector fails the series is **withdrawn** and the panel reads *No data*; it will never show a zero it did not measure.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 29
+      },
+      "id": 16,
+      "x-requires": [
+        "usageExporter"
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "teleport_usage_protected_resources_total",
+          "instant": true,
+          "legendFormat": "Protected Resources (TPR)",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Protected Resources (TPR)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "**Protected resources by kind.**\n\nConfidence: **Measured** (Teleport API, via the usage exporter).\n\nEvery kind is emitted including zeros, so a kind you do not use is a visible zero rather than a missing bar. Absence here means *not measured* \u2014 the collector withdraws its series on failure \u2014 which is deliberately different from a measured zero.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 6,
+        "y": 29
+      },
+      "id": 17,
+      "x-requires": [
+        "usageExporter"
+      ],
+      "options": {
+        "displayMode": "gradient",
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "left",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "teleport_usage_protected_resources",
+          "instant": true,
+          "legendFormat": "{{kind}}",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Protected Resources by Kind",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "**Distinct human active users per calendar month.**\n\nConfidence: **Approximate** (audit-event classification, bots excluded).\n\n\u26a0\ufe0f The window shown is limited by audit retention, not by the dashboard's time range. This is *not* a 13-month trend until the rollup sink lands \u2014 read the x-axis, not the intent.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "id": 8,
+      "links": [
+        {
+          "title": "Drill down: Identity & Access \u2014 login and session activity",
+          "url": "/d/teleport-identity/teleport-identity"
+        }
+      ],
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.7,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  to_char(date_trunc('month', event_time), 'YYYY-MM') AS \"Month\",\n  count(DISTINCT event_data->>'user')                 AS \"Human Active Users\"\nFROM public.events\nWHERE event_type IN ('session.start','db.session.start','app.session.start','windows.desktop.session.start','kube.request')\n  AND event_time >= $__timeFrom() AND event_time <= $__timeTo()\n  AND NOT (lower(coalesce(event_data->>'user_kind','')) LIKE '%bot%' OR event_data->>'user_kind' = '2')\nGROUP BY 1 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Human Active Users by Month",
+      "type": "barchart",
+      "x-requires": [
+        "audit.postgres"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "**Session volume by protocol, per calendar month.**\n\nThe adoption story over time: a stack that broadens is a platform rollout, a stack that stays one colour is an SSH replacement.\n\nConfidence: **Approximate** (audit-event classification).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 35
+      },
+      "id": 9,
+      "links": [],
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.7,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "never",
+        "stacking": "normal",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  to_char(date_trunc('month', event_time), 'YYYY-MM') AS \"Month\",\n  count(*) FILTER (WHERE event_type='session.start' AND event_data->>'kubernetes_cluster' IS NULL)  AS \"SSH\",\n  count(*) FILTER (WHERE (event_type='session.start' AND event_data->>'kubernetes_cluster' IS NOT NULL)\n                      OR event_type='kube.request')                                                 AS \"Kubernetes\",\n  count(*) FILTER (WHERE event_type='db.session.start')                                             AS \"Database\",\n  count(*) FILTER (WHERE event_type='app.session.start')                                            AS \"Application\",\n  count(*) FILTER (WHERE event_type='windows.desktop.session.start')                                AS \"Desktop\"\nFROM public.events\nWHERE event_time >= $__timeFrom() AND event_time <= $__timeTo()\nGROUP BY 1 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Protocol Mix by Month",
+      "type": "barchart",
+      "x-requires": [
+        "audit.postgres"
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "id": 300,
+      "panels": [],
+      "title": "Control-Plane Assurance \u2014 can we still prove what happened?",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "**Three independent ways the audit record can lose evidence, over the last 7 days.** Target is zero on all three, so these are deliberately counts and not ratios.\n\n- **Failed audit emits** \u2014 `audit_failed_emit_events`, a true counter. Events Teleport could not write.\n- **S3 session-upload errors** \u2014 `s3_requests{result!=\"success\"}`. Recordings that failed to reach the session bucket. A previous version of this panel claimed to cover S3 but queried no S3 metric.\n- **Peak sessions pending upload** \u2014 `teleport_incomplete_session_uploads_total`.\n\n\u26a0\ufe0f **`teleport_incomplete_session_uploads_total` is a GAUGE despite its `_total` suffix** (confirmed via Prometheus metadata, 2026-08-31). An earlier version of this panel wrapped it in `increase()`, which runs counter-reset logic over a value that legitimately falls every time an upload completes \u2014 producing an arbitrary number. It is now read with `max_over_time`.\n\n\u26a0\ufe0f **Windowed by `$prom_retention`, not by the dashboard range.** Prometheus retention is a property of the cluster this is installed on, so the window is a dashboard variable rather than a hardcoded value. A range longer than retention would compute over whatever exists and present it as the longer period \u2014 the failure this variable exists to prevent.\n\nConfidence: **Measured** (Prometheus).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 44
+      },
+      "id": 10,
+      "links": [
+        {
+          "title": "Drill down: Ops Health \u2014 Audit Pipeline",
+          "url": "/d/teleport-ops-health/teleport-ops-health"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(audit_failed_emit_events{namespace=~\"$namespace\",job=~\"$teleport_job\"}[$prom_retention])) or vector(0)",
+          "instant": true,
+          "legendFormat": "Failed audit emits (7d)",
+          "range": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(s3_requests{namespace=~\"$namespace\",job=~\"$teleport_job\",result!=\"success\"}[$prom_retention])) or vector(0)",
+          "instant": true,
+          "legendFormat": "S3 session-upload errors (7d)",
+          "range": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max_over_time(sum(teleport_incomplete_session_uploads_total{namespace=~\"$namespace\",job=~\"$teleport_job\"})[$prom_retention:5m]) or vector(0)",
+          "instant": true,
+          "legendFormat": "Peak sessions pending upload",
+          "range": false,
+          "refId": "C"
+        }
+      ],
+      "title": "Audit Continuity \u2014 evidence integrity (${prom_retention})",
+      "type": "stat",
+      "x-requires": [
+        "prometheus"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "\u26a0\ufe0f **Pinned to 7 days, not the dashboard range.** Prometheus retention on this cluster is `7d` (verified 2026-08-31). A `[90d]` window would silently compute over 7 days of data and present the result as a quarter \u2014 a green tile that means nothing. Raise Prometheus retention (or land the rollup sink) to widen this honestly.\n\n**Average availability of Teleport's monitored targets over the selected period.**\n\nThe system that gates all production access was reachable this fraction of the period.\n\nConfidence: **Approximate**. This is scrape-target availability (`up`), which is a proxy for service availability \u2014 it does not distinguish a scrape failure from an outage, and it carries no error budget. A true SLO with burn rate is planned as a Prometheus recording rule.\n\nNot available on Teleport Cloud, where the diagnostics endpoint is not scrapeable.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 3,
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 99
+              },
+              {
+                "color": "green",
+                "value": 99.9
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 44
+      },
+      "id": 11,
+      "links": [
+        {
+          "title": "Drill down: Ops Health \u2014 Cluster Health",
+          "url": "/d/teleport-ops-health/teleport-ops-health"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "100 * avg(avg_over_time(up{namespace=~\"$namespace\",job=~\"$teleport_job\"}[$prom_retention]))",
+          "instant": true,
+          "legendFormat": "Availability",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Monitoring Target Availability (${prom_retention})",
+      "type": "stat",
+      "x-requires": [
+        "prometheus"
+      ]
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "teleport",
+    "rev-tech",
+    "executive"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Access Graph datasource",
+        "multi": false,
+        "name": "DS_ACCESS_GRAPH",
+        "options": [],
+        "query": "postgres",
+        "refresh": 1,
+        "regex": "/[Aa]ccess ?[Gg]raph/",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Teleport audit datasource",
+        "multi": false,
+        "name": "DS_TELEPORT_BACKEND",
+        "options": [],
+        "query": "postgres",
+        "refresh": 1,
+        "regex": "/[Tt]eleport ?[Bb]ackend/",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Prometheus datasource",
+        "multi": false,
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "allowCustomValue": false,
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_ACCESS_GRAPH}"
+        },
+        "definition": "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%' ORDER BY 1;",
+        "description": "Tenant schema inside the access_graph database. There is typically one per Teleport cluster.",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "tenant",
+        "options": [],
+        "query": "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%' ORDER BY 1;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(teleport_build_info,namespace)",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "namespace",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(teleport_build_info,namespace)",
+          "refId": "namespace"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(teleport_build_info,job)",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "teleport_job",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(teleport_build_info,job)",
+          "refId": "teleport_job"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "0",
+          "value": "0"
+        },
+        "description": "Total resources in the estate that SHOULD be behind Teleport. Operator-maintained \u2014 Teleport cannot know this. Set it to enable the Estate Coverage tile; leave 0 and the tile reads 'Not configured'.",
+        "hide": 0,
+        "label": "Known estate size",
+        "name": "known_estate_size",
+        "options": [
+          {
+            "selected": true,
+            "text": "0",
+            "value": "0"
+          }
+        ],
+        "query": "0",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "never",
+          "value": "never"
+        },
+        "description": "Date the known_estate_size figure was last verified (YYYY-MM-DD). Shown in the Estate Coverage tile title so a stale denominator is visible rather than silently trusted.",
+        "hide": 0,
+        "label": "Estate figure last updated",
+        "name": "known_estate_updated",
+        "options": [
+          {
+            "selected": true,
+            "text": "never",
+            "value": "never"
+          }
+        ],
+        "query": "never",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "7d",
+          "value": "7d"
+        },
+        "description": "Prometheus retention on THIS cluster. Every PromQL range selector on this dashboard is derived from it, so the panels can never claim a window the datastore does not hold. Set it to match `spec.retention` on your Prometheus (kube-prometheus-stack default is short). Raising Prometheus retention and then raising this widens the panels honestly.",
+        "hide": 0,
+        "label": "Prometheus retention",
+        "name": "prom_retention",
+        "options": [
+          {
+            "selected": true,
+            "text": "7d",
+            "value": "7d"
+          }
+        ],
+        "query": "7d",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "90d",
+          "value": "90d"
+        },
+        "description": "How far back the Teleport audit backend actually holds events. This is a DIFFERENT and usually much longer clock than Prometheus retention \u2014 on the reference cluster the audit DB held 116 days while Prometheus held 7. Audit-sourced (SQL) panels use this; Prometheus panels use $prom_retention. Do not collapse them into one value.",
+        "hide": 0,
+        "label": "Audit retention",
+        "name": "audit_retention",
+        "options": [
+          {
+            "selected": true,
+            "text": "90d",
+            "value": "90d"
+          }
+        ],
+        "query": "90d",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Teleport \u2014 Executive Summary",
+  "uid": "teleport-executive",
+  "version": 1,
+  "weekStart": ""
+}

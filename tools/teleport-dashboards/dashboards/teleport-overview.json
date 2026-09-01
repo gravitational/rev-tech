@@ -1,0 +1,798 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Single-screen Teleport status board. Designed for TV / ops huddle. Big numbers, threshold colours, no scrolling.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Scrape targets up in the Teleport namespace, as a fraction of the expected target count ($expected_targets). Deliberately NOT avg(up): avg only averages series that still exist, so a Deployment scaled to 0 makes its series vanish and leaves the survivors averaging 1.0/green. Dividing by an absolute expected count makes a vanished target drop the tile. Also no longer filtered by $teleport_job \u2014 that variable derives from teleport_build_info, which the audit backend (job=\"teleport/teleport-postgres\") does not export, so the database used to sit outside this health check. Update $expected_targets whenever you add or remove a scrape target.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.9
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(up{namespace=~\"$namespace\"}) / $expected_targets",
+          "legendFormat": "Cluster Up",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Cluster Status",
+      "type": "stat",
+      "x-requires": [
+        "prometheus"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Total resources (nodes, apps, kube clusters, databases) connected to the Teleport cluster. teleport_connected_resources is a PER-AUTH-INSTANCE gauge: every auth replica reports the whole cluster's inventory, so a plain sum() would multiply the count by the number of auth replicas. max by (type) collapses the replicas first, then sums the resource types \u2014 correct with 1 auth today and still correct under auth HA.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(max by (type)(teleport_connected_resources{namespace=~\"$namespace\",job=~\"$teleport_job\"}))",
+          "legendFormat": "Connected Resources",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Connected Resources",
+      "type": "stat",
+      "x-requires": [
+        "prometheus"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Active SSH sessions right now. DO NOT wrap this in rate() or increase(): despite the _total suffix, proxy_ssh_sessions_total is metadata-confirmed a GAUGE (\"Number of active sessions through this proxy\"), so using it bare is correct. SSH only \u2014 Kubernetes, database, app and desktop sessions are not counted here.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(proxy_ssh_sessions_total{namespace=~\"$namespace\",job=~\"$teleport_job\"})",
+          "legendFormat": "SSH Sessions",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Active SSH Sessions",
+      "type": "stat",
+      "x-requires": [
+        "prometheus"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Worker nodes (kube_node_role role=\"node\") reporting Ready=true. Must be sum(), not count(): kube-state-metrics keeps emitting the status=\"true\" series at value 0 when a node goes NotReady, so count() never drops. Joined against kube_node_role so the control plane is excluded. Expected worker count is 1 \u2014 raise the green threshold if you scale the nodes instance group.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"} * on(node) group_left kube_node_role{role=\"node\"})",
+          "legendFormat": "Ready Workers",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Worker Nodes Ready",
+      "type": "stat",
+      "x-requires": [
+        "kubeStateMetrics"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "Successful user.login events in the audit log over the last 24h. Sourced from the audit backend, NOT from the Prometheus counter user_login_total, which over-reports by roughly 7x: it incremented +7 in a 45-minute window on 2026-08-27 against exactly one audit user.login event, because it also counts re-authentications and session refreshes. If you want a Prometheus-side activity signal instead, teleport_user_certificates_generated is trustworthy (7d increase 2023 vs 2023 cert.create audit events). Fixed 24h window, independent of the dashboard time range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 6
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS \"Logins (24h)\"\nFROM public.events\nWHERE event_type = 'user.login'\n  AND event_data->>'success' = 'true'\n  AND event_time >= now() - interval '24 hours'",
+          "refId": "A"
+        }
+      ],
+      "title": "Logins Today (24h)",
+      "type": "stat",
+      "x-requires": [
+        "audit.postgres"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_TELEPORT_BACKEND}"
+      },
+      "description": "Failed user.login events in the audit log over the last 24h \u2014 covers SSO (oidc/saml/github), local password and web login failures. Red at 10. Sourced from the audit backend, NOT from the Prometheus counter failed_login_attempts_total, which cannot see most login failures: it is exported only by job=\"teleport\" (the proxies) and job=\"teleport/ssh-node\", never by teleport-auth where SSO and local logins are actually evaluated. It is the SSH-server-side failed-auth counter. Evidence: the audit log holds 27 failed logins all-time (16 oidc, 11 local) while max_over_time(failed_login_attempts_total[7d]) is 0 on every series \u2014 a permanently green tile for something it cannot measure. Fixed 24h window, independent of the dashboard time range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 6
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_TELEPORT_BACKEND}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS \"Failed Logins (24h)\"\nFROM public.events\nWHERE event_type = 'user.login'\n  AND event_data->>'success' = 'false'\n  AND event_time >= now() - interval '24 hours'",
+          "refId": "A"
+        }
+      ],
+      "title": "Failed Logins Today (24h)",
+      "type": "stat",
+      "x-requires": [
+        "audit.postgres"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Audit/S3 emit errors in the last 15 minutes. Anything > 0 is red. (Title, legend, description and the query window all say 15m \u2014 they previously disagreed: the title said 15m, the legend said 1h and the description said \"the last hour\" while the query was increase(...[15m]), so a reader trusting the description under-reacted by 4x.)",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 6
+      },
+      "id": 7,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(audit_failed_emit_events{namespace=~\"$namespace\",job=~\"$teleport_job\"}[15m]))",
+          "legendFormat": "Audit Errors (15m)",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Audit Upload Errors (15m)",
+      "type": "stat",
+      "x-requires": [
+        "prometheus"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "CPU usage (cores) of the BUSIEST teleport container \u2014 max over pods, not the average. The old avg() diluted a hot pod across 6 containers (avg 0.0027 cores while auth ran at 0.0062), and its 0.5/0.9 core thresholds were unreachable: one pod would have had to burn 3.0 cores to push the average past orange and 5.4 past red. Thresholds are now set against observed reality \u2014 the 7d per-pod peak is 0.036 cores (proxy), so orange at 0.1 is ~3x peak and red at 0.25 is half of the only CPU limit in the namespace (ssh-node, 500m; auth and the proxies have no limit, so \"cores\" here is not anchored to a budget). Gauge max is 0.5 so normal load is actually visible on the dial. Still scoped to container=\"teleport\" and deliberately not filtered by $teleport_job \u2014 cAdvisor metrics do not carry that label.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.1
+              },
+              {
+                "color": "red",
+                "value": 0.25
+              }
+            ]
+          },
+          "unit": "short",
+          "min": 0,
+          "max": 0.5
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "id": 8,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "max(max by (pod)(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\",container=\"teleport\"}[5m])))",
+          "legendFormat": "Busiest pod (cores)",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "CPU \u2014 Busiest Teleport Pod (cores)",
+      "type": "gauge",
+      "x-requires": [
+        "kubeStateMetrics"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Memory working set of the HEAVIEST teleport container \u2014 max over pods, not the average. The old avg() read 62-77 MB and hid teleport-auth at 215 MB (~3x the average, since the proxies sit near 60 MB and the agents near 40 MB), and it carried no thresholds at all. Orange at 400 MB / red at 700 MB: ssh-node is the only container with a memory limit (512Mi), so red is set above it to catch a genuine runaway while orange fires before ssh-node would be OOMKilled. 7d per-pod peak is 215 MB (auth).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 400000000
+              },
+              {
+                "color": "red",
+                "value": 700000000
+              }
+            ]
+          },
+          "unit": "decbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "id": 9,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "max(max by (pod)(container_memory_working_set_bytes{namespace=~\"$namespace\",container=\"teleport\"}))",
+          "legendFormat": "Heaviest pod",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Memory \u2014 Heaviest Teleport Pod",
+      "type": "stat",
+      "x-requires": [
+        "kubeStateMetrics"
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "teleport",
+    "rev-tech"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allowCustomValue": false,
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "queryValue": "",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "allowCustomValue": false,
+        "current": {},
+        "description": "Postgres datasource pointing at the Teleport audit backend (database `teleport`, SELECT on public.events). Used by the two login tiles, which cannot be measured correctly from Prometheus.",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Teleport audit datasource",
+        "multi": false,
+        "name": "DS_TELEPORT_BACKEND",
+        "options": [],
+        "query": "postgres",
+        "refresh": 1,
+        "regex": "/[Tt]eleport ?[Bb]ackend/",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "text": "7",
+          "value": "7"
+        },
+        "description": "Number of Prometheus scrape targets expected in the Teleport namespace. Drives the Cluster Status tile so a target that disappears entirely (e.g. a Deployment scaled to 0) drags the tile down instead of vanishing from the average. Currently 7: auth, 2 proxies, ssh-node, grafana-agent, prometheus-agent, postgres.",
+        "hide": 0,
+        "label": "Expected scrape targets",
+        "name": "expected_targets",
+        "options": [
+          {
+            "selected": true,
+            "text": "7",
+            "value": "7"
+          }
+        ],
+        "query": "7",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "allowCustomValue": false,
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(teleport_build_info,namespace)",
+        "description": "Kubernetes namespace where Teleport is deployed.",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "namespace",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(teleport_build_info,namespace)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allowCustomValue": false,
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(teleport_build_info,job)",
+        "description": "Filter metrics based on Prometheus' `job` label (teleport, teleport-auth, etc).",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "teleport_job",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(teleport_build_info,job)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Teleport \u2014 Overview (TV)",
+  "uid": "teleport-overview",
+  "version": 1,
+  "weekStart": ""
+}
