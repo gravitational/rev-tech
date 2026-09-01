@@ -1,0 +1,145 @@
+# exporter.yaml — the Teleport usage exporter.
+#
+# Reads the Teleport API and serves Prometheus metrics. Replaces the usage
+# tracker, which wrote snapshots to Postgres and whose failure mode was to
+# record zeros while logging success.
+#
+# Substitutions (envsubst, or edit by hand):
+#   ${TELEPORT_DOMAIN}
+#       e.g. teleport.example.com
+#
+#   ${USAGE_EXPORTER_IMAGE}
+#       e.g. ghcr.io/<org>/teleport-usage-exporter:18.8.0
+#       Pin the EXACT Teleport version, never :latest. New resource kinds land in
+#       MINOR releases, so a stale binary under-counts a newer cluster silently.
+#       The exporter checks this at startup and publishes
+#       teleport_usage_version_mismatch.
+#
+#   ${USAGE_EXPORTER_PULL_SECRET}
+#       Name of a docker-registry Secret in this namespace. GHCR packages are
+#       private by default; delete the imagePullSecrets block below if yours is
+#       public.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teleport-usage-exporter
+  namespace: teleport
+  labels:
+    app.kubernetes.io/name: teleport-usage-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: teleport-usage-exporter
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teleport-usage-exporter
+  namespace: teleport
+  labels:
+    app.kubernetes.io/name: teleport-usage-exporter
+  annotations:
+    # Second line of defence only. The exporter already re-reads its identity
+    # file when the content hash changes, which is what makes rotation work on
+    # VM and Docker deployments where no Reloader exists. Its predecessor
+    # depended on a restart it never got and authenticated with a dead
+    # certificate for 68 days.
+    secret.reloader.stakater.com/reload: "teleport-usage-exporter-identity"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: teleport-usage-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: teleport-usage-exporter
+    spec:
+      serviceAccountName: teleport-usage-exporter
+      # Required when the image lives in a private registry. GHCR packages are
+      # private by default. Drop this block if your image is public.
+      imagePullSecrets:
+        - name: ${USAGE_EXPORTER_PULL_SECRET}
+      containers:
+        - name: exporter
+          image: ${USAGE_EXPORTER_IMAGE}
+          # The tag is an exact Teleport version and never moves, so there is
+          # nothing to re-pull. IfNotPresent also lets a locally-imported image
+          # be used on a cluster with no registry access.
+          imagePullPolicy: IfNotPresent
+          args: ["exporter"]
+          env:
+            - name: TELEPORT_USAGE_PROXY
+              value: "${TELEPORT_DOMAIN}:443"
+            - name: TELEPORT_USAGE_IDENTITY_FILE
+              value: /var/run/secrets/teleport/identity
+            - name: TELEPORT_USAGE_METRICS_ADDR
+              value: ":8080"
+          ports:
+            - name: metrics
+              containerPort: 8080
+          # Liveness is process health only. It stays green while collectors
+          # fail, because restarting the exporter cannot fix a Teleport outage
+          # and a crash-loop would destroy the collector_up signal that explains
+          # what is actually wrong.
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          # Readiness is "has this exporter ever produced data". A pod that can
+          # never authenticate never goes Ready, instead of going Ready while
+          # serving an empty /metrics -- which downstream reads as "no protected
+          # resources" rather than "not measured".
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 30
+          volumeMounts:
+            - name: identity
+              mountPath: /var/run/secrets/teleport
+              readOnly: true
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: identity
+          secret:
+            secretName: teleport-usage-exporter-identity
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: teleport-usage-exporter
+  namespace: teleport
+  labels:
+    app.kubernetes.io/name: teleport-usage-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: teleport-usage-exporter
+  endpoints:
+    - port: metrics
+      # The collectors refresh on 5-minute cadences and serve from cache, so a
+      # faster scrape adds no information.
+      interval: 60s
+      path: /metrics

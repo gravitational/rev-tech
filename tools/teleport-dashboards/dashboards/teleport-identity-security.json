@@ -1,0 +1,1888 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Access Graph (Identity Security) view \u2014 users, roles, resources, and security alerts backed by live SQL against the CNPG Postgres database.\n\nIMPORTANT \u2014 two structural limits of the Access Graph apply throughout, and each affected panel repeats them in its own description:\n1. Roles granted to SSO users by LOGIN RULES create no graph edge, so per-user role counts and \"unused role\" style panels under-report those grants.\n2. Access Graph stores duplicate node rows for some roles, actions and resource groups, so counts use DISTINCT names rather than row or node-id counts.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "title": "Summary",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Human (interactive) Teleport users. Machine identities are counted separately in *Bots / Service Identities*.\n\n**Caveat:** the non-human split is heuristic \u2014 Access Graph carries no is_bot flag, so identities are classed as non-human by the `@`/`bot-` naming convention Teleport uses for generated identities. `localtest` is a leftover local test account and is counted as human because nothing in the graph marks it otherwise.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND value->>'name' NOT LIKE '@%'\n  AND value->>'name' NOT LIKE 'bot-%'\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND value->>'name' NOT LIKE '@%'\n  AND value->>'name' NOT LIKE 'bot-%'",
+          "refId": "A"
+        }
+      ],
+      "title": "Human Users",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Non-human Teleport identities \u2014 machine/bot accounts and Teleport-generated internal identities.\n\n**Heuristic:** Access Graph exposes no is_bot flag, so this matches the `@`/`bot-` naming convention Teleport uses for generated identities. A human account named outside that convention that is really a service account will be miscounted as human.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND (value->>'name' LIKE '@%' OR value->>'name' LIKE 'bot-%')\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "id": 21,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND (value->>'name' LIKE '@%' OR value->>'name' LIKE 'bot-%')",
+          "refId": "A"
+        }
+      ],
+      "title": "Bots / Service Identities",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Roles authored by this cluster's operators (Terraform / tctl), excluding Teleport's own preset and system roles and the auto-generated `bot-*` roles.\n\n**Counting note:** Access Graph stores duplicate node rows for some roles (32 rows for 31 distinct role names), so this counts DISTINCT names rather than rows. The previous query counted rows over all roles and read 32.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(DISTINCT value->>'name') FROM nodes\nWHERE kind='identity_group' AND subkind='role'\n  AND coalesce(value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system')\n  AND value->>'name' NOT LIKE 'bot-%'\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(DISTINCT value->>'name') FROM nodes\nWHERE kind='identity_group' AND subkind='role'\n  AND coalesce(value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system')\n  AND value->>'name' NOT LIKE 'bot-%'",
+          "refId": "A"
+        }
+      ],
+      "title": "Operator-Created Roles",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Roles Teleport ships or generates itself: `preset` roles, `system` roles, and the `bot-*` roles created per machine-ID bot. Shown alongside *Operator-Created Roles* so the split is explicit rather than folded into one total.\n\nCounts DISTINCT names \u2014 Access Graph holds duplicate node rows for some roles.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(DISTINCT value->>'name') FROM nodes\nWHERE kind='identity_group' AND subkind='role'\n  AND (coalesce(value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','')\n       IN ('preset','system')\n       OR value->>'name' LIKE 'bot-%')\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "id": 22,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(DISTINCT value->>'name') FROM nodes\nWHERE kind='identity_group' AND subkind='role'\n  AND (coalesce(value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','')\n       IN ('preset','system')\n       OR value->>'name' LIKE 'bot-%')",
+          "refId": "A"
+        }
+      ],
+      "title": "Teleport Built-in Roles",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Total registered Teleport resources (SSH nodes, kube clusters, apps, databases, desktops).\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes WHERE kind='resource'\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM nodes WHERE kind='resource'",
+          "refId": "A"
+        }
+      ],
+      "title": "Resources",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Security alerts raised by Teleport Identity Security that have not been resolved, dismissed or closed. Any value above 0 warrants investigation.\n\n**Schema note:** this Access Graph build uses status values `in_progress` / `resolved`; the string `OPEN` never occurs. The previous query filtered `status='OPEN'` and therefore always read 0 while 22 high-severity alerts were live. This panel now matches on *not-closed* instead of guessing the open label.\n\n**These alerts are raised by Teleport Identity Security itself and are triaged and actioned inside Teleport (Identity Security -> Security Alerts), not in Grafana.** This panel is the signal to go do that.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM security_alerts\nWHERE lower(status) NOT IN ('resolved','dismissed','closed')\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM security_alerts\nWHERE lower(status) NOT IN ('resolved','dismissed','closed')",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Security Alerts",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "id": 101,
+      "title": "Risk Indicators",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Users with a standing_privileges score > 0. Standing access is always-on access that does not require an access request.\n\n**Caveat:** roles granted to SSO users via login rules produce no Access Graph edge, so SSO users' standing privileges are under-counted here (see *Users \u2014 Standing Privileges & MFA*).\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND (value->'properties'->>'standing_privileges')::int > 0\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 0,
+        "y": 8
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND (value->'properties'->>'standing_privileges')::int > 0",
+          "refId": "A"
+        }
+      ],
+      "title": "Users w/ Standing Privileges",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Users with at least one MFA device registered **in Teleport** (weakest_mfa_device_kind is set to a real device kind, e.g. TOTP or WEBAUTHN).\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND value->'properties'->>'weakest_mfa_device_kind' NOT IN ('UNSET','')\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 4,
+        "y": 8
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND value->'properties'->>'weakest_mfa_device_kind' NOT IN ('UNSET','')",
+          "refId": "A"
+        }
+      ],
+      "title": "Users w/ an MFA Device",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Users whose `weakest_mfa_device_kind` is explicitly `UNSET` or empty \u2014 Access Graph knows about them and knows they have **no** MFA device registered in Teleport. This is the only one of the three MFA states that is genuinely a finding.\n\nSplit out from a former single \"Users w/o MFA\" stat, which conflated *known absent* with *unknown* (property missing).\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND value->'properties'->>'weakest_mfa_device_kind' IN ('UNSET','')\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 8,
+        "y": 8
+      },
+      "id": 24,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND value->'properties'->>'weakest_mfa_device_kind' IN ('UNSET','')",
+          "refId": "A"
+        }
+      ],
+      "title": "Users w/o an MFA Device",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Users for whom Access Graph carries **no** `weakest_mfa_device_kind` property at all \u2014 absence of data, not absence of MFA. Neutral by design, never red.\n\nOn this cluster this is `jturner@b1tsized.tech`, an SSO (Google OIDC) user. SSO users authenticate their second factor at the identity provider and legitimately have no Teleport-registered MFA device; counting them as \"no MFA\" would be wrong. Verify their posture in the IdP, not here.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND NOT (value->'properties' ? 'weakest_mfa_device_kind')\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 12,
+        "y": 8
+      },
+      "id": 25,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM nodes\nWHERE kind='identity' AND subkind='user'\n  AND NOT (value->'properties' ? 'weakest_mfa_device_kind')",
+          "refId": "A"
+        }
+      ],
+      "title": "Users w/ MFA Status Unknown",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Operator-authored roles for which the Access Graph shows **no** member_of, impersonator_of or requester_of edge \u2014 i.e. no grant path the graph can see.\n\n**Read this as a review prompt, not a delete list.** The Access Graph does not model login-rule / SSO role grants: a role handed to an SSO user by a login rule produces no graph edge at all. Verified on this cluster \u2014 `jturner@b1tsized.tech` has zero member_of edges, yet audit `access_request.create` events record their standing `user_roles` as `[\"role-base\",\"role-grafana-access\",\"role-kube-access-auto-approved\"]`. All three roles currently listed here are exactly those, so all three are false positives. A listed role may well be live; confirm against login rules and the audit log before removing anything.\n\nTeleport preset/system and generated `bot-*` roles are excluded \u2014 they are shipped unused by design and previously made up 14 of the 17 reported \"dead\" roles.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(*) FROM (\n  SELECT DISTINCT r.value->>'name' FROM nodes r\n  WHERE r.kind='identity_group' AND r.subkind='role'\n    AND coalesce(r.value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system')\n    AND r.value->>'name' NOT LIKE 'bot-%'\n    AND NOT EXISTS (\n      SELECT 1 FROM nodes r2\n      JOIN edges e ON e.to_node = r2.id\n      WHERE r2.kind='identity_group' AND r2.subkind='role'\n        AND r2.value->>'name' = r.value->>'name'\n        AND e.kind IN ('member_of','impersonator_of','requester_of')\n    )\n) sub\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 16,
+        "y": 8
+      },
+      "id": 7,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(*) FROM (\n  SELECT DISTINCT r.value->>'name' FROM nodes r\n  WHERE r.kind='identity_group' AND r.subkind='role'\n    AND coalesce(r.value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system')\n    AND r.value->>'name' NOT LIKE 'bot-%'\n    AND NOT EXISTS (\n      SELECT 1 FROM nodes r2\n      JOIN edges e ON e.to_node = r2.id\n      WHERE r2.kind='identity_group' AND r2.subkind='role'\n        AND r2.value->>'name' = r.value->>'name'\n        AND e.kind IN ('member_of','impersonator_of','requester_of')\n    )\n) sub",
+          "refId": "A"
+        }
+      ],
+      "title": "Operator Roles w/o Graph-Visible Grant Path",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Bot identities that hold impersonation rights over at least one Teleport role.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(DISTINCT from_node) FROM edges WHERE kind='impersonator_of'\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 20,
+        "y": 8
+      },
+      "id": 8,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(DISTINCT from_node) FROM edges WHERE kind='impersonator_of'",
+          "refId": "A"
+        }
+      ],
+      "title": "Bots w/ Impersonation Rights",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 102,
+      "title": "User & Identity Details",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "All users with their standing privilege score, role count and weakest registered MFA device kind.\n\n**Caveat \u2014 roles_count under-reports SSO users.** It is derived from Access Graph `member_of` edges, and login-rule/SSO role grants create no edge. Verified: `jturner@b1tsized.tech` shows `roles_count = 0`, but audit `access_request.create` events record three standing roles (`role-base`, `role-grafana-access`, `role-kube-access-auto-approved`). Treat 0 for an SSO user as \"unknown\", not \"none\".\n\n`mfa` reads `(unknown)` when the property is absent entirely \u2014 this is what an SSO user with no Teleport-registered device looks like; their second factor is enforced at the IdP.\n\nThe `crown_jewel` and `locked` columns were removed: both are `false` for every user on this cluster and carried no signal.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT\n  value->>'name'                                  AS \"user\",\n  value->'properties'->>'standing_privileges'     AS standing,\n  value->'properties'->>'identity_groups'         AS roles_count,\n  coalesce(value->'properties'->>'weakest_mfa_device_kind','(unknown)') AS mfa\nFROM nodes WHERE kind='identity' AND subkind='user'\nORDER BY (value->'properties'->>'standing_privileges')::int DESC, \"user\"\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "id": 10,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT\n  value->>'name'                                  AS \"user\",\n  value->'properties'->>'standing_privileges'     AS standing,\n  value->'properties'->>'identity_groups'         AS roles_count,\n  coalesce(value->'properties'->>'weakest_mfa_device_kind','(unknown)') AS mfa\nFROM nodes WHERE kind='identity' AND subkind='user'\nORDER BY (value->'properties'->>'standing_privileges')::int DESC, \"user\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Users \u2014 Standing Privileges & MFA",
+      "type": "table",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Every user's direct SSH logins through their standing role memberships \u2014 who can SSH where, and as which UNIX user, without needing an access request.\n\n**Deduplication:** Access Graph stores duplicate `action` rows per role (8 rows for 7 distinct ssh actions) and only one copy carries the logins list. The previous query joined row-by-row, so `olu` showed `logins = NULL` while `admin` showed `[\"root\",\"ubuntu\"]` for the *same* role. Logins are now unioned across every duplicate row for the role name; both users correctly read `root, ubuntu`.\n\n**Known gaps:** (a) `jturner@b1tsized.tech` does not appear \u2014 their roles come from an SSO login rule, which produces no `member_of` edge. (b) `role-ssh-root-access` never appears because nobody holds it as a standing role; it is request-only (see *Access Request Escalation Paths*).\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nWITH role_logins AS (\n  SELECT a.value->>'name' AS role_name,\n         string_agg(DISTINCT l.v, ', ' ORDER BY l.v) AS logins\n  FROM nodes a\n  CROSS JOIN LATERAL jsonb_array_elements_text(\n    coalesce(a.value->'properties'->'teleport'->'ssh'->'logins'->'original_values','[]'::jsonb)\n  ) AS l(v)\n  WHERE a.kind='action' AND a.subkind='ssh'\n  GROUP BY 1\n)\nSELECT DISTINCT\n  u.value->>'name' AS \"user\",\n  r.value->>'name' AS role,\n  coalesce(rl.logins,'(no logins listed)') AS logins\nFROM edges m\nJOIN nodes u ON u.id=m.from_node AND u.kind='identity' AND u.subkind='user'\nJOIN nodes r ON r.id=m.to_node   AND r.kind='identity_group' AND r.subkind='role'\nJOIN edges ra ON ra.from_node=r.id AND ra.kind='access'\nJOIN nodes a  ON a.id=ra.to_node   AND a.kind='action' AND a.subkind='ssh'\nLEFT JOIN role_logins rl ON rl.role_name = r.value->>'name'\nWHERE m.kind='member_of'\nORDER BY \"user\", role\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
+      "id": 11,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nWITH role_logins AS (\n  SELECT a.value->>'name' AS role_name,\n         string_agg(DISTINCT l.v, ', ' ORDER BY l.v) AS logins\n  FROM nodes a\n  CROSS JOIN LATERAL jsonb_array_elements_text(\n    coalesce(a.value->'properties'->'teleport'->'ssh'->'logins'->'original_values','[]'::jsonb)\n  ) AS l(v)\n  WHERE a.kind='action' AND a.subkind='ssh'\n  GROUP BY 1\n)\nSELECT DISTINCT\n  u.value->>'name' AS \"user\",\n  r.value->>'name' AS role,\n  coalesce(rl.logins,'(no logins listed)') AS logins\nFROM edges m\nJOIN nodes u ON u.id=m.from_node AND u.kind='identity' AND u.subkind='user'\nJOIN nodes r ON r.id=m.to_node   AND r.kind='identity_group' AND r.subkind='role'\nJOIN edges ra ON ra.from_node=r.id AND ra.kind='access'\nJOIN nodes a  ON a.id=ra.to_node   AND a.kind='action' AND a.subkind='ssh'\nLEFT JOIN role_logins rl ON rl.role_name = r.value->>'name'\nWHERE m.kind='member_of'\nORDER BY \"user\", role",
+          "refId": "A"
+        }
+      ],
+      "title": "Standing SSH Access",
+      "type": "table",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Bot identities and the Teleport roles they can impersonate. Bot impersonation grants the full permission set of the target role to the machine identity.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT u.value->>'name' AS bot, r.value->>'name' AS impersonates_role\nFROM edges e\nJOIN nodes u ON u.id=e.from_node\nJOIN nodes r ON r.id=e.to_node\nWHERE e.kind='impersonator_of'\nORDER BY bot, impersonates_role\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 23
+      },
+      "id": 12,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT u.value->>'name' AS bot, r.value->>'name' AS impersonates_role\nFROM edges e\nJOIN nodes u ON u.id=e.from_node\nJOIN nodes r ON r.id=e.to_node\nWHERE e.kind='impersonator_of'\nORDER BY bot, impersonates_role",
+          "refId": "A"
+        }
+      ],
+      "title": "Bot Impersonations",
+      "type": "table",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 29
+      },
+      "id": 103,
+      "title": "Access Request & Reviewer Topology",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Which roles can submit access requests, and for what. Maps the JIT escalation topology.\n\n**Two different things, now in two columns.** A `requester_of` edge points at either another role (a role escalation) or a resource_group (a label selector bounding which resources may be requested). The previous single `can_request` column mixed them, so `role-base -> {\"*\":\"*\"}` read as \"role-base can request any role\" when it actually means \"role-base may request resources matching any label\". `can_request_role` is a real privilege escalation target; `can_request_resource_scope` is a search-as-roles resource filter.\n\nThe hardcoded `NOT IN ('requester','okta-requester')` blocklist was replaced with the preset/system label filter, so new Teleport presets are excluded automatically rather than needing the list updated.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT\n  r.value->>'name' AS base_role,\n  CASE WHEN t.kind='identity_group' THEN t.value->>'name' END AS can_request_role,\n  CASE WHEN t.kind='resource_group' THEN t.value->>'name' END AS can_request_resource_scope\nFROM nodes r\nJOIN edges ea ON ea.from_node=r.id AND ea.kind='access'\nJOIN nodes a  ON a.id=ea.to_node   AND a.kind='action' AND a.subkind='can_request'\nJOIN edges e  ON e.from_node=a.id  AND e.kind='requester_of'\nJOIN nodes t  ON t.id=e.to_node\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND coalesce(r.value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system')\n  AND r.value->>'name' NOT LIKE 'bot-%'\nORDER BY base_role, can_request_role NULLS LAST, can_request_resource_scope NULLS LAST\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
+      "id": 13,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT\n  r.value->>'name' AS base_role,\n  CASE WHEN t.kind='identity_group' THEN t.value->>'name' END AS can_request_role,\n  CASE WHEN t.kind='resource_group' THEN t.value->>'name' END AS can_request_resource_scope\nFROM nodes r\nJOIN edges ea ON ea.from_node=r.id AND ea.kind='access'\nJOIN nodes a  ON a.id=ea.to_node   AND a.kind='action' AND a.subkind='can_request'\nJOIN edges e  ON e.from_node=a.id  AND e.kind='requester_of'\nJOIN nodes t  ON t.id=e.to_node\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND coalesce(r.value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system')\n  AND r.value->>'name' NOT LIKE 'bot-%'\nORDER BY base_role, can_request_role NULLS LAST, can_request_resource_scope NULLS LAST",
+          "refId": "A"
+        }
+      ],
+      "title": "Access Request Escalation Paths",
+      "type": "table",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "For each operator-authored role, the reviewer roles that can approve requests for it.\n\n**`wildcard_reviewer = true` means the reviewer can approve *every* role in the cluster**, not just this one \u2014 it is a blanket grant, not a targeted one. On this cluster every row is `true` because a single system reviewer, `@teleport-access-approver`, holds 36 `reviewer_of` edges covering all 31 roles. That is one identity able to approve anything, which the previous flat `reviewers` column made look like ordinary per-role coverage.\n\nThe `LIKE 'role-%'` name filter was replaced with the preset/system label filter; it was silently dropping the operator roles `admin-admin` and `ci-bot-role`.\n\n**Limitation:** the Access Graph does not record access_request *auto-approval*. A role approved automatically by the approval bot and a role requiring a human reviewer look identical here. Use the audit log (`access_request.review`) to tell them apart.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nWITH roles AS (\n  SELECT DISTINCT value->>'name' AS name\n  FROM nodes WHERE kind='identity_group' AND subkind='role'\n), rv AS (\n  SELECT a.value->>'name' AS reviewer, r2.value->>'name' AS target\n  FROM edges e\n  JOIN nodes a  ON a.id=e.from_node AND a.kind='action' AND a.subkind='can_review'\n  JOIN nodes r2 ON r2.id=e.to_node  AND r2.kind='identity_group' AND r2.subkind='role'\n  WHERE e.kind='reviewer_of'\n), wildcard AS (\n  SELECT reviewer FROM rv\n  GROUP BY reviewer\n  HAVING count(DISTINCT target) >= (SELECT count(*) FROM roles)\n)\nSELECT rv.target AS target_role,\n       string_agg(DISTINCT rv.reviewer, ', ') AS reviewers,\n       bool_or(rv.reviewer IN (SELECT reviewer FROM wildcard)) AS wildcard_reviewer\nFROM rv\nJOIN nodes t ON t.value->>'name'=rv.target\n            AND t.kind='identity_group' AND t.subkind='role'\nWHERE coalesce(t.value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system')\n  AND t.value->>'name' NOT LIKE 'bot-%'\nGROUP BY 1\nORDER BY 1\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
+      "id": 14,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nWITH roles AS (\n  SELECT DISTINCT value->>'name' AS name\n  FROM nodes WHERE kind='identity_group' AND subkind='role'\n), rv AS (\n  SELECT a.value->>'name' AS reviewer, r2.value->>'name' AS target\n  FROM edges e\n  JOIN nodes a  ON a.id=e.from_node AND a.kind='action' AND a.subkind='can_review'\n  JOIN nodes r2 ON r2.id=e.to_node  AND r2.kind='identity_group' AND r2.subkind='role'\n  WHERE e.kind='reviewer_of'\n), wildcard AS (\n  SELECT reviewer FROM rv\n  GROUP BY reviewer\n  HAVING count(DISTINCT target) >= (SELECT count(*) FROM roles)\n)\nSELECT rv.target AS target_role,\n       string_agg(DISTINCT rv.reviewer, ', ') AS reviewers,\n       bool_or(rv.reviewer IN (SELECT reviewer FROM wildcard)) AS wildcard_reviewer\nFROM rv\nJOIN nodes t ON t.value->>'name'=rv.target\n            AND t.kind='identity_group' AND t.subkind='role'\nWHERE coalesce(t.value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system')\n  AND t.value->>'name' NOT LIKE 'bot-%'\nGROUP BY 1\nORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Reviewers Per Role",
+      "type": "table",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "id": 104,
+      "title": "Resources & Blast Radius",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Full inventory of every Teleport resource by type. Use labels to verify expected coverage or spot unlabelled resources.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT subkind AS kind, value->>'name' AS name, value->'labels' AS labels\nFROM nodes WHERE kind='resource' ORDER BY subkind, name\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 39
+      },
+      "id": 15,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT subkind AS kind, value->>'name' AS name, value->'labels' AS labels\nFROM nodes WHERE kind='resource' ORDER BY subkind, name",
+          "refId": "A"
+        }
+      ],
+      "title": "Resource Inventory",
+      "type": "table",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Roles ranked by real blast radius: does the role hold a wildcard resource selector, and how many distinct registered resources does it actually reach.\n\n**Why this changed.** The previous query counted DISTINCT resource_group *node IDs*. Because Access Graph duplicates resource_group nodes (9 rows for 5 distinct selectors) that number was an artefact of the duplication, and by distinct selector name it was 1 for every role \u2014 so `role-kube-access` (wildcard over every Kubernetes cluster) tied `role-grafana-access` (two named apps). Ranking is now `has_wildcard` first, then distinct resources reached, which does discriminate: the wildcard-holding roles sort above `role-grafana-access` even though it reaches more resources by count.\n\n**Caveat:** `resources_reachable` counts only resources *currently registered* with this cluster. A wildcard role reaching 1 resource today reaches every resource added tomorrow \u2014 which is exactly why `has_wildcard` is the primary sort key and not the count.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT r.value->>'name' AS role,\n       bool_or(rg.value->>'name' = '{\"*\":\"*\"}')      AS has_wildcard,\n       count(DISTINCT res.value->>'name')                AS resources_reachable,\n       string_agg(DISTINCT a.subkind, ', ' ORDER BY a.subkind) AS resource_kinds\nFROM nodes r\nJOIN edges e1 ON e1.from_node=r.id AND e1.kind='access'\nJOIN nodes a  ON a.id=e1.to_node   AND a.kind='action'\nJOIN edges e2 ON e2.from_node=a.id AND e2.kind='access'\nJOIN nodes rg ON rg.id=e2.to_node  AND rg.kind='resource_group'\nLEFT JOIN edges e3 ON e3.from_node=rg.id AND e3.kind='access'\nLEFT JOIN nodes res ON res.id=e3.to_node AND res.kind='resource'\nWHERE r.kind='identity_group' AND r.subkind='role'\nGROUP BY role\nORDER BY has_wildcard DESC, resources_reachable DESC, role\nLIMIT 25\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 39
+      },
+      "id": 16,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT r.value->>'name' AS role,\n       bool_or(rg.value->>'name' = '{\"*\":\"*\"}')      AS has_wildcard,\n       count(DISTINCT res.value->>'name')                AS resources_reachable,\n       string_agg(DISTINCT a.subkind, ', ' ORDER BY a.subkind) AS resource_kinds\nFROM nodes r\nJOIN edges e1 ON e1.from_node=r.id AND e1.kind='access'\nJOIN nodes a  ON a.id=e1.to_node   AND a.kind='action'\nJOIN edges e2 ON e2.from_node=a.id AND e2.kind='access'\nJOIN nodes rg ON rg.id=e2.to_node  AND rg.kind='resource_group'\nLEFT JOIN edges e3 ON e3.from_node=rg.id AND e3.kind='access'\nLEFT JOIN nodes res ON res.id=e3.to_node AND res.kind='resource'\nWHERE r.kind='identity_group' AND r.subkind='role'\nGROUP BY role\nORDER BY has_wildcard DESC, resources_reachable DESC, role\nLIMIT 25",
+          "refId": "A"
+        }
+      ],
+      "title": "Blast Radius (Top 25 Roles)",
+      "type": "table",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Operator-authored roles granting **standing** access to the wildcard resource group `{\"*\":\"*\"}` \u2014 these bypass all label-based segmentation and have the highest effective blast radius.\n\nTeleport preset/system and `bot-*` roles are excluded: `access`, `require-trusted-device`, `list-access-request-resources`, `requester` and `terraform-provider` hold wildcards by design and were 5 of the 8 roles previously listed, drowning the operator-authored ones.\n\nThe edge walk is now pinned to `kind='access'`. Without that, `requester_of` edges were followed too, which listed `role-base` here \u2014 but role-base can only *request* wildcard resources, it does not hold standing wildcard access. Requestable scope is shown in *Access Request Escalation Paths* instead.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role, a.subkind AS resource_kind\nFROM edges e1\nJOIN nodes r  ON r.id=e1.from_node AND r.kind='identity_group' AND r.subkind='role'\nJOIN nodes a  ON a.id=e1.to_node   AND a.kind='action'\nJOIN edges e2 ON e2.from_node=a.id AND e2.kind='access'\nJOIN nodes rg ON rg.id=e2.to_node  AND rg.kind='resource_group'\nWHERE rg.value->>'name' = '{\"*\":\"*\"}'\n  AND coalesce(r.value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system')\n  AND r.value->>'name' NOT LIKE 'bot-%'\nORDER BY role, resource_kind\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 39
+      },
+      "id": 17,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role, a.subkind AS resource_kind\nFROM edges e1\nJOIN nodes r  ON r.id=e1.from_node AND r.kind='identity_group' AND r.subkind='role'\nJOIN nodes a  ON a.id=e1.to_node   AND a.kind='action'\nJOIN edges e2 ON e2.from_node=a.id AND e2.kind='access'\nJOIN nodes rg ON rg.id=e2.to_node  AND rg.kind='resource_group'\nWHERE rg.value->>'name' = '{\"*\":\"*\"}'\n  AND coalesce(r.value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system')\n  AND r.value->>'name' NOT LIKE 'bot-%'\nORDER BY role, resource_kind",
+          "refId": "A"
+        }
+      ],
+      "title": "Wildcard-Access Roles",
+      "type": "table",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 47
+      },
+      "id": 105,
+      "title": "Policy Hygiene",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Distinct roles with at least one action requiring session MFA re-authentication (`require_mfa_type` set to anything other than `OFF`).\n\n**Currently 0 \u2014 red is correct.** Verified live: every one of the 35 action nodes reads `require_mfa_type = 'OFF'`. Nothing on this cluster forces a second factor at session start. The table below lists every role so the OFF-all-the-way-down result is visible rather than filtered away.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT count(DISTINCT value->>'name') FROM nodes\nWHERE kind='action'\n  AND value->'properties'->'teleport'->>'require_mfa_type' NOT IN ('OFF')\n```",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 48
+      },
+      "id": 23,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT count(DISTINCT value->>'name') FROM nodes\nWHERE kind='action'\n  AND value->'properties'->'teleport'->>'require_mfa_type' NOT IN ('OFF')",
+          "refId": "A"
+        }
+      ],
+      "title": "Roles Enforcing Session MFA",
+      "type": "stat",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "grafana"
+      },
+      "description": "",
+      "gridPos": {
+        "h": 5,
+        "w": 18,
+        "x": 6,
+        "y": 48
+      },
+      "id": 26,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "### What this dashboard can and cannot tell you about MFA\n\n**Can show \u2014 enrolment.** Per-user `weakest_mfa_device_kind` from Access Graph, split three ways above: has a device / explicitly has none / unknown (property absent, typically an SSO user).\n\n**Can show \u2014 per-role enforcement.** `require_mfa_type` on each role's actions, in the table below. Currently `OFF` for all 35 action nodes: no role forces MFA re-authentication at session start.\n\n**Cannot show \u2014 cluster policy.** The cluster-wide second-factor setting (`cluster_auth_preference.second_factor`, currently `otp` with no WebAuthn configured) is not available from **any** datasource wired into this Grafana. It lives in the Teleport backend, not in the Access Graph schema, and the `auth_preference.update` audit event records only `admin_actions_mfa_changed` \u2014 a boolean about admin-action MFA \u2014 not the second-factor value itself.\n\nSurfacing cluster policy requires the planned **teleport-usage exporter** to read it from the Teleport API and expose it as a metric. Until then: enrolment and role enforcement here, cluster policy via `tctl get cluster_auth_preference`.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "11.0.0",
+      "title": "MFA Coverage \u2014 Scope & Blind Spots",
+      "type": "text",
+      "x-requires": []
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Per-role, per-action-kind session MFA enforcement (`require_mfa_type`) and trusted-device requirement, for every role that grants any action.\n\n**The `<> 'OFF'` filter was removed on purpose.** With it, this panel returned exactly one row \u2014 `require-trusted-device`, reading `mfa = OFF` \u2014 which looked like a populated panel and hid the actual finding. Verified live: all 35 action nodes carry `require_mfa_type = 'OFF'` (5 more, the can_request/can_review actions, have no such property at all). **Zero roles on this cluster enforce session MFA.** Showing every role and letting the column read OFF all the way down is the honest presentation.\n\nCross-reference with *Wildcard-Access Roles*: the widest roles have no MFA re-auth requirement.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT\n  value->>'name' AS role,\n  subkind        AS action_kind,\n  coalesce(value->'properties'->'teleport'->>'require_mfa_type','(n/a)') AS require_mfa_type,\n  coalesce(value->'properties'->'teleport'->>'trusted_device','(none)')  AS trusted_device\nFROM nodes\nWHERE kind='action'\nORDER BY require_mfa_type DESC, role, action_kind\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 53
+      },
+      "id": 18,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT\n  value->>'name' AS role,\n  subkind        AS action_kind,\n  coalesce(value->'properties'->'teleport'->>'require_mfa_type','(n/a)') AS require_mfa_type,\n  coalesce(value->'properties'->'teleport'->>'trusted_device','(none)')  AS trusted_device\nFROM nodes\nWHERE kind='action'\nORDER BY require_mfa_type DESC, role, action_kind",
+          "refId": "A"
+        }
+      ],
+      "title": "Per-Role Session MFA Enforcement",
+      "type": "table",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "Operator-authored roles for which the Access Graph shows **no** member_of, impersonator_of or requester_of edge \u2014 i.e. no grant path the graph can see.\n\n**Read this as a review prompt, not a delete list.** The Access Graph does not model login-rule / SSO role grants: a role handed to an SSO user by a login rule produces no graph edge at all. Verified on this cluster \u2014 `jturner@b1tsized.tech` has zero member_of edges, yet audit `access_request.create` events record their standing `user_roles` as `[\"role-base\",\"role-grafana-access\",\"role-kube-access-auto-approved\"]`. All three roles currently listed here are exactly those, so all three are false positives. A listed role may well be live; confirm against login rules and the audit log before removing anything.\n\nTeleport preset/system and generated `bot-*` roles are excluded \u2014 they are shipped unused by design and previously made up 14 of the 17 reported \"dead\" roles.\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND coalesce(r.value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system')\n  AND r.value->>'name' NOT LIKE 'bot-%'\n  AND NOT EXISTS (\n    SELECT 1 FROM nodes r2\n    JOIN edges e ON e.to_node = r2.id\n    WHERE r2.kind='identity_group' AND r2.subkind='role'\n      AND r2.value->>'name' = r.value->>'name'\n      AND e.kind IN ('member_of','impersonator_of','requester_of')\n  )\nORDER BY role\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 53
+      },
+      "id": 19,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT DISTINCT r.value->>'name' AS role,\n       r.value->'properties'->'teleport'->>'description' AS description\nFROM nodes r\nWHERE r.kind='identity_group' AND r.subkind='role'\n  AND coalesce(r.value->'properties'->'teleport'->'labels'->>'teleport.internal/resource-type','') NOT IN ('preset','system')\n  AND r.value->>'name' NOT LIKE 'bot-%'\n  AND NOT EXISTS (\n    SELECT 1 FROM nodes r2\n    JOIN edges e ON e.to_node = r2.id\n    WHERE r2.kind='identity_group' AND r2.subkind='role'\n      AND r2.value->>'name' = r.value->>'name'\n      AND e.kind IN ('member_of','impersonator_of','requester_of')\n  )\nORDER BY role",
+          "refId": "A"
+        }
+      ],
+      "title": "Operator Roles w/o Graph-Visible Grant Path",
+      "type": "table",
+      "x-requires": [
+        "accessGraph"
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 62
+      },
+      "id": 106,
+      "title": "Security Alerts",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_ACCESS_GRAPH}"
+      },
+      "description": "All security alerts from Access Graph, most recent first. `severity` and `status` are now surfaced as the leading, colour-coded columns \u2014 this cluster's 22 alerts are all `severity=high` / `status=in_progress`, and `in_progress` (not `OPEN`) is the only not-yet-closed status this schema emits.\n\n`title` and `affected_entity` are lifted out of the `data` blob so a row is readable without expanding JSON; the full structured finding is still in the `data` column.\n\n**Alerts are triaged and closed inside Teleport (Identity Security -> Security Alerts), not in Grafana.**\n\n**SQL:**\n```sql\nSET search_path TO ${tenant};\nSELECT\n  severity,\n  status,\n  kind,\n  data->'affected_entity'->>'name' AS affected_entity,\n  data->>'title'                   AS title,\n  data->>'created_at'              AS created_at,\n  data\nFROM security_alerts\nORDER BY (data->>'created_at') DESC\nLIMIT 50\n```",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "severity"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "critical": {
+                        "color": "dark-red",
+                        "index": 0
+                      },
+                      "high": {
+                        "color": "red",
+                        "index": 1
+                      },
+                      "medium": {
+                        "color": "orange",
+                        "index": 2
+                      },
+                      "low": {
+                        "color": "yellow",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kind"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 220
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "created_at"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 220
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "data"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 63
+      },
+      "id": 20,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_ACCESS_GRAPH}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SET search_path TO ${tenant};\nSELECT\n  severity,\n  status,\n  kind,\n  data->'affected_entity'->>'name' AS affected_entity,\n  data->>'title'                   AS title,\n  data->>'created_at'              AS created_at,\n  data\nFROM security_alerts\nORDER BY (data->>'created_at') DESC\nLIMIT 50",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Security Alerts",
+      "type": "table",
+      "x-requires": [
+        "accessGraph"
+      ]
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "tags": [
+    "teleport",
+    "identity",
+    "access-graph"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allowCustomValue": false,
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "DS_ACCESS_GRAPH",
+        "options": [],
+        "query": "postgres",
+        "queryValue": "",
+        "refresh": 1,
+        "regex": "/[Aa]ccess ?[Gg]raph/",
+        "skipUrlSync": false,
+        "type": "datasource",
+        "description": "Access Graph Postgres datasource. The regex pins it by name: this cluster has three postgres datasources, and without it Grafana autobinds to whichever sorts first, which would silently query the wrong database."
+      },
+      {
+        "allowCustomValue": false,
+        "current": {
+          "selected": true
+        },
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_ACCESS_GRAPH}"
+        },
+        "definition": "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%' ORDER BY 1;",
+        "description": "Tenant schema inside the access_graph database. There is typically one per Teleport cluster.",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "tenant",
+        "options": [],
+        "query": "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'tenant_%' ORDER BY 1;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "timezone": "browser",
+  "title": "Teleport Identity Security",
+  "uid": "teleport-identity-security",
+  "version": 2,
+  "weekStart": ""
+}
