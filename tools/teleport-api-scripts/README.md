@@ -61,7 +61,8 @@ Both scripts generate reports in JSON or text format:
 
 ## Requirements
 
-- Access to a Teleport cluster
+- Access to a Teleport cluster with audit log read permissions
+- TPR tracking requires wildcard (`'*': '*'`) label permissions to app/db/kube/ssh/desktop resources
 - Valid Teleport credentials (active `tsh` profile, or an identity file)
 - Network connectivity to your Teleport proxy
 - Go 1.24+ only if building from source

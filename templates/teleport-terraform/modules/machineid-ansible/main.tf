@@ -6,9 +6,6 @@ terraform {
     teleport = {
       source = "terraform.releases.teleport.dev/gravitational/teleport"
     }
-    tls = {
-      source = "hashicorp/tls"
-    }
     random = {
       source = "hashicorp/random"
     }
@@ -33,10 +30,6 @@ data "aws_ami" "linux" {
   }
 }
 
-resource "tls_private_key" "bound_keypair" {
-  algorithm = "ED25519"
-}
-
 resource "random_string" "bot_suffix" {
   length  = 4
   upper   = false
@@ -46,13 +39,14 @@ resource "random_string" "bot_suffix" {
 module "machineid_bot" {
   source = "../machineid-bot"
 
-  bot_name                      = local.bot_name
-  role_name                     = "ansible-machine-role"
-  allowed_logins                = ["ec2-user", local.user]
-  node_labels                   = { "env" = [var.env], "team" = [var.team] }
-  onboarding_initial_public_key = trimspace(tls_private_key.bound_keypair.public_key_openssh)
-  bound_keypair_recovery_mode   = "insecure"
-  bound_keypair_recovery_limit  = 100
+  bot_name       = local.bot_name
+  role_name      = "ansible-machine-role"
+  allowed_logins = ["ec2-user", local.user]
+  node_labels    = { "env" = [var.env], "team" = [var.team] }
+  # No onboarding key: Teleport generates a one-time registration secret for
+  # the token, tbot redeems it on first start, and the keypair is born on the
+  # host — Terraform never sees or stores private key material. Recovery uses
+  # the module defaults (mode "standard", limit 10) instead of "insecure".
 }
 
 resource "random_string" "token" {
@@ -81,13 +75,20 @@ resource "aws_instance" "ansible_host" {
   vpc_security_group_ids = var.security_group_ids
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    env             = var.env
-    team            = var.team
-    proxy_address   = var.proxy_address
-    bot_token       = module.machineid_bot.bot_token
-    bot_private_key = tls_private_key.bound_keypair.private_key_openssh
-    node_token      = teleport_provision_token.main.metadata.name
+    env                 = var.env
+    team                = var.team
+    proxy_address       = var.proxy_address
+    bot_token           = module.machineid_bot.bot_token
+    registration_secret = module.machineid_bot.bot_registration_secret
+    node_token          = teleport_provision_token.main.metadata.name
   })
+
+  lifecycle {
+    precondition {
+      condition     = module.machineid_bot.bot_registration_secret != null
+      error_message = "The bot token exposed no registration secret (provider too old, or an onboarding key was preregistered) — tbot would have nothing to join with."
+    }
+  }
 
   metadata_options {
     http_endpoint = "enabled"
