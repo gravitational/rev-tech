@@ -1,0 +1,33 @@
+# Teleport demo Mac setup (booth Mac Minis / SE demo laptops)
+# Install:  brew bundle --file=Brewfile
+# All cask/formula names verified against Homebrew 2026-07-25.
+#
+# Deliberately absent: the "teleport" formula. Device Trust and hardware-key
+# webauthn need the signed tsh from the official pkg (or Teleport Connect,
+# which bundles it): https://goteleport.com/download/
+# Verify after install:  codesign -dv "$(command -v tsh)"  -> TeamIdentifier=QH8AA5B8UP
+
+# GUI apps
+cask "teleport-connect"
+cask "iterm2"                 # team alternatives: "warp", "ghostty"
+cask "visual-studio-code"
+cask "claude"                 # Claude Desktop ("claude-desktop" is not a cask)
+cask "claude-code"
+cask "google-chrome"          # persona Chrome profiles (playbook conventions); skip on MDM-managed Macs
+cask "rectangle"              # skip on MDM-managed Macs (often root-owned already)
+cask "pgadmin4"
+cask "dbeaver-community"
+cask "gcloud-cli"             # gcloud ("google-cloud-sdk" is the deprecated name)
+
+# CLI tools
+brew "kubernetes-cli"         # kubectl (tsh also embeds one: `tsh kubectl`)
+brew "k9s"
+brew "helm"
+brew "libpq", link: true      # psql without a local postgres server
+brew "mysql-client", link: true # mysql CLI without a local server (keg-only: needs the link)
+brew "rainfrog"               # postgres TUI
+brew "awscli"
+brew "azure-cli"
+brew "neovim"
+brew "node"                   # MCP Inspector (Section 8): npx @modelcontextprotocol/inspector
+brew "jq"                     # required by tools/conference-preflight.sh
