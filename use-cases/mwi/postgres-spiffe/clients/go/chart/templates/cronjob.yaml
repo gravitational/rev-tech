@@ -1,0 +1,104 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "client.fullname" . }}
+  labels:
+    {{- include "client.labels" . | nindent 4 }}
+spec:
+  # Kubernetes CronJob's minimum granularity is one minute -- there's no
+  # sub-minute schedule syntax, so "* * * * *" (every minute) is as
+  # frequent as this can go. Default here is every two minutes (see
+  # values.yaml's `schedule`).
+  schedule: {{ .Values.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    metadata:
+      labels:
+        {{- include "client.labels" . | nindent 8 }}
+    spec:
+      backoffLimit: {{ .Values.backoffLimit }}
+      template:
+        metadata:
+          labels:
+            {{- include "client.labels" . | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: transact
+              {{- if .Values.selfCompile.enabled }}
+              # No image to build or push: installs Go and builds this
+              # chart's app/main.go (baked into the "-src" ConfigMap by
+              # templates/configmap-src.yaml) fresh on every scheduled
+              # run. GOTOOLCHAIN=auto lets `go build` transparently
+              # fetch a newer toolchain since Ubuntu's packaged
+              # golang-go is typically older than go.mod requires
+              # (confirmed live). Needs outbound internet access (apt,
+              # the Go module proxy) on every run, not just the first --
+              # each run is a brand new pod/container with nothing
+              # cached, the trade-off for not needing a pre-built/pushed
+              # image.
+              image: "{{ .Values.selfCompile.baseImage }}"
+              command: ["bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  apt-get update -qq
+                  apt-get install -y -qq --no-install-recommends golang-go ca-certificates >/dev/null
+                  cd /src
+                  GOTOOLCHAIN=auto go build -o /tmp/app .
+                  exec /tmp/app
+              {{- else }}
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              {{- end }}
+              env:
+                - name: HOME
+                  value: /tmp
+                - name: PGHOST
+                  value: {{ .Values.postgres.host | quote }}
+                - name: PGPORT
+                  value: {{ .Values.postgres.port | quote }}
+                - name: PGDATABASE
+                  value: {{ .Values.postgres.database | quote }}
+                - name: PGUSER
+                  value: {{ .Values.postgres.user | quote }}
+                - name: SVID_DIR
+                  value: /var/run/teleport-wi
+                - name: POSTGRES_CA
+                  value: /etc/postgres-ca/ca.crt
+              volumeMounts:
+                {{- if .Values.selfCompile.enabled }}
+                - name: src
+                  mountPath: /src
+                  readOnly: true
+                {{- end }}
+                - name: svid
+                  mountPath: /var/run/teleport-wi
+                  readOnly: true
+                - name: postgres-ca
+                  mountPath: /etc/postgres-ca
+                  readOnly: true
+              resources:
+                {{- toYaml .Values.resources | nindent 16 }}
+          volumes:
+            {{- if .Values.selfCompile.enabled }}
+            - name: src
+              configMap:
+                name: {{ include "client.fullname" . }}-src
+            {{- end }}
+            - name: svid
+              secret:
+                secretName: {{ .Values.svidSecretName }}
+                # Kubernetes defaults Secret volume files to 0644, but
+                # libpq's private-key check rejects anything looser than
+                # 0640-if-root-owned -- confirmed live (svid_key.pem is
+                # world-readable by default without this).
+                defaultMode: 0440
+            - name: postgres-ca
+              secret:
+                secretName: {{ .Values.postgresCASecretName }}
+                items:
+                  - key: ca.crt
+                    path: ca.crt

@@ -1,0 +1,34 @@
+tbot is joining {{ .Values.teleport.proxyAddress }} using the plain `token`
+join method.
+
+It will:
+  - write a fresh Workload Identity SVID for
+    "{{ .Values.teleport.workloadIdentityName }}" into Secret
+    "{{ .Values.svidOutput.secretName }}" every
+    {{ .Values.svidOutput.renewalInterval }}
+
+That's the only thing tbot does -- there's no tunnel/proxy output here.
+Once a workload holds the SVID above, it connects straight to Postgres'
+own Kubernetes Service using it as its client certificate; Teleport
+isn't in that connection's network path at all. (The human/CLI path
+still goes through Teleport TCP Application Access -- see
+../../clients/cli/README.md -- but that's a `tsh`/VNet session using
+your own identity, not anything tbot provides.)
+
+Check it joined successfully:
+  kubectl logs -n {{ .Release.Namespace }} deploy/{{ include "tbot.fullname" . }}
+
+If it's crash-looping with a join error, the token you passed via
+`--set-string teleport.joinToken=...` has probably expired -- generate a
+new one (see ../../teleport/token.yaml -- there's no `tctl tokens add`
+equivalent for a bot-scoped token, it has to be a `kind: token` resource
+created directly) and `helm upgrade` with it again. Once tbot joins
+successfully once, it won't need the token again (see the
+"{{ include "tbot.fullname" . }}-storage" PVC).
+
+Client Deployments/Jobs under ../clients (python and go) should set:
+  PGHOST=postgres.{{ .Release.Namespace }}.svc.cluster.local
+  PGPORT=5432
+(Postgres' own Service, directly -- see ../../postgres-chart) and mount
+the "{{ .Values.svidOutput.secretName }}" secret for their client
+certificate.

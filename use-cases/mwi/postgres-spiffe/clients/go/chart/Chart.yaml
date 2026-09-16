@@ -1,0 +1,9 @@
+apiVersion: v2
+name: postgres-wi-client-go
+description: >
+  Runs the Go Workload Identity demo (../app/main.go) as a Kubernetes
+  Job: connects to Postgres through Teleport TCP Application Access
+  using a SPIFFE X.509-SVID issued by Teleport Workload Identity.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

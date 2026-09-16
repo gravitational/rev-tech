@@ -1,0 +1,18 @@
+{{- if .Values.selfCompile.enabled -}}
+# Only needed for the self-compiling path: bakes this chart's own
+# app/ source into a ConfigMap the Job mounts and builds directly,
+# so no image ever needs to be built or pushed anywhere.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "client.fullname" . }}-src
+  labels:
+    {{- include "client.labels" . | nindent 4 }}
+data:
+  main.go: |
+{{ .Files.Get "app/main.go" | indent 4 }}
+  go.mod: |
+{{ .Files.Get "app/go.mod" | indent 4 }}
+  go.sum: |
+{{ .Files.Get "app/go.sum" | indent 4 }}
+{{- end -}}

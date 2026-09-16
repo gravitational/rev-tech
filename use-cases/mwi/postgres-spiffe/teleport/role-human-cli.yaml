@@ -1,0 +1,22 @@
+# Rendered by ../setup.sh from ${...} placeholders (see ../.env.example)
+# and applied with: tctl create -f role-human-cli.yaml
+# Assign to yourself with: tctl users update <you> --set-roles=<existing-roles>,${CLI_ROLE_NAME}
+#
+# Lets a human `tsh` user do everything the CLI walkthrough
+# (../clients/cli/README.md) needs: self-issue the same Workload
+# Identity used by the Python/Go clients via
+# `tsh workload-identity issue-x509`, and reach the Postgres TCP
+# Application through VNet (`tsh vnet`).
+kind: role
+version: v7
+metadata:
+  name: ${CLI_ROLE_NAME}
+spec:
+  allow:
+    workload_identity_labels:
+      demo: ["${DEMO_LABEL_VALUE}"]
+    rules:
+      - resources: [workload_identity]
+        verbs: [read, list]
+    app_labels:
+      demo: ["${DEMO_LABEL_VALUE}"]

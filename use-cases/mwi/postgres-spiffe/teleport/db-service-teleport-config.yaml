@@ -1,0 +1,44 @@
+# Reference only -- ../setup.sh does NOT render this file (same reason
+# as app-service-teleport-config.yaml: the teleport-kube-agent chart
+# wants this as its own top-level `databases:` value, not nested inside
+# `teleportConfig:`). When ENABLE_DB_SERVICE=true, setup.sh builds the
+# equivalent config directly, including the `extraVolumes`/
+# `extraVolumeMounts` that mount Postgres' server CA into the agent pod
+# at the path `ca_cert_file` below points to.
+#
+# This file exists for the DEPLOY_TELEPORT_AGENT=false path: if you'd
+# rather point an agent you already run elsewhere (with a real
+# `teleport.yaml`) at Postgres, substitute the ${...} placeholders
+# yourself (see ../.env.example), mount Postgres' "postgres-server-ca"
+# Secret into it at the `ca_cert_file` path yourself, and merge this
+# block in.
+#
+# Direct/static database registration rather than a dynamically-
+# registered `kind: db` resource + `resource_matchers`: simpler to
+# reason about for a single demo database, at the cost of needing a
+# `helm upgrade` to change it later instead of just applying a new
+# resource.
+#
+# `admin_user.name` must match the bootstrap role created by
+# ../postgres-chart/values.yaml's "03-teleport-db-service.sql"
+# ("teleport-admin") -- that's who Teleport connects as (via a
+# certificate signed by Teleport's db_client CA) to create and manage
+# auto-provisioned per-user Postgres roles.
+#
+# NOTE: this exact shape (admin_user, tls.mode, tls.ca_cert_file,
+# static_labels) was confirmed by actually dry-running setup.sh's
+# equivalent inline config against a live Teleport cluster -- see
+# ../README.md.
+db_service:
+  enabled: true
+  databases:
+    - name: "${APP_NAME}"
+      protocol: "postgres"
+      uri: "postgres.${NAMESPACE}.svc.cluster.local:5432"
+      admin_user:
+        name: "teleport-admin"
+      tls:
+        mode: verify-full
+        ca_cert_file: /etc/teleport-postgres-ca/ca.crt
+      static_labels:
+        demo: ${DEMO_LABEL_VALUE}

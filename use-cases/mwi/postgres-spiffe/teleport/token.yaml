@@ -1,0 +1,39 @@
+# Reference only -- do NOT `tctl create -f` this file as-is (the
+# metadata.name below is a placeholder; see below for why).
+#
+# tbot joins using the plain `token` method (a shared secret), not the
+# `kubernetes` join method: simpler to operate, at the cost of having to
+# handle a bootstrap secret yourself instead of Teleport validating a
+# Kubernetes-issued token for you.
+#
+# For this join method, the *resource name itself is the secret* -- it
+# IS the token a caller presents to join. That's why this isn't checked
+# in with a real name: ../setup.sh's `generate_join_token` function
+# creates one dynamically instead, with a random 48-hex-char name and an
+# explicit `metadata.expires` computed from JOIN_TOKEN_TTL, via
+# `tctl create -f` of exactly this shape.
+#
+# (`tctl tokens add` looks like the more obvious way to do this, but it
+# has no flag to bind a token to a specific bot name, and no way to set
+# `spec.roles` to anything other than its flat `--type=` list -- both
+# confirmed against a live cluster's `tctl tokens add --help`. Creating
+# the `kind: token` resource directly, as below, is the only way to get
+# a bot-scoped token or a multi-role [App, Db] agent token.)
+#
+# The token value is only needed once -- tbot uses it for its very first
+# join, then renews using its own bot certificate from then on (see
+# ../tbot-chart's `storage.type: directory` + PVC, which persists that
+# certificate across pod restarts precisely so the original token isn't
+# needed again). If you ever need to force tbot to rejoin from scratch
+# (e.g. you deleted its PVC), generate a fresh token the same way and
+# redeploy with:
+#   helm upgrade ${BOT_NAME} ../tbot-chart -n ${NAMESPACE} --set-string teleport.joinToken=<new-token>
+kind: token
+version: v2
+metadata:
+  name: <random-hex-value-generated-by-setup.sh>
+  expires: "<now + JOIN_TOKEN_TTL, computed by setup.sh>"
+spec:
+  roles: [Bot]
+  bot_name: ${BOT_NAME}
+  join_method: token

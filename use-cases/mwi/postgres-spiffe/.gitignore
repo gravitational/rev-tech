@@ -1,0 +1,15 @@
+# Secrets / local config
+.env
+
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Go
+./clients/go/app/transact
+
+# Editor/OS cruft
+.DS_Store

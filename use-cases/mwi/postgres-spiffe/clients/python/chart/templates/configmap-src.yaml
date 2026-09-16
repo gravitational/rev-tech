@@ -1,0 +1,16 @@
+{{- if .Values.selfCompile.enabled -}}
+# Only needed for the self-compiling path: bakes this chart's own
+# app/ source into a ConfigMap the Job mounts and runs directly,
+# so no image ever needs to be built or pushed anywhere.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "client.fullname" . }}-src
+  labels:
+    {{- include "client.labels" . | nindent 4 }}
+data:
+  transact.py: |
+{{ .Files.Get "app/transact.py" | indent 4 }}
+  requirements.txt: |
+{{ .Files.Get "app/requirements.txt" | indent 4 }}
+{{- end -}}

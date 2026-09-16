@@ -1,0 +1,13 @@
+Runs a transaction on this schedule ({{ .Values.schedule }}) via CronJob
+"{{ include "client.fullname" . }}". Each run spawns its own Job with an
+auto-generated name (Kubernetes appends a timestamp-based suffix, not
+something this chart controls) -- list them and follow the latest:
+
+  kubectl get jobs -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} --tail=20 -f
+
+Expected output per run:
+  Inserted and committed transaction: (<id>, 'wi-demo-python', 42.0, 'Deposit via Teleport Workload Identity (Python)', ...)
+
+To trigger a run right now instead of waiting for the schedule:
+  kubectl create job -n {{ .Release.Namespace }} --from=cronjob/{{ include "client.fullname" . }} {{ include "client.fullname" . }}-manual-$(date +%s)

@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tbot.fullname" . }}
+  labels:
+    {{- include "tbot.labels" . | nindent 4 }}
+spec:
+  # tbot's `kubernetes_secret` destination requires at most one replica,
+  # and Recreate avoids two writers racing on the same Secret (or the
+  # same bot storage PVC) during a rollout.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "tbot.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "tbot.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "tbot.fullname" . }}
+      containers:
+        - name: tbot
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["tbot", "start", "-c", "/etc/tbot/tbot.yaml"]
+          env:
+            # Required by the `kubernetes_secret` destination in
+            # secret-tbot.yaml, so tbot knows which namespace to
+            # create/update its output Secret in -- confirmed live:
+            # without this, tbot exits immediately with "unable to
+            # detect namespace from POD_NAMESPACE environment variable".
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: config
+              mountPath: /etc/tbot
+              readOnly: true
+            - name: bot-storage
+              mountPath: /var/lib/teleport/bot
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config
+          secret:
+            secretName: {{ include "tbot.fullname" . }}-config
+        - name: bot-storage
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "tbot.fullname" . }}-storage
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
