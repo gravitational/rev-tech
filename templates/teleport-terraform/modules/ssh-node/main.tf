@@ -38,6 +38,13 @@ resource "teleport_provision_token" "agent" {
 }
 
 resource "aws_instance" "ssh_node" {
+  # Demo hosts keep the AMI they were created with — data.aws_ami uses
+  # most_recent, and a new upstream image must not replace healthy
+  # instances on the next apply (e.g. mid-event).
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
   count                  = var.agent_count
   ami                    = var.ami_id
   instance_type          = var.instance_type

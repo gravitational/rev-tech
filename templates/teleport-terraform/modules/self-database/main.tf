@@ -79,10 +79,20 @@ resource "teleport_provision_token" "db" {
 }
 
 resource "aws_instance" "db" {
-  ami             = var.ami_id
-  instance_type   = var.instance_type
-  subnet_id       = var.subnet_id
-  security_groups = var.security_group_ids
+  # Demo hosts keep the AMI they were created with — data.aws_ami uses
+  # most_recent, and a new upstream image must not replace healthy
+  # instances on the next apply (e.g. mid-event).
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
+  ami           = var.ami_id
+  instance_type = var.instance_type
+  subnet_id     = var.subnet_id
+  # vpc_security_group_ids, NOT security_groups: the latter is the EC2-Classic
+  # name-based create-time attribute — passing SG ids there forces instance
+  # replacement on every plan once AWS reports them under vpc_security_group_ids.
+  vpc_security_group_ids = var.security_group_ids
   # Teleport nodes register via outbound reverse tunnel — no public IP needed.
   associate_public_ip_address = null
 
