@@ -1,0 +1,10 @@
+apiVersion: v2
+name: teleport-dashboards
+description: Grafana dashboards for self-hosted Teleport, rendered for a capability profile
+type: application
+version: 0.1.0
+appVersion: "18.8.0"
+keywords:
+  - teleport
+  - grafana
+  - observability

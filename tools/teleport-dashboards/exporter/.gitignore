@@ -1,0 +1,21 @@
+# Built binaries.
+# Leading slash matters: an unanchored "teleport-usage" also matches the
+# directory cmd/teleport-usage/, which silently excluded main.go from git and
+# left the module unbuildable on a fresh clone.
+/teleport-usage
+/teleport-usage.exe
+/teleport-usage-linux-amd64
+/teleport-usage-linux-arm64
+/teleport-mau-tracker
+/teleport-mau-tracker.exe
+/teleport-tpr-tracker
+/teleport-tpr-tracker.exe
+
+# Runtime outputs
+*.db
+teleport_usage_data.db
+teleport_tracker.log
+Teleport_Active_Users.txt
+Teleport_Active_Users.json
+Teleport_Usage_Report.txt
+Teleport_Usage_Report.json

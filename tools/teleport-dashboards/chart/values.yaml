@@ -1,0 +1,84 @@
+# Dashboards are rendered ahead of install by scripts/render-dashboards.py.
+# Point dashboardsDir at the rendered profile directory. Helm reads it with
+# .Files.Glob, which cannot escape the chart directory, so the rendered output
+# must live inside the chart:
+#
+#   ./scripts/render-dashboards.py --profile profiles/oss-postgres.yaml \
+#     --out helm/charts/teleport-dashboards/dashboards
+#
+dashboardsDir: dashboards
+
+# Namespace the Grafana dashboard sidecar watches.
+namespace: monitoring
+
+# Label the sidecar selects on. These are the kube-prometheus-stack defaults;
+# change them for a Grafana configured differently.
+sidecarLabel: grafana_dashboard
+sidecarLabelValue: "1"
+
+# Grafana folder to file the dashboards under. Empty means the General folder.
+folder: Teleport
+
+# Recorded as an annotation so a running cluster can be audited for which
+# profile it was rendered from. Informational only.
+profile: ""
+
+# ---------------------------------------------------------------------------
+# Datasources
+#
+# The dashboards reference datasources through variables (DS_PROMETHEUS,
+# DS_TELEPORT_BACKEND, DS_ACCESS_GRAPH) that resolve BY NAME against whatever
+# Grafana has. Without matching datasources every panel fails, so the chart can
+# optionally provision them.
+#
+# Default is `create: false`, because most installs already manage datasources
+# somewhere else (kube-prometheus-stack values, Terraform, Grafana Cloud) and a
+# chart that quietly creates a second "Prometheus" is worse than one that
+# creates none. Set create: true only if you want this chart to own them.
+#
+# Nothing here assumes CloudNativePG, a particular namespace, or in-cluster
+# Postgres. Point `host` at anything reachable -- RDS, a managed instance, a
+# service in another namespace.
+# ---------------------------------------------------------------------------
+datasources:
+  create: false
+
+  # Label the Grafana sidecar watches for datasource ConfigMaps. Same mechanism
+  # as dashboards, different label.
+  sidecarLabel: grafana_datasource
+  sidecarLabelValue: "1"
+
+  # Names MUST match what the dashboard variables expect. The variables pin by
+  # name regex precisely because a cluster can have several Postgres
+  # datasources and Grafana otherwise binds to whichever sorts first.
+  prometheus:
+    enabled: true
+    name: Prometheus
+    url: http://prometheus-operated.monitoring.svc.cluster.local:9090
+    isDefault: false
+
+  # Teleport audit backend. Needed by the login and activity panels.
+  # Requires only SELECT on public.events -- do not point this at a superuser.
+  auditBackend:
+    enabled: false
+    name: Teleport Backend
+    host: ""            # host:port, e.g. teleport-postgres-rw.teleport.svc.cluster.local:5432
+    database: teleport
+    user: grafana_ro
+    sslmode: require
+    postgresVersion: 1700
+    # Reference an existing Secret rather than putting a password in values.
+    existingSecret: ""
+    existingSecretKey: password
+
+  # Teleport Identity Security. Enterprise only.
+  accessGraph:
+    enabled: false
+    name: Access Graph
+    host: ""
+    database: access_graph
+    user: access_graph
+    sslmode: require
+    postgresVersion: 1700
+    existingSecret: ""
+    existingSecretKey: password
