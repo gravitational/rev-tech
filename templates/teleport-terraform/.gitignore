@@ -11,6 +11,10 @@ crash.*.log
 # Local variable overrides — keep credentials and personal values out of git
 *.tfvars
 *.tfvars.json
+# ...but event presets are shared, credential-free config and MUST be tracked.
+# Black Hat 2026 lesson: the booth preset lived only on one laptop for a month
+# because this rule silently hid it.
+!profiles/presets/*.tfvars
 
 # CLI configuration traces
 terraform.rc
