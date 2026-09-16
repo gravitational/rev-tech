@@ -21,10 +21,15 @@ output "connection_guide" {
     %{~if var.enable_ssh_prod}
 
     Access request demo (prod node is invisible until approved):
-       tsh request create --roles=${var.create_demo_rbac ? "${local.user_prefix}-prod-readonly" : "prod-readonly-access"} --reason="check prod logs"
+       tsh request create --roles=${try(module.demo_rbac[0].prod_access_role, "prod-readonly-access")} --reason="check prod logs"
        # approver: tsh request review <request-id> --approve --reason="ok"
        # then: tsh ls shows ${var.prod_env}-ssh-0
        tsh ssh ec2-user@${var.prod_env}-ssh-0
+    %{~endif}
+    %{~if var.enable_ssh_prod && var.create_demo_rbac && var.auto_approve_reason != null}
+
+    Staging elevation (approved by policy in seconds, no human reviewer):
+       tsh request create --roles=${try(module.demo_rbac[0].staging_access_role, "")} --reason="${var.auto_approve_reason}"
     %{~endif}
     %{~if var.enable_postgres || var.enable_mysql || var.enable_mongodb || var.enable_cassandra || var.enable_rds_mysql}
 
@@ -79,6 +84,14 @@ output "connection_guide" {
 
     Windows Desktop (web UI only):
        https://${var.proxy_address}/web/desktops
+    %{~endif}
+    %{~if var.enable_linux_desktop}
+
+    Linux Desktop (web UI only):
+       https://${var.proxy_address}/web/desktops
+       # ${var.env}-linux-desktop → Connect → pick a login (${var.create_demo_rbac ? "${var.demo_user_name} or " : ""}ubuntu)
+       # allow ~5 min after apply: Xfce is a few GB of packages
+       tsh ssh ubuntu@${var.env}-linux-desktop   # debug path onto the host
     %{~endif}
 
     Audit trail:

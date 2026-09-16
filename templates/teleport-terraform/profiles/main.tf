@@ -24,8 +24,8 @@ terraform {
       version = "~> 5.99"
     }
     teleport = {
-      source  = "terraform.releases.teleport.dev/gravitational/teleport"
-      version = "~> 18.0"
+      source  = "terraform-staging.releases.development.teleport.dev/gravitational/teleport"
+      version = "19.0.0-dev.terraform.3"
     }
     random = {
       source  = "hashicorp/random"
@@ -81,6 +81,21 @@ data "aws_ami" "linux" {
   }
 }
 
+# Ubuntu for the Linux desktop host — AL2023 ships no desktop environment
+# packages, so the shared AL2023 AMI can't back linux_desktop_service.
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
 data "aws_ami" "windows_server" {
   most_recent = true
   owners      = ["amazon"]
@@ -125,11 +140,19 @@ module "demo_rbac" {
   count  = var.create_demo_rbac ? 1 : 0
   source = "../modules/demo-rbac"
 
-  name_prefix    = local.user_prefix
-  env            = var.env
-  prod_env       = var.enable_ssh_prod ? var.prod_env : null
-  team           = var.team
-  demo_user_name = var.demo_user_name
+  name_prefix           = var.demo_rbac_role_prefix != null ? var.demo_rbac_role_prefix : local.user_prefix
+  env                   = var.env
+  prod_env              = var.enable_ssh_prod ? var.prod_env : null
+  team                  = var.team
+  demo_user_name        = var.demo_user_name
+  extra_demo_user_names = var.extra_demo_user_names
+  auto_approve_reason   = var.auto_approve_reason
+  request_max_duration  = var.request_max_duration
+  mcp_tools             = var.mcp_tools
+  mcp_rw_app            = var.enable_mcp ? "mcp-filesystem" : null
+  # The linux-desktop role lives in modules/linux-desktop (needs the v19
+  # provider); demo-rbac just attaches it to the demo personas.
+  extra_role_names = var.enable_linux_desktop ? [module.linux_desktop[0].access_role_name] : []
 }
 
 # ---------------------------------------------------------------------------
@@ -496,6 +519,37 @@ module "desktop_service" {
 }
 
 # ---------------------------------------------------------------------------
+# Desktop Access: Linux desktop (Teleport 19+) — Xfce over Xvfb, rendered in
+# the browser. The service runs on the desktop host itself; the module also
+# owns the linux-desktop-access role (linux_desktop_* role fields need the
+# v19 provider, which demo-rbac's 18.x pin can't express).
+# ---------------------------------------------------------------------------
+module "linux_desktop" {
+  count  = var.enable_linux_desktop ? 1 : 0
+  source = "../modules/linux-desktop"
+
+  env           = var.env
+  team          = var.team
+  user          = var.user
+  proxy_address = var.proxy_address
+  ami_id        = data.aws_ami.ubuntu.id
+  instance_type = "t3.medium"
+  tags          = local.resource_tags
+
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
+
+  # Personas first (created on the host — the service can't create users),
+  # ubuntu as the generic fallback login.
+  desktop_logins = concat(
+    var.create_demo_rbac ? concat([var.demo_user_name], var.extra_demo_user_names) : [],
+    ["ubuntu"]
+  )
+  create_access_role = var.create_demo_rbac
+  name_prefix        = var.demo_rbac_role_prefix != null ? var.demo_rbac_role_prefix : local.user_prefix
+}
+
+# ---------------------------------------------------------------------------
 # Machine ID: MCP stdio bot (AI/Claude access with audit + RBAC).
 # ---------------------------------------------------------------------------
 resource "random_string" "bot_suffix" {
@@ -531,6 +585,7 @@ module "mcp_registration" {
   labels = {
     env                              = var.env
     team                             = var.team
+    "teleport.dev/app"               = "mcp-filesystem"
     "teleport.internal/app-sub-kind" = "mcp"
   }
   mcp_command          = "docker"
