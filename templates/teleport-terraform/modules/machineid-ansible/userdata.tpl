@@ -12,7 +12,6 @@ pip3 install ansible
 # Install Teleport client/agent binaries from the cluster install script.
 # This avoids client/server feature skew during Machine ID onboarding.
 curl "https://${proxy_address}/scripts/install.sh" | bash
-echo "${node_token}" > /tmp/token
 
 # Write teleport.yaml
 cat <<-EOF > /etc/teleport.yaml
@@ -20,7 +19,14 @@ version: v3
 teleport:
   data_dir: "/var/lib/teleport"
   proxy_server: "${proxy_address}:443"
-  auth_token: "/tmp/token"
+  # iam join: the instance signs an STS GetCallerIdentity call with its
+  # instance-profile role and Teleport matches it against the token's allow
+  # rules. token_name is NOT a secret, which is why nothing is written to disk
+  # here any more -- this previously dropped a reusable bearer token into
+  # /tmp/token, sourced from EC2 user data.
+  join_params:
+    method: iam
+    token_name: "${node_token}"
   log:
     output: stderr
     severity: INFO
