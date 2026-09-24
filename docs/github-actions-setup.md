@@ -39,7 +39,7 @@ Create an IAM role with the following trust policy (replace account ID and repo)
       "Effect": "Allow",
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Principal": {
-        "Federated": "arn:aws:iam::165258854585:oidc-provider/token.actions.githubusercontent.com"
+        "Federated": "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
       },
       "Condition": {
         "StringEquals": {
@@ -82,7 +82,7 @@ Inline policy for S3 state bucket:
 ```
 
 **Role ARN** (set as `AWS_ROLE_ARN` GitHub secret):
-`arn:aws:iam::165258854585:role/<role-name>`
+`arn:aws:iam::123456789012:role/<role-name>`
 
 ---
 
