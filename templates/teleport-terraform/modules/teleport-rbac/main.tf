@@ -10,9 +10,39 @@
 # canonical demo defaults: dev/dev and prod/platform.
 # Provider must be configured by the calling root module.
 #
-# Numeric enums used below (Terraform provider uses proto enum ints):
-#   create_host_user_mode / create_db_user_mode:  0 = off  1 = keep  2 = drop
-#   require_session_mfa:  0 = no  1 = yes
+# Numeric enums used below (Terraform provider uses proto enum ints).
+#
+# THE PREVIOUS VERSION OF THIS COMMENT WAS WRONG. It claimed "1 = keep", so
+# every role here set create_host_user_mode = 1, which is OFF. Host user
+# creation was silently disabled in every deployment built from this module.
+# Values verified against the provider schema; read the schema, not a comment:
+#
+#   terraform providers schema -json | jq '...options.create_host_user_mode'
+#
+#   create_host_user_mode: 0 = unspecified, 1 = off, 2 = drop (gone in v15+),
+#                          3 = KEEP, 4 = insecure-drop
+#   create_db_user_mode:   0 = unspecified, 1 = off, 2 = KEEP,
+#                          3 = best_effort_drop      <-- DIFFERENT numbering!
+#   require_session_mfa:   0 = off, 1 = session, 2 = session_and_hardware_key,
+#                          3 = hardware_key_touch, 4 = hardware_key_pin,
+#                          5 = hardware_key_touch_and_pin
+#
+# ONE BAD ROLE POISONS A HOST. Teleport disables host user creation for a node
+# if ANY role matching that node leaves the mode off or UNSET, so a read-only
+# role cancels a privileged role's keep. That is why prod-readonly-access below
+# sets 3 rather than 0 -- it matches prod nodes, and leaving it unspecified
+# disabled creation for every other role on those hosts. The roles reference
+# documents how explicit values combine but is silent on unset; this was
+# confirmed empirically on a live cluster 2026-09-21.
+#
+# THE NODE ALSO NEEDS `visudo`. Teleport's host user management hard-requires
+# it, and without the sudo package the agent reports this at DEBUG severity
+# ONLY:
+#     Skipping host user management ... missing required binaries: visudo
+#     Not creating host user: node has disabled host user creation
+# while every session fails with "Failed to launch: user: unknown user X".
+# At INFO level that is indistinguishable from an RBAC fault. If "unknown
+# user" survives correct roles, raise the agent to DEBUG before touching RBAC.
 ##################################################################################
 
 terraform {
@@ -67,7 +97,7 @@ resource "teleport_role" "dev_access" {
     options = {
       max_session_ttl                = "8h0m0s"
       enhanced_recording             = ["command", "network"]
-      create_host_user_mode          = 1
+      create_host_user_mode          = 3 # keep
       create_host_user_default_shell = "/bin/bash"
       create_db_user                 = true
       create_desktop_user            = true
@@ -141,8 +171,8 @@ resource "teleport_role" "dev_auto_access" {
       max_session_ttl                = "8h0m0s"
       enhanced_recording             = ["command", "network"]
       create_db_user                 = true
-      create_db_user_mode            = 1
-      create_host_user_mode          = 1
+      create_db_user_mode            = 2 # keep (db users: 2, NOT 3)
+      create_host_user_mode          = 3 # keep
       create_host_user_default_shell = "/bin/bash"
     }
 
@@ -188,10 +218,10 @@ resource "teleport_role" "platform_dev_access" {
     options = {
       max_session_ttl                = "8h0m0s"
       enhanced_recording             = ["command", "network"]
-      create_host_user_mode          = 1
+      create_host_user_mode          = 3 # keep
       create_host_user_default_shell = "/bin/bash"
       create_db_user                 = true
-      create_db_user_mode            = 1
+      create_db_user_mode            = 2 # keep (db users: 2, NOT 3)
       create_desktop_user            = false
       desktop_clipboard              = true
       desktop_directory_sharing      = true
@@ -267,7 +297,7 @@ resource "teleport_role" "prod_readonly_access" {
     options = {
       max_session_ttl       = "4h0m0s"
       enhanced_recording    = ["command", "network"]
-      create_host_user_mode = 0
+      create_host_user_mode = 3 # keep -- NOT 0: unset here poisoned every prod node
       create_db_user        = false
       create_db_user_mode   = 0
     }
@@ -320,10 +350,10 @@ resource "teleport_role" "prod_access" {
       max_session_ttl                = "2h0m0s"
       require_session_mfa            = 1
       enhanced_recording             = ["command", "network"]
-      create_host_user_mode          = 1
+      create_host_user_mode          = 3 # keep
       create_host_user_default_shell = "/bin/bash"
       create_db_user                 = true
-      create_db_user_mode            = 1
+      create_db_user_mode            = 2 # keep (db users: 2, NOT 3)
       create_desktop_user            = false
       desktop_clipboard              = true
       desktop_directory_sharing      = true
@@ -400,8 +430,8 @@ resource "teleport_role" "prod_auto_access" {
       max_session_ttl                = "2h0m0s"
       enhanced_recording             = ["command", "network"]
       create_db_user                 = true
-      create_db_user_mode            = 1
-      create_host_user_mode          = 1
+      create_db_user_mode            = 2 # keep (db users: 2, NOT 3)
+      create_host_user_mode          = 3 # keep
       create_host_user_default_shell = "/bin/bash"
     }
 
