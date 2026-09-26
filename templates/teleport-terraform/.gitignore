@@ -22,3 +22,11 @@ terraform.rc
 
 # Teleport license files
 *license.pem
+
+# A 388 MB teleport-*.pkg installer and a token.yaml containing a live
+# bound_keypair registration_secret were both sitting untracked and
+# un-ignored in profiles/ on 2026-09-22. Either would have been committed by
+# a single `git add .`, and the repo's own contribution rules prohibit large
+# binaries and credentials.
+*.pkg
+token.yaml
