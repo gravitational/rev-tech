@@ -10,8 +10,16 @@ at a live event; the fixes that could live in code are in this repo already.
   `tsh login --proxy=<event-cluster>`, `eval $(tctl terraform env)`,
   `terraform apply -var-file=presets/conference.tfvars`. Read the
   `connection_guide` and `demo_user_setup` outputs.
-- Commit preset changes the day you make them. Presets are tracked
-  (`!profiles/presets/*.tfvars`); do not let event config live on one laptop.
+- Commit preset changes the day you make them. **Everything in
+  `profiles/presets/` is tracked**: the blanket `*.tfvars` rule is cancelled
+  there by `!profiles/presets/*.tfvars`, and that negation is deliberate --
+  its own comment records the Black Hat lesson that the booth preset lived on
+  one laptop for a month because the blanket rule silently hid it.
+- **So a preset in that directory is NOT private, and naming one after an event
+  is how branding reaches a public repo.** It will not be ignored, it will show
+  up as untracked in `git status`, and one `git add .` commits it. Keep presets
+  event-neutral by name and content; anything genuinely local belongs outside
+  `profiles/presets/`.
 - Keep terraform state off the laptop: remote backend in the event's region,
   or at minimum a daily copy.
 - Land ALL SSO connector role-mapping changes at build time, not mid-event.

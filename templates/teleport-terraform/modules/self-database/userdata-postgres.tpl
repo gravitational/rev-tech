@@ -45,6 +45,35 @@ CREATE ROLE writer LOGIN;
 GRANT ALL PRIVILEGES ON DATABASE postgres TO writer;
 CREATE ROLE reader LOGIN;
 GRANT CONNECT ON DATABASE postgres TO reader;
+-- Schema-level grants. PostgreSQL 15 revoked CREATE on schema public from
+-- PUBLIC, so the database-level GRANTs above are not enough on their own:
+-- without these, writer connects fine but any CREATE TABLE fails with
+-- "permission denied for schema public".
+GRANT ALL ON SCHEMA public TO writer;
+GRANT USAGE ON SCHEMA public TO reader;
+-- Tables writer creates later are readable by reader without a manual grant.
+ALTER DEFAULT PRIVILEGES FOR ROLE writer IN SCHEMA public GRANT SELECT ON TABLES TO reader;
+%{ if seed_beams_demo ~}
+-- beams cross-cluster quickstart. Mirrors that guide's appendix init.sql so the
+-- guide runs verbatim against this host rather than its own Docker container.
+-- The GRANT USAGE line is not in the upstream init.sql but is required on
+-- PostgreSQL 15+, where beamuser otherwise cannot see the table it owns.
+CREATE ROLE beamuser LOGIN;
+GRANT USAGE ON SCHEMA public TO beamuser;
+CREATE TABLE IF NOT EXISTS agent_actions (
+  id         serial PRIMARY KEY,
+  agent_id   text        NOT NULL,
+  action     text        NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO agent_actions (agent_id, action) VALUES
+  ('demo-agent-1', 'provisioned demo dataset'),
+  ('demo-agent-1', 'read customer summary'),
+  ('demo-agent-2', 'ran nightly reconciliation');
+ALTER TABLE agent_actions OWNER TO beamuser;
+GRANT ALL ON agent_actions TO beamuser;
+GRANT USAGE, SELECT ON SEQUENCE agent_actions_id_seq TO beamuser;
+%{ endif ~}
 EOF
 # install teleport
 curl "https://${proxy_address}/scripts/install.sh" | bash

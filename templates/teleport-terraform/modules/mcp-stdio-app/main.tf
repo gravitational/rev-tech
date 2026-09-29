@@ -66,6 +66,12 @@ resource "aws_instance" "mcp_app" {
     run_as_host_user = var.run_as_host_user
   })
 
+  # Without this, the AWS provider updates user_data in place and reports
+  # "updated in-place" — the new script is stored but never executed, so
+  # userdata edits silently do nothing until someone stops the instance or
+  # passes -replace by hand. This host is stateless, so replacing it is safe.
+  user_data_replace_on_change = true
+
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"

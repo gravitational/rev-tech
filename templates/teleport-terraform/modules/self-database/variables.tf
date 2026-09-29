@@ -58,3 +58,14 @@ variable "team" {
   type        = string
   default     = "platform"
 }
+
+variable "seed_beams_demo" {
+  description = <<-EOT
+    Postgres only. Create the `beamuser` role and the `agent_actions` table that the
+    beams cross-cluster quickstart expects, matching its appendix `init.sql` — so the
+    guide can run against this host instead of its standalone Docker container.
+    Off by default; other consumers of this module are unaffected.
+  EOT
+  type        = bool
+  default     = false
+}
