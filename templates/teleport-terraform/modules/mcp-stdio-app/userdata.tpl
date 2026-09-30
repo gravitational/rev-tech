@@ -52,6 +52,12 @@ app_service:
         env: "${env}"
         team: "${team}"
         teleport.dev/app: "${app_name}"
+%{ if http_app_name != "" ~}
+    - labels:
+        env: "${env}"
+        team: "${team}"
+        teleport.dev/app: "${http_app_name}"
+%{ endif ~}
 ssh_service:
   enabled: true
   labels:
@@ -65,6 +71,17 @@ EOF_TEL
 
 systemctl enable teleport
 systemctl restart teleport
+
+%{ if http_app_name != "" ~}
+# Streamable-HTTP MCP server for the "${http_app_name}" app, registered as
+# mcp+http://localhost:3000/mcp. The server listens on process.env.PORT
+# (upstream default 3001), so PORT=3000 is what makes it match the registration.
+# Bound to loopback: only the app service on this host dials it. The restart
+# policy plus the enabled docker unit bring it back after a reboot.
+docker run -d --name mcp-everything --restart unless-stopped \
+  -p 127.0.0.1:3000:3000 -e PORT=3000 \
+  node:22-alpine npx -y ${http_mcp_package} streamableHttp
+%{ endif ~}
 
 # Create demo files for mcp/filesystem — gives Claude something to explore in the demo.
 mkdir -p /demo-files/config /demo-files/logs

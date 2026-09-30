@@ -570,6 +570,7 @@ module "mcp_app" {
   instance_type   = "t3.small"
   app_name        = "mcp-filesystem"
   app_description = "MCP filesystem demo server"
+  http_app_name   = "mcp-everything"
   tags            = local.resource_tags
 
   subnet_id          = module.network.subnet_id
@@ -591,6 +592,27 @@ module "mcp_registration" {
   mcp_command          = "docker"
   mcp_args             = ["run", "-i", "--rm", "-v", "/demo-files:/demo-files:ro", "mcp/filesystem", "/demo-files"]
   mcp_run_as_host_user = "docker"
+}
+
+# Streamable-HTTP MCP app on the same host. Unlike the stdio server above, this
+# transport is a normal HTTP app, so tbot's application-tunnel can serve it with
+# a bot's own identity — stdio MCP apps require `tsh mcp connect`, which needs
+# app-certificate reissue that Machine ID identities are denied. This is the only
+# MCP transport an agent can actually consume.
+module "mcp_http_registration" {
+  count         = var.enable_mcp ? 1 : 0
+  source        = "../modules/dynamic-registration"
+  resource_type = "app"
+  name          = "mcp-everything-${var.env}"
+  description   = "MCP everything server (streamable-HTTP) — agent-consumable"
+  uri           = "mcp+http://localhost:3000/mcp"
+  labels = {
+    env  = var.env
+    team = var.team
+    # Must match http_app_name on module.mcp_app, or no app service claims it.
+    "teleport.dev/app"               = "mcp-everything"
+    "teleport.internal/app-sub-kind" = "mcp"
+  }
 }
 
 module "mcp_bot" {

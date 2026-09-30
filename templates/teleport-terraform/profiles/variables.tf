@@ -65,6 +65,12 @@ variable "enable_postgres" {
   default     = false
 }
 
+variable "enable_beams_demo_db" {
+  description = "Also register the Postgres host as `demo-db` labelled shared=\"true\", and seed the beamuser/agent_actions objects, so the beams cross-cluster quickstart runs verbatim against it. Requires enable_postgres."
+  type        = bool
+  default     = false
+}
+
 variable "enable_mysql" {
   description = "Self-hosted MySQL (MariaDB) with TLS cert auth"
   type        = bool

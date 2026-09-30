@@ -62,6 +62,18 @@ variable "run_as_host_user" {
   default     = "docker"
 }
 
+variable "http_app_name" {
+  description = "teleport.dev/app label of an optional streamable-HTTP MCP app served from this host (the everything server on localhost:3000/mcp). Empty disables it."
+  type        = string
+  default     = ""
+}
+
+variable "http_mcp_package" {
+  description = "npm package (pinned) run for the streamable-HTTP MCP app"
+  type        = string
+  default     = "@modelcontextprotocol/server-everything@2026.8.31"
+}
+
 variable "team" {
   description = "Team label for MCP server"
   type        = string

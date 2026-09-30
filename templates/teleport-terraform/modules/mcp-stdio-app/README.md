@@ -28,3 +28,4 @@ module "mcp_stdio_app" {
 - This module configures only the App Service host (`app_service.resources` label matching).
 - Register MCP apps separately using `teleport_app` (for example via `modules/dynamic-registration`).
 - Ensure the host has the tools needed to execute the MCP command (e.g., `docker`) and the runtime user exists.
+- Optional streamable-HTTP app: set `http_app_name` (e.g. `"mcp-everything"`) and the host also runs the everything server (`http_mcp_package`, pinned) on `localhost:3000/mcp` and selects apps labelled `teleport.dev/app: <http_app_name>`. Register the app with `uri = "mcp+http://localhost:3000/mcp"` and that same label, or no app service claims it. Unlike a stdio app, an HTTP MCP app can be consumed by a Machine ID bot through tbot's application-tunnel.
