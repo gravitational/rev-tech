@@ -14,6 +14,17 @@ resource "random_string" "bot_token" {
   special = false
 }
 
+# The bound_keypair registration secret is SET in the token spec
+# (spec.bound_keypair.onboarding.registration_secret) and handed to tbot, not
+# read back from status: the 18.x provider's status is optional, not computed,
+# so a server-generated secret never reaches state. Skipped when a public key
+# is preregistered instead.
+resource "random_password" "registration_secret" {
+  count   = var.join_method == "bound_keypair" && var.onboarding_initial_public_key == "" ? 1 : 0
+  length  = 32
+  special = false
+}
+
 # Two token resources because the two join methods have different spec shapes,
 # which a conditional expression cannot unify. Exactly one exists.
 resource "teleport_provision_token" "bot" {
@@ -75,7 +86,13 @@ resource "teleport_role" "machine" {
 }
 
 locals {
-  onboarding = var.onboarding_initial_public_key != "" ? { initial_public_key = var.onboarding_initial_public_key } : {}
+  onboarding = var.onboarding_initial_public_key != "" ? {
+    initial_public_key  = var.onboarding_initial_public_key
+    registration_secret = null
+    } : {
+    initial_public_key  = null
+    registration_secret = one(random_password.registration_secret[*].result)
+  }
   allow = merge(
     length(var.allowed_logins) > 0 ? { logins = var.allowed_logins } : {},
     length(var.node_labels) > 0 ? { node_labels = var.node_labels } : {},

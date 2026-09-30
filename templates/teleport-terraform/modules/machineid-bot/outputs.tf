@@ -5,10 +5,9 @@ output "bot_token" {
 
 output "bot_registration_secret" {
   description = "One-time registration secret for bound keypair onboarding. Marked sensitive so it never lands in apply output or CI logs — retrieve deliberately with: terraform output -raw bot_registration_secret"
-  # Always null on the 18.x provider: its provision_token `status` is optional,
-  # not computed, so the server-generated secret is never read back into
-  # state. Use join_method = "iam" on EC2, or onboarding_initial_public_key.
-  value     = try(teleport_provision_token.bot[0].status.bound_keypair.registration_secret, null)
+  # The secret this module generated and set in the token spec. null for iam
+  # join or a preregistered public key, where there is no secret.
+  value     = one(random_password.registration_secret[*].result)
   sensitive = true
 }
 
