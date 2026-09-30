@@ -106,6 +106,9 @@ resource "aws_instance" "db" {
     tele_ca       = var.teleport_db_ca
     env           = var.env
     team          = var.team
+    # Only userdata-postgres.tpl reads this; templatefile ignores unused keys,
+    # so passing it for every db_type is harmless.
+    seed_beams_demo = var.seed_beams_demo
   })
 
   metadata_options {
