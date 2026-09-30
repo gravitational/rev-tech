@@ -24,8 +24,10 @@ terraform {
       version = "~> 5.99"
     }
     teleport = {
-      source  = "terraform-staging.releases.development.teleport.dev/gravitational/teleport"
-      version = "19.0.0-dev.terraform.3"
+      source = "terraform.releases.teleport.dev/gravitational/teleport"
+      # Match the target cluster's version. Every module requires this same
+      # source address, so the provider block below configures all of them.
+      version = "18.11.2"
     }
     random = {
       source  = "hashicorp/random"
@@ -150,8 +152,8 @@ module "demo_rbac" {
   request_max_duration  = var.request_max_duration
   mcp_tools             = var.mcp_tools
   mcp_rw_app            = var.enable_mcp ? "mcp-filesystem" : null
-  # The linux-desktop role lives in modules/linux-desktop (needs the v19
-  # provider); demo-rbac just attaches it to the demo personas.
+  # The linux-desktop role lives in modules/linux-desktop; demo-rbac just
+  # attaches it to the demo personas.
   extra_role_names = var.enable_linux_desktop ? [module.linux_desktop[0].access_role_name] : []
 }
 
@@ -519,10 +521,9 @@ module "desktop_service" {
 }
 
 # ---------------------------------------------------------------------------
-# Desktop Access: Linux desktop (Teleport 19+) — Xfce over Xvfb, rendered in
-# the browser. The service runs on the desktop host itself; the module also
-# owns the linux-desktop-access role (linux_desktop_* role fields need the
-# v19 provider, which demo-rbac's 18.x pin can't express).
+# Desktop Access: Linux desktop — Xfce over Xvfb, rendered in the browser. The
+# service runs on the desktop host itself; the module also owns the
+# linux-desktop-access role.
 # ---------------------------------------------------------------------------
 module "linux_desktop" {
   count  = var.enable_linux_desktop ? 1 : 0

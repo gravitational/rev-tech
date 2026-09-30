@@ -32,7 +32,7 @@ Compose your own by combining flags: `terraform apply -var-file=presets/grafana.
 | `dev-demo` | Developer "day in the life" — Bob + access requests + session locking | ~$5–7/day |
 | `full-platform` | All-up POC — every capability in one deployment | ~$8–12/day |
 | `cloud-native-apps` | Modern cloud shop — Grafana, HTTPBin, RDS IAM auth, AWS Console | ~$3–5/day |
-| `ssh`, `postgres`, `mysql`, `mongodb`, `cassandra`, `rds-mysql`, `grafana`, `httpbin`, `demo-panel`, `aws-console`, `windows`, `linux-desktop`, `mcp`, `ansible` | Single-feature demos (`linux-desktop` needs Teleport 19+) | ~$1–2/day each |
+| `ssh`, `postgres`, `mysql`, `mongodb`, `cassandra`, `rds-mysql`, `grafana`, `httpbin`, `demo-panel`, `aws-console`, `windows`, `linux-desktop`, `mcp`, `ansible` | Single-feature demos (`linux-desktop` needs Teleport 18.10.3+) | ~$1–2/day each |
 
 Costs assume the default `create_nat_gateway = false` (public subnet with public IPs, inbound blocked by the security group). A NAT gateway adds ~$1/day.
 

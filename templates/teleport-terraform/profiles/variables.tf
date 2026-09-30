@@ -126,7 +126,7 @@ variable "enable_windows" {
 }
 
 variable "enable_linux_desktop" {
-  description = "Linux desktop host (Ubuntu + Xfce over Xvfb, browser-based). Requires Teleport 19+ and the v19 provider."
+  description = "Linux desktop host (Ubuntu + Xfce over Xvfb, browser-based). Requires Teleport 18.10.3 or later."
   type        = bool
   default     = false
 }
