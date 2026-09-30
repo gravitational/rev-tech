@@ -1,7 +1,7 @@
 ##################################################################################
 # modules/linux-desktop/main.tf
 #
-# Linux Desktop Access (Teleport 19+): one Ubuntu host running linux_desktop_service.
+# Linux Desktop Access (Teleport 18.10.3+): one Ubuntu host running linux_desktop_service.
 # Unlike Windows desktop access (windows-instance + desktop-service pair), the
 # service runs ON the desktop host itself — Teleport starts a virtual X11 display
 # with Xvfb and launches an Xfce session inside it. Outbound reverse tunnel only,
@@ -10,10 +10,9 @@
 # The service does NOT create host users (session setup fails user.Lookup if the
 # login doesn't exist), so userdata pre-creates every login in var.desktop_logins.
 #
-# This module also owns the linux-desktop-access role instead of modules/demo-rbac:
-# the linux_desktop_labels / linux_desktop_logins role fields and the LinuxDesktop
-# token role exist only in the v19 provider (the 18.x provider rejects both
-# client-side). Fold the role into demo-rbac once the pinned provider is 19 GA.
+# This module also owns the linux-desktop-access role (linux_desktop_labels /
+# linux_desktop_logins), which demo-rbac attaches to the demo personas. The 18.x
+# provider accepts those role fields and the LinuxDesktop token role.
 ##################################################################################
 
 terraform {
@@ -21,10 +20,8 @@ terraform {
     aws = {
       source = "hashicorp/aws"
     }
-    # v19 staging provider — must match the address the profiles root pins.
-    # LinuxDesktop token roles and linux_desktop_* role fields are 19-only.
     teleport = {
-      source = "terraform-staging.releases.development.teleport.dev/gravitational/teleport"
+      source = "terraform.releases.teleport.dev/gravitational/teleport"
     }
     random = {
       source = "hashicorp/random"

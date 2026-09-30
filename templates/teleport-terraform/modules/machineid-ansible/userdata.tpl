@@ -57,10 +57,8 @@ cat <<-EOF > /etc/tbot.yaml
 version: v2
 proxy_server: ${proxy_address}:443
 onboarding:
-  join_method: bound_keypair
+  join_method: iam
   token: ${bot_token}
-  bound_keypair:
-    registration_secret: ${registration_secret}
 storage:
   type: directory
   path: /var/lib/teleport/bot
@@ -78,8 +76,7 @@ useradd --system --shell /bin/false teleport || true
 mkdir -p /var/lib/teleport/bot
 mkdir -p /opt/machine-id
 
-# No key seeding: tbot redeems the one-time registration secret from
-# /etc/tbot.yaml on first start and generates its keypair locally.
+# Nothing to seed: tbot joins with iam, signing with the instance-profile role.
 
 # Set up proper group ownership for machine-id directory
 chown -R teleport:teleport /var/lib/teleport/

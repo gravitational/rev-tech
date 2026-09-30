@@ -53,7 +53,7 @@ variable "desktop_logins" {
 }
 
 variable "create_access_role" {
-  description = "Create the <prefix>linux-desktop-access role. Lives here rather than modules/demo-rbac because the linux_desktop_* role fields need the v19 provider."
+  description = "Create the <prefix>linux-desktop-access role (linux_desktop_* role fields)."
   type        = bool
   default     = true
 }

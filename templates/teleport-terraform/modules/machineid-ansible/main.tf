@@ -45,10 +45,17 @@ module "machineid_bot" {
   role_name      = "ansible-machine-role"
   allowed_logins = ["ec2-user", local.user]
   node_labels    = { "env" = [var.env], "team" = [var.team] }
-  # No onboarding key: Teleport generates a one-time registration secret for
-  # the token, tbot redeems it on first start, and the keypair is born on the
-  # host — Terraform never sees or stores private key material. Recovery uses
-  # the module defaults (mode "standard", limit 10) instead of "insecure".
+  # iam join, the same instance-profile role the host's SSH service joins
+  # with. The 18.x provider never reads a bound_keypair registration secret
+  # back into state, so that path left tbot with nothing to join with. iam
+  # needs no secret at all, and EC2 is exactly where it applies.
+  join_method = "iam"
+  iam_allow = [
+    {
+      aws_account = data.aws_caller_identity.current.account_id
+      aws_arn     = "arn:aws:sts::${data.aws_caller_identity.current.account_id}:assumed-role/${aws_iam_role.ansible_host.name}/*"
+    }
+  ]
 }
 
 # NODE JOIN: iam, not a shared secret.
@@ -125,29 +132,20 @@ resource "aws_instance" "ansible_host" {
   iam_instance_profile = aws_iam_instance_profile.ansible_host.name
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    env                 = var.env
-    team                = var.team
-    proxy_address       = var.proxy_address
-    bot_token           = module.machineid_bot.bot_token
-    registration_secret = module.machineid_bot.bot_registration_secret
-    node_token          = teleport_provision_token.main.metadata.name
+    env           = var.env
+    team          = var.team
+    proxy_address = var.proxy_address
+    bot_token     = module.machineid_bot.bot_token
+    node_token    = teleport_provision_token.main.metadata.name
   })
 
-  # ONE lifecycle block, not two. Terraform allows only a single lifecycle
-  # block per resource, and this resource had two -- so `terraform validate`
-  # failed outright with "Duplicate lifecycle block" and the module could not
-  # be used at all. The ami ignore_changes block was added separately from the
-  # precondition block and the pair was never validated together.
+  # ONE lifecycle block per resource; Terraform rejects a second with
+  # "Duplicate lifecycle block".
   lifecycle {
     # Demo hosts keep the AMI they were created with — data.aws_ami uses
     # most_recent, and a new upstream image must not replace healthy
     # instances on the next apply (e.g. mid-event).
     ignore_changes = [ami]
-
-    precondition {
-      condition     = module.machineid_bot.bot_registration_secret != null
-      error_message = "The bot token exposed no registration secret (provider too old, or an onboarding key was preregistered) — tbot would have nothing to join with."
-    }
   }
 
   metadata_options {

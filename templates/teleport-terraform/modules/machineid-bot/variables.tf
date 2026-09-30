@@ -53,3 +53,22 @@ variable "bound_keypair_recovery_mode" {
     error_message = "bound_keypair_recovery_mode must be one of: standard, relaxed, insecure."
   }
 }
+
+variable "join_method" {
+  description = "Bot join method: bound_keypair, or iam for a bot running on EC2 (strongest attestation, no secret)"
+  type        = string
+  default     = "bound_keypair"
+  validation {
+    condition     = contains(["bound_keypair", "iam"], var.join_method)
+    error_message = "join_method must be bound_keypair or iam."
+  }
+}
+
+variable "iam_allow" {
+  description = "iam join allow rules (aws_account + assumed-role aws_arn). Required when join_method = iam."
+  type = list(object({
+    aws_account = string
+    aws_arn     = string
+  }))
+  default = []
+}
