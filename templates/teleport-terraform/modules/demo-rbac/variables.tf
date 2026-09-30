@@ -78,3 +78,9 @@ variable "request_max_duration" {
   type        = string
   default     = "1h"
 }
+
+variable "staging_env" {
+  description = "Environment label staging-access grants (e.g. \"staging\"). null keeps the original behaviour: staging-access is a time-boxed elevation over the dev env."
+  type        = string
+  default     = null
+}

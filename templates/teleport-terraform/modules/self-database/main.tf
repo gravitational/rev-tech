@@ -109,6 +109,7 @@ resource "aws_instance" "db" {
     # Only userdata-postgres.tpl reads this; templatefile ignores unused keys,
     # so passing it for every db_type is harmless.
     seed_beams_demo = var.seed_beams_demo
+    seed_dvdrental  = var.seed_dvdrental
   })
 
   metadata_options {

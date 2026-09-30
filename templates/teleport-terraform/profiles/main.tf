@@ -145,6 +145,7 @@ module "demo_rbac" {
   name_prefix           = var.demo_rbac_role_prefix != null ? var.demo_rbac_role_prefix : local.user_prefix
   env                   = var.env
   prod_env              = var.enable_ssh_prod ? var.prod_env : null
+  staging_env           = var.enable_ssh_staging ? var.staging_env : null
   team                  = var.team
   demo_user_name        = var.demo_user_name
   extra_demo_user_names = var.extra_demo_user_names
@@ -218,6 +219,27 @@ module "ssh_node_prod" {
 }
 
 # ---------------------------------------------------------------------------
+# Server Access: 1 staging SSH node — what the auto-approved staging-access
+# request unlocks. Without it staging-access only re-grants dev.
+# ---------------------------------------------------------------------------
+module "ssh_node_staging" {
+  count  = var.enable_ssh_staging ? 1 : 0
+  source = "../modules/ssh-node"
+
+  env           = var.staging_env
+  team          = var.team
+  user          = var.user
+  proxy_address = var.proxy_address
+  tags          = local.resource_tags
+  agent_count   = 1
+  ami_id        = data.aws_ami.linux.id
+  instance_type = "t3.micro"
+
+  subnet_id          = module.network.subnet_id
+  security_group_ids = [module.network.security_group_id]
+}
+
+# ---------------------------------------------------------------------------
 # Database Access: self-hosted engines (cert auth, no passwords).
 # ---------------------------------------------------------------------------
 module "postgres" {
@@ -232,6 +254,7 @@ module "postgres" {
   teleport_db_ca = data.http.teleport_db_ca.response_body
   ami_id         = data.aws_ami.linux.id
   instance_type  = "t3.small"
+  seed_dvdrental = var.enable_dvdrental
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -417,6 +440,21 @@ module "httpbin_registration" {
   labels               = { env = var.env, team = var.team, "teleport.dev/app" = "httpbin" }
   rewrite_headers      = ["Host: httpbin-${var.env}.${var.proxy_address}", "Origin: https://httpbin-${var.env}.${var.proxy_address}"]
   insecure_skip_verify = true
+}
+
+# The same HTTPBin as a TCP app, for Teleport VNet (which supports TCP apps
+# only). With VNet running, `curl http://httpbin-tcp-<env>.<proxy>/get` works
+# with no tsh command. Served by the same host: its app_service selects
+# teleport.dev/app=httpbin.
+module "httpbin_tcp_registration" {
+  count         = var.enable_httpbin && var.enable_vnet_demo ? 1 : 0
+  source        = "../modules/dynamic-registration"
+  resource_type = "app"
+  name          = "httpbin-tcp-${var.env}"
+  description   = "HTTPBin over TCP, reachable through Teleport VNet"
+  uri           = "tcp://localhost:80"
+  public_addr   = "httpbin-tcp-${var.env}.${var.proxy_address}"
+  labels        = { env = var.env, team = var.team, "teleport.dev/app" = "httpbin" }
 }
 
 # ---------------------------------------------------------------------------

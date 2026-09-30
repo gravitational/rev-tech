@@ -9,7 +9,7 @@ Per-profile Teleport RBAC for demo narratives: a dev role, a requestable JIT rol
 | Resource | Name | Purpose |
 |---|---|---|
 | `teleport_role` | `<prefix>-dev-access` | Standing access to everything labeled `env=<env>, team=<team>` (SSH, DBs, apps, desktops, MCP) |
-| `teleport_role` | `<prefix>-staging-access` | Requestable elevation over the `env=<env>` resources — the auto-approve target. Skipped when `prod_env` is null. |
+| `teleport_role` | `<prefix>-staging-access` | Requestable elevation over the `env=<staging_env>` resources (`env=<env>` when `staging_env` is null) — the auto-approve target. Skipped when `prod_env` is null. |
 | `teleport_role` | `<prefix>-prod-access` | Access to `env=<prod_env>` nodes — only via approved access request. Skipped when `prod_env` is null. |
 | `teleport_role` | `<prefix>-prod-access-mfa` | Same as prod-access plus per-session MFA (`require_session_mfa = 1`, webauthn). Skipped when `prod_env` is null. |
 | `teleport_role` | `<prefix>-requester` | Can request the trio above (max duration = `request_max_duration`, default 1h). Named `demo-requester` when unprefixed (the `requester` preset exists). |

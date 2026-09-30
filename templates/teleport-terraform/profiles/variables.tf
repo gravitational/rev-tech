@@ -53,6 +53,18 @@ variable "enable_ssh" {
   default     = false
 }
 
+variable "enable_ssh_staging" {
+  description = "Staging SSH node labelled env=<staging_env>. staging-access then grants that env instead of re-granting dev, so the auto-approved request unlocks something new. Requires enable_ssh_prod (which creates the request roles)."
+  type        = bool
+  default     = false
+}
+
+variable "staging_env" {
+  description = "Environment label for the staging SSH node and the staging-access role"
+  type        = string
+  default     = "staging"
+}
+
 variable "enable_ssh_prod" {
   description = "Prod SSH node behind the access-request flow (also creates the requester/reviewer demo roles)"
   type        = bool
@@ -97,6 +109,18 @@ variable "enable_rds_mysql" {
 
 variable "enable_grafana" {
   description = "Grafana behind app access with JWT identity injection"
+  type        = bool
+  default     = false
+}
+
+variable "enable_dvdrental" {
+  description = "Restore the public dvdrental sample database on the Postgres host. Requires enable_postgres."
+  type        = bool
+  default     = false
+}
+
+variable "enable_vnet_demo" {
+  description = "Also register HTTPBin as a TCP app (httpbin-tcp-<env>) so it is reachable through Teleport VNet by its public address. VNet supports TCP apps only. Requires enable_httpbin."
   type        = bool
   default     = false
 }
