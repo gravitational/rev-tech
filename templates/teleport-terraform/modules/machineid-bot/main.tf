@@ -14,7 +14,10 @@ resource "random_string" "bot_token" {
   special = false
 }
 
+# Two token resources because the two join methods have different spec shapes,
+# which a conditional expression cannot unify. Exactly one exists.
 resource "teleport_provision_token" "bot" {
+  count      = var.join_method == "bound_keypair" ? 1 : 0
   depends_on = [teleport_bot.this]
 
   version = "v2"
@@ -34,6 +37,30 @@ resource "teleport_provision_token" "bot" {
       }
     }
   }
+}
+
+# iam join: the host signs sts:GetCallerIdentity with its instance-profile role
+# and Teleport matches the assumed-role ARN against allow. No secret exists.
+resource "teleport_provision_token" "bot_iam" {
+  count      = var.join_method == "iam" ? 1 : 0
+  depends_on = [teleport_bot.this]
+
+  version = "v2"
+  metadata = {
+    name        = random_string.bot_token.result
+    description = "IAC: iam join for Machine ID bot ${var.bot_name}"
+  }
+  spec = {
+    roles       = ["Bot"]
+    bot_name    = var.bot_name
+    join_method = "iam"
+    allow       = var.iam_allow
+  }
+}
+
+moved {
+  from = teleport_provision_token.bot
+  to   = teleport_provision_token.bot[0]
 }
 
 resource "teleport_role" "machine" {
