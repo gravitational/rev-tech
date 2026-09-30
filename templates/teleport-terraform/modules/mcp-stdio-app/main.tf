@@ -64,6 +64,8 @@ resource "aws_instance" "mcp_app" {
     mcp_command      = var.mcp_command
     mcp_args_json    = local.mcp_args_json
     run_as_host_user = var.run_as_host_user
+    http_app_name    = var.http_app_name
+    http_mcp_package = var.http_mcp_package
   })
 
   # Without this, the AWS provider updates user_data in place and reports

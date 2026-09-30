@@ -28,7 +28,7 @@
 #   terraform output demo_user_setup    # one-time bob activation + reviewer grant
 #
 # ---------------------------------------------------------------------------
-# Carried forward from the last event's retro (docs/events/*/retro.md). These
+# Carried forward from the last event (docs/conference-event-runbook.md). These
 # cost real time once; don't re-learn them at a booth.
 #
 #   1. EVERYTHING in profiles/presets/ is tracked. The blanket `*.tfvars` ignore
@@ -60,7 +60,7 @@
 #      carry `ignore_changes = [ami]`, but keep the habit; and never live-edit
 #      an agent's teleport.yaml over its own tunnel — replace the node instead.
 #
-# Teardown ORDER matters (full runbook in the retro):
+# Teardown ORDER matters (full runbook in docs/conference-event-runbook.md):
 #   1. Strip terraform-managed roles from any NON-terraform users holding them,
 #      or role deletion fails with "role is still in use by a user".
 #   2. Remove the demo role names from the SSO connector mapping and verify
@@ -79,41 +79,21 @@ enable_ssh      = true # dev-ssh-0, dev-ssh-1
 enable_ssh_prod = true # prod-ssh-0, invisible until an access request is approved;
 #                      # also creates the JIT role trio + demo-requester/demo-reviewer
 
-# --- Demo RBAC ---
-# Roles created by modules/demo-rbac: dev-access, staging-access, prod-access,
-# prod-access-mfa, demo-requester, demo-reviewer — each PREFIXED with the
-# deployer's username (e.g. you-dev-access), because profiles/main.tf passes
-# name_prefix = local.user_prefix unconditionally.
-demo_user_name = "bob" # the single persona the profiles stack supports today
-#
-# ⚠ NOT WIRED — the five settings below were carried in the previous event
-# preset and silently did NOTHING. terraform treats values for undeclared
-# variables as a WARNING, not an error, so the preset appeared to configure
-# behaviour the stack cannot deliver, and the published playbook promised it.
-# They are commented out so this file stays honest. To make any of them real,
-# declare it in profiles/variables.tf and pass it through in profiles/main.tf:
-#
-#   demo_rbac_role_prefix = ""            # declared NOWHERE. main.tf hardcodes
-#                                         # name_prefix; canonical unprefixed
-#                                         # role names are impossible until that
-#                                         # becomes a variable.
-#   auto_approve_reason   = "authorized job"  # declared NOWHERE.
-#   request_max_duration  = "168h"        # EXISTS in modules/demo-rbac, but
-#                                         # main.tf's demo_rbac block never
-#                                         # passes it — one line to wire.
-#   extra_demo_user_names = ["alice"]     # declared NOWHERE. Only the singular
-#                                         # demo_user_name above is supported, so
-#                                         # a second station needs a second apply
-#                                         # or a manual user.
-#   mcp_tools = ["read_*", "list_*", "search_files", "get_file_info", "directory_tree"]
-#                                         # EXISTS in modules/machineid-bot, not
-#                                         # wired from the root. Without it the
-#                                         # MCP demo has NO tool allowlist, so
-#                                         # the RBAC-denial beat does not work.
-#
-# Booth practice that does NOT depend on the above: use ONE persona per
-# workstation. Shared personas collide — `tctl lock --user=X` kills every
-# station using X, mid-demo.
+# --- Demo RBAC: canonical (unprefixed) role names for the published playbook ---
+# Roles: dev-access, staging-access, prod-access, prod-access-mfa,
+#        demo-requester, demo-reviewer. prod-access-mfa enforces per-session
+#        webauthn MFA, which a station's YubiKey satisfies.
+# All five settings below are declared in profiles/variables.tf and passed to
+# modules/demo-rbac in profiles/main.tf. Leaving any of them out falls back to
+# the variable default: role names prefixed with the deployer's username, no
+# auto-approve rule, a 1h request cap, bob only, and every MCP tool allowed.
+demo_rbac_role_prefix = ""
+auto_approve_reason   = "authorized job" # staging-access requests with exactly this reason auto-approve
+request_max_duration  = "168h"           # playbook: requests up to 7 days
+demo_user_name        = "bob"            # station 1 persona
+extra_demo_user_names = ["alice"]        # one persona per workstation; add one name per extra station
+#                                        # (shared personas collide: tctl lock --user=X kills every
+#                                        # station using X, mid-demo)
 
 # --- Database Access ---
 enable_postgres = true # postgres-dev, cert auth, no passwords
@@ -129,18 +109,14 @@ enable_windows = true # Windows Server + desktop service; browser RDP, per-ident
 #                     # Web UI only — no tsh command. Allow ~10-15 min to boot + register.
 
 # --- Machine / Non-Human Identity ---
-enable_mcp = true # mcp-filesystem-dev + bot
-#
-# ⚠ The tool allowlist (mcp_tools) is NOT wired from this preset — see the Demo
-# RBAC block above. Until it is, the MCP server is registered with NO Teleport
-# tool filtering, so the "write_file is denied and the denial lands in the audit
-# log" beat will NOT work. Either wire mcp_tools through, or set the allowlist
-# directly on the role with tctl before demoing that beat.
-#
-# When it does work, demo it with MCP Inspector, NOT an AI client: Teleport
-# filters denied tools out of tools/list, so an AI app just says "I can't do
+enable_mcp = true # mcp-filesystem-dev (stdio) + mcp-everything-dev (streamable-HTTP) + bot
+# Read-only MCP tool allowlist on dev-access. Teleport FILTERS denied tools out
+# of tools/list (an AI client is never offered write_file), and direct calls to
+# unlisted tools are denied and audited (mcp.session.request, success=false).
+# Demo it with MCP Inspector, not an AI client, which just says "I can't do
 # that" with no visible denial. Inspector shows the per-identity toolset side
 # by side.
+mcp_tools      = ["read_*", "list_*", "search_files", "get_file_info", "directory_tree"]
 enable_ansible = false # dev-ansible + bot, cert-based automation, no static keys
 
 # --- Defaults left as-is ---

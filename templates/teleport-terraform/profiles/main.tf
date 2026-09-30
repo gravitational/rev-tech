@@ -570,6 +570,7 @@ module "mcp_app" {
   instance_type   = "t3.small"
   app_name        = "mcp-filesystem"
   app_description = "MCP filesystem demo server"
+  http_app_name   = "mcp-everything"
   tags            = local.resource_tags
 
   subnet_id          = module.network.subnet_id
@@ -606,8 +607,10 @@ module "mcp_http_registration" {
   description   = "MCP everything server (streamable-HTTP) — agent-consumable"
   uri           = "mcp+http://localhost:3000/mcp"
   labels = {
-    env                              = var.env
-    team                             = var.team
+    env  = var.env
+    team = var.team
+    # Must match http_app_name on module.mcp_app, or no app service claims it.
+    "teleport.dev/app"               = "mcp-everything"
     "teleport.internal/app-sub-kind" = "mcp"
   }
 }
