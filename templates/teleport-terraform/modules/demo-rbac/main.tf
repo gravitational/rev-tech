@@ -42,9 +42,6 @@ terraform {
 
 locals {
   create_prod = var.prod_env != null
-  # staging-access grants staging_env when set, otherwise the dev env (the
-  # original behaviour, where staging-access was a time-boxed dev elevation).
-  staging_env = coalesce(var.staging_env, var.env)
 
   # "" -> unprefixed canonical names; anything else -> "<prefix>-"
   p = var.name_prefix == "" ? "" : "${var.name_prefix}-"
@@ -160,7 +157,7 @@ resource "teleport_role" "staging_access" {
 
   metadata = {
     name        = "${local.p}staging-access"
-    description = "Demo: requestable elevated access to ${local.staging_env}-labeled resources (auto-approved by policy when the reason matches)"
+    description = "Demo: requestable elevated access to ${var.env}-labeled resources (auto-approved by policy when the reason matches)"
   }
 
   spec = {
@@ -174,11 +171,11 @@ resource "teleport_role" "staging_access" {
 
     allow = {
       app_labels = {
-        env  = [local.staging_env]
+        env  = [var.env]
         team = [var.team]
       }
       db_labels = {
-        env  = [local.staging_env]
+        env  = [var.env]
         team = [var.team]
       }
       db_names    = ["*"]
@@ -186,7 +183,7 @@ resource "teleport_role" "staging_access" {
       host_groups = ["wheel"]
       logins      = var.logins
       node_labels = {
-        env  = [local.staging_env]
+        env  = [var.env]
         team = [var.team]
       }
       rules = [

@@ -145,7 +145,6 @@ module "demo_rbac" {
   name_prefix           = var.demo_rbac_role_prefix != null ? var.demo_rbac_role_prefix : local.user_prefix
   env                   = var.env
   prod_env              = var.enable_ssh_prod ? var.prod_env : null
-  staging_env           = var.enable_ssh_staging ? var.staging_env : null
   team                  = var.team
   demo_user_name        = var.demo_user_name
   extra_demo_user_names = var.extra_demo_user_names
@@ -206,27 +205,6 @@ module "ssh_node_prod" {
   source = "../modules/ssh-node"
 
   env           = var.prod_env
-  team          = var.team
-  user          = var.user
-  proxy_address = var.proxy_address
-  tags          = local.resource_tags
-  agent_count   = 1
-  ami_id        = data.aws_ami.linux.id
-  instance_type = "t3.micro"
-
-  subnet_id          = module.network.subnet_id
-  security_group_ids = [module.network.security_group_id]
-}
-
-# ---------------------------------------------------------------------------
-# Server Access: 1 staging SSH node — what the auto-approved staging-access
-# request unlocks. Without it staging-access only re-grants dev.
-# ---------------------------------------------------------------------------
-module "ssh_node_staging" {
-  count  = var.enable_ssh_staging ? 1 : 0
-  source = "../modules/ssh-node"
-
-  env           = var.staging_env
   team          = var.team
   user          = var.user
   proxy_address = var.proxy_address

@@ -85,7 +85,6 @@ Allow 3–5 minutes after `apply` for instances to boot and register (`tsh ls`, 
 | `auto_approve_reason` | Exact request reason that policy-approves `staging-access` requests | `null` (off) |
 | `request_max_duration` | Max JIT window for approved access requests | `1h` |
 | `env` / `prod_env` / `team` | Labels driving RBAC | `dev` / `prod` / `platform` |
-| `enable_ssh_staging` / `staging_env` | Staging SSH node; `staging-access` then grants `env=<staging_env>` instead of re-granting dev | `false` / `staging` |
 | `enable_dvdrental` | Restore the public dvdrental sample database on the Postgres host (needs `enable_postgres`) | `false` |
 | `enable_vnet_demo` | Register HTTPBin as a TCP app for Teleport VNet (needs `enable_httpbin`) | `false` |
 | `region` | AWS region | `us-east-2` |
