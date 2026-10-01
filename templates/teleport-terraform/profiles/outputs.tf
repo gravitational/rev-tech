@@ -30,10 +30,6 @@ output "connection_guide" {
 
     Staging elevation (approved by policy in seconds, no human reviewer):
        tsh request create --roles=${try(module.demo_rbac[0].staging_access_role, "")} --reason="${var.auto_approve_reason}"
-    %{~if var.enable_ssh_staging}
-       # then: tsh ls shows ${var.staging_env}-ssh-0
-       tsh ssh ec2-user@${var.staging_env}-ssh-0
-    %{~endif}
     %{~endif}
     %{~if var.enable_postgres || var.enable_mysql || var.enable_mongodb || var.enable_cassandra || var.enable_rds_mysql}
 

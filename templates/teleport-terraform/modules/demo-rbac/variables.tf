@@ -78,30 +78,3 @@ variable "request_max_duration" {
   type        = string
   default     = "1h"
 }
-
-variable "staging_env" {
-  description = "Environment label staging-access grants (e.g. \"staging\"). null keeps the original behaviour: staging-access is a time-boxed elevation over the dev env."
-  type        = string
-  default     = null
-}
-
-variable "mcp_demo_server" {
-  description = "Create <prefix>mcp-demo-access for Teleport's built-in teleport-mcp-demo server and attach it to the demo personas"
-  type        = bool
-  default     = false
-}
-
-variable "db_names" {
-  description = "Database names the dev and staging roles allow. A \"*\" leaves the Web UI's database-name field an empty, type-in dropdown, so list concrete names where the engines are known."
-  type        = list(string)
-  default     = ["*"]
-}
-
-variable "mcp_app_tools" {
-  description = "Optional per-app MCP allowlist: creates <prefix><app>-access granting these tools on the app labelled teleport.dev/app=<app>, attached to the personas. null skips it."
-  type = object({
-    app   = string
-    tools = list(string)
-  })
-  default = null
-}

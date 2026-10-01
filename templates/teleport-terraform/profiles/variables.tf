@@ -53,18 +53,6 @@ variable "enable_ssh" {
   default     = false
 }
 
-variable "enable_ssh_staging" {
-  description = "Staging SSH node labelled env=<staging_env>. staging-access then grants that env instead of re-granting dev, so the auto-approved request unlocks something new. Requires enable_ssh_prod (which creates the request roles)."
-  type        = bool
-  default     = false
-}
-
-variable "staging_env" {
-  description = "Environment label for the staging SSH node and the staging-access role"
-  type        = string
-  default     = "staging"
-}
-
 variable "enable_ssh_prod" {
   description = "Prod SSH node behind the access-request flow (also creates the requester/reviewer demo roles)"
   type        = bool
@@ -126,21 +114,9 @@ variable "enable_vnet_demo" {
 }
 
 variable "enable_mcp_demo_server" {
-  description = "Teleport's built-in teleport-mcp-demo server on the MCP host, plus a role for its three tools attached to the demo personas. Requires enable_mcp."
+  description = "Teleport's built-in teleport-mcp-demo server on the MCP host (tools teleport_user_info, teleport_session_info, teleport_demo_info). Requires enable_mcp. It carries only the teleport.internal/resource-type=demo label, so grant it with a role matching that label."
   type        = bool
   default     = false
-}
-
-variable "demo_db_names" {
-  description = "Database names the demo roles allow. null keeps \"*\", which works for every engine but leaves the Web UI database-name dropdown empty; list concrete names (e.g. [\"postgres\", \"dvdrental\"]) to populate it."
-  type        = list(string)
-  default     = null
-}
-
-variable "mcp_everything_tools" {
-  description = "MCP tools the personas may call on mcp-everything-<env>, granted by a role scoped to that app alone. Empty grants none beyond dev-access's allowlist."
-  type        = list(string)
-  default     = []
 }
 
 variable "enable_httpbin" {

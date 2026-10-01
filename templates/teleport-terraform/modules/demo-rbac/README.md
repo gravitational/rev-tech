@@ -9,13 +9,11 @@ Per-profile Teleport RBAC for demo narratives: a dev role, a requestable JIT rol
 | Resource | Name | Purpose |
 |---|---|---|
 | `teleport_role` | `<prefix>-dev-access` | Standing access to everything labeled `env=<env>, team=<team>` (SSH, DBs, apps, desktops, MCP) |
-| `teleport_role` | `<prefix>-staging-access` | Requestable elevation over the `env=<staging_env>` resources (`env=<env>` when `staging_env` is null) — the auto-approve target. Skipped when `prod_env` is null. |
+| `teleport_role` | `<prefix>-staging-access` | Requestable elevation over the `env=<env>` resources — the auto-approve target. Skipped when `prod_env` is null. |
 | `teleport_role` | `<prefix>-prod-access` | Access to `env=<prod_env>` nodes — only via approved access request. Skipped when `prod_env` is null. |
 | `teleport_role` | `<prefix>-prod-access-mfa` | Same as prod-access plus per-session MFA (`require_session_mfa = 1`, webauthn). Skipped when `prod_env` is null. |
 | `teleport_role` | `<prefix>-requester` | Can request the trio above (max duration = `request_max_duration`, default 1h). Named `demo-requester` when unprefixed (the `requester` preset exists). |
 | `teleport_role` | `<prefix>-reviewer` | Can approve those requests — grant this to the SE (approver persona). Named `demo-reviewer` when unprefixed. |
-| `teleport_role` | `<prefix>-mcp-demo-access` | Built-in `teleport-mcp-demo` server's three tools, attached to the personas. Created only when `mcp_demo_server = true`. |
-| `teleport_role` | `<prefix><app>-access` | The `mcp_app_tools.tools` on the app labelled `teleport.dev/app=<app>` only, attached to the personas. Created only when `mcp_app_tools` is set. |
 | `teleport_access_monitoring_rule` | `<prefix>-auto-approve-staging` | Auto-approves staging-access requests whose reason contains `auto_approve_reason` (builtin integration). Created only when `auto_approve_reason` is set. |
 | `teleport_user` | `bob` (configurable) | Local user holding dev-access + requester: the developer persona |
 
