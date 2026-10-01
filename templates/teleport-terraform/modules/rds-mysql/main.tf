@@ -199,6 +199,12 @@ resource "aws_instance" "agent" {
   vpc_security_group_ids = var.security_group_ids
   iam_instance_profile   = aws_iam_instance_profile.ec2_rds_profile.name
 
+  # Replace the host when its userdata changes. In place, the AWS provider
+  # swaps the script and restarts the instance, but cloud-init runs userdata
+  # only on first boot, so labels and config never change. Demo hosts are
+  # rebuilt from userdata, so replacement is safe.
+  user_data_replace_on_change = true
+
   user_data = templatefile("${path.module}/userdata.tpl", {
     token           = teleport_provision_token.db.metadata.name
     proxy_address   = var.proxy_address

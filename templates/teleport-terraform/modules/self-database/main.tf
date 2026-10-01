@@ -110,6 +110,7 @@ resource "aws_instance" "db" {
     # so passing it for every db_type is harmless.
     seed_beams_demo = var.seed_beams_demo
     seed_dvdrental  = var.seed_dvdrental
+    auto_users      = var.auto_users
   })
 
   # Without this, the AWS provider updates user_data in place (stop, swap,

@@ -157,6 +157,12 @@ resource "aws_instance" "agent" {
     encrypted   = true
   }
 
+  # Replace the host when its userdata changes. In place, the AWS provider
+  # swaps the script and restarts the instance, but cloud-init runs userdata
+  # only on first boot, so labels and config never change. Demo hosts are
+  # rebuilt from userdata, so replacement is safe.
+  user_data_replace_on_change = true
+
   user_data = templatefile("${path.module}/userdata.tpl", {
     proxy_address     = var.proxy_address
     token             = teleport_provision_token.agent.metadata.name

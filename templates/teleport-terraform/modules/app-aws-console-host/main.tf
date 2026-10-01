@@ -89,6 +89,12 @@ resource "aws_instance" "app_host" {
   associate_public_ip_address = null
   iam_instance_profile        = aws_iam_instance_profile.app_host.name
 
+  # Replace the host when its userdata changes. In place, the AWS provider
+  # swaps the script and restarts the instance, but cloud-init runs userdata
+  # only on first boot, so labels and config never change. Demo hosts are
+  # rebuilt from userdata, so replacement is safe.
+  user_data_replace_on_change = true
+
   user_data = templatefile("${path.module}/userdata.tpl", {
     name                 = "${var.host_env}-aws-console-host"
     token                = teleport_provision_token.app_host.metadata.name

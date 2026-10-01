@@ -75,6 +75,20 @@ GRANT ALL ON agent_actions TO beamuser;
 GRANT USAGE, SELECT ON SEQUENCE agent_actions_id_seq TO beamuser;
 %{ endif ~}
 EOF
+%{ if auto_users ~}
+# Teleport database auto user provisioning (self-hosted PostgreSQL doc):
+# the admin user Teleport connects as to create per-user accounts. It
+# authenticates with a client certificate like every other user here
+# (pg_hba "cert"). On PostgreSQL 16+ it would also need ADMIN OPTION on each
+# role it grants; this host runs 15. dbadmin is created so roles may grant it;
+# reader and writer already exist above.
+sudo -u postgres psql <<EOF
+CREATE USER "teleport-admin" LOGIN CREATEROLE;
+CREATE ROLE dbadmin;
+GRANT ALL PRIVILEGES ON DATABASE postgres TO dbadmin;
+GRANT ALL ON SCHEMA public TO dbadmin;
+EOF
+%{ endif ~}
 %{ if seed_dvdrental ~}
 # dvdrental sample database (https://neon.com/postgresqltutorial/dvdrental.zip).
 # Pinned by SHA-256 so a changed upstream file fails the boot loudly instead of
@@ -94,6 +108,14 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO writer;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO writer;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO reader;
 EOF
+%{ if auto_users ~}
+sudo -u postgres psql -d dvdrental <<EOF
+GRANT CONNECT ON DATABASE dvdrental TO dbadmin;
+GRANT ALL ON SCHEMA public TO dbadmin;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO dbadmin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO dbadmin;
+EOF
+%{ endif ~}
 rm -f /tmp/dvdrental.zip /tmp/dvdrental.tar
 %{ endif ~}
 # install teleport

@@ -73,6 +73,16 @@ resource "teleport_role" "base_user" {
     }
 
     allow = {
+      # Teleport's built-in teleport-mcp-demo server (app_service
+      # mcp_demo_server). It carries only this label and its three tools
+      # return the caller's own user and session details, so every
+      # authenticated user may use it.
+      app_labels = {
+        "teleport.internal/resource-type" = ["demo"]
+      }
+      mcp = {
+        tools = ["teleport_user_info", "teleport_session_info", "teleport_demo_info"]
+      }
       rules = [
         { resources = ["event"], verbs = ["list", "read"] },
         { resources = ["session"], verbs = ["read", "list"] }
@@ -117,14 +127,16 @@ resource "teleport_role" "dev_access" {
         team                     = ["dev"]
         "teleport.dev/db-access" = ["mapped"]
       }
-      db_names       = ["{{external.db_names}}", "*"]
-      db_users       = ["{{external.db_users}}", "reader", "writer"]
+      db_names = ["{{external.db_names}}", "*"]
+      # Standing access is the person's own identity. Shared accounts (writer,
+      # ubuntu, ec2-user) live only in the requested prod-* roles, so every
+      # use of one is a time-boxed, approved, attributed request.
+      db_users       = ["{{external.db_users}}", "reader"]
       desktop_groups = ["Administrators"]
       host_groups    = ["wheel"]
       logins = [
         "{{email.local(external.username)}}",
-        "{{email.local(external.email)}}",
-        "ubuntu", "ec2-user"
+        "{{email.local(external.email)}}"
       ]
       join_sessions = [
         {
@@ -239,11 +251,13 @@ resource "teleport_role" "platform_dev_access" {
         team = ["*"]
       }
       db_names = ["{{external.db_names}}", "*"]
+      # Personal identity standing; shared writer/ubuntu/ec2-user only via the
+      # requested prod-* roles (see dev-access).
       db_users = [
         "{{external.db_users}}",
         "{{email.local(external.username)}}",
         "{{email.local(external.email)}}",
-        "reader", "writer"
+        "reader"
       ]
       desktop_groups = ["Administrators"]
       host_groups    = ["wheel"]
@@ -257,8 +271,7 @@ resource "teleport_role" "platform_dev_access" {
       ]
       logins = [
         "{{email.local(external.username)}}",
-        "{{email.local(external.email)}}",
-        "ubuntu", "ec2-user"
+        "{{email.local(external.email)}}"
       ]
       mcp = {
         tools = ["*"]
