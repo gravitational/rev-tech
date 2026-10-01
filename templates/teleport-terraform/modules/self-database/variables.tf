@@ -69,3 +69,14 @@ variable "seed_beams_demo" {
   type        = bool
   default     = false
 }
+
+variable "seed_dvdrental" {
+  description = <<-EOT
+    Postgres only. Restore the public dvdrental sample database (PostgreSQL
+    Tutorial, 15 tables) as `dvdrental`, with writer granted read/write and
+    reader granted SELECT. The download is checked against a pinned SHA-256.
+    Off by default; other consumers of this module are unaffected.
+  EOT
+  type        = bool
+  default     = false
+}

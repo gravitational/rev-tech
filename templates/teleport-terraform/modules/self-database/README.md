@@ -71,6 +71,7 @@ module "mongodb"  { source = "../../modules/self-database"; db_type = "mongodb";
 | `security_group_ids` | Security group IDs for the instance | **required** |
 | `db_hostname` | Hostname for the DB server (used in TLS cert SAN) | `"db.example.internal"` |
 | `team` | Team label | `"platform"` |
+| `seed_dvdrental` | Postgres only: restore the public dvdrental sample database (SHA-256 pinned); `writer` read/write, `reader` SELECT | `false` |
 
 ---
 

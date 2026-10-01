@@ -39,6 +39,9 @@ output "connection_guide" {
     %{~if var.enable_postgres}
        tsh db connect postgres-${var.env} --db-user=writer --db-name=postgres
     %{~endif}
+    %{~if var.enable_postgres && var.enable_dvdrental}
+       tsh db connect postgres-${var.env} --db-user=writer --db-name=dvdrental   # sample data
+    %{~endif}
     %{~if var.enable_mysql}
        tsh db connect mysql-${var.env} --db-user=writer
     %{~endif}
@@ -61,6 +64,12 @@ output "connection_guide" {
     %{~endif}
     %{~if var.enable_httpbin}
        tsh apps login httpbin-${var.env}     # open /headers to see injected identity
+    %{~endif}
+    %{~if var.enable_httpbin && var.enable_vnet_demo}
+
+    VNet (TCP apps by name, no per-connection tsh command):
+       tsh vnet    # or Teleport Connect → VNet
+       curl http://httpbin-tcp-${var.env}.${var.proxy_address}/get
     %{~endif}
     %{~if var.enable_demo_panel}
        tsh apps login demo-panel-${var.env}

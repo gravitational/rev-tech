@@ -109,7 +109,15 @@ resource "aws_instance" "db" {
     # Only userdata-postgres.tpl reads this; templatefile ignores unused keys,
     # so passing it for every db_type is harmless.
     seed_beams_demo = var.seed_beams_demo
+    seed_dvdrental  = var.seed_dvdrental
   })
+
+  # Without this, the AWS provider updates user_data in place (stop, swap,
+  # start) and reports "updated in-place", but cloud-init runs userdata only on
+  # an instance's first boot, so the new script never executes. Turning on a
+  # seed flag for an existing host then silently loads nothing. The database is
+  # rebuilt and seeded from userdata at boot, so replacing it is safe.
+  user_data_replace_on_change = true
 
   metadata_options {
     http_endpoint = "enabled"
