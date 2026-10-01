@@ -89,7 +89,7 @@ resource "teleport_role" "dev_access" {
         env  = [var.env]
         team = [var.team]
       }
-      db_names       = ["*"]
+      db_names       = var.db_names
       db_users       = var.db_users
       desktop_groups = ["Administrators"]
       host_groups    = ["wheel"]
@@ -177,6 +177,33 @@ resource "teleport_role" "mcp_demo" {
 }
 
 ##################################################################################
+# PER-APP MCP ALLOWLIST — tools for one more MCP app, scoped by its
+# teleport.dev/app label, instead of folding that server's tool names into
+# dev-access's allowlist (which applies to every MCP app the dev labels match).
+##################################################################################
+
+resource "teleport_role" "mcp_app_tools" {
+  count   = var.mcp_app_tools == null ? 0 : 1
+  version = "v7"
+
+  metadata = {
+    name        = "${local.p}${var.mcp_app_tools.app}-access"
+    description = "Demo: the listed MCP tools on the ${var.mcp_app_tools.app} app only"
+  }
+
+  spec = {
+    allow = {
+      app_labels = {
+        "teleport.dev/app" = [var.mcp_app_tools.app]
+      }
+      mcp = {
+        tools = var.mcp_app_tools.tools
+      }
+    }
+  }
+}
+
+##################################################################################
 # STAGING ACCESS — requestable elevation over the dev-labeled resources.
 # The auto-approve access_monitoring_rule below targets this role only, so
 # the booth flow is: staging approves by policy, prod needs a human.
@@ -209,7 +236,7 @@ resource "teleport_role" "staging_access" {
         env  = [local.staging_env]
         team = [var.team]
       }
-      db_names    = ["*"]
+      db_names    = var.db_names
       db_users    = var.db_users
       host_groups = ["wheel"]
       logins      = var.logins
@@ -421,6 +448,7 @@ resource "teleport_user" "demo_user" {
       [teleport_role.dev_access.metadata.name],
       local.create_prod ? [teleport_role.requester[0].metadata.name] : [],
       var.mcp_demo_server ? [teleport_role.mcp_demo[0].metadata.name] : [],
+      var.mcp_app_tools == null ? [] : [teleport_role.mcp_app_tools[0].metadata.name],
       var.extra_role_names
     )
     # Windows RDP login named after the persona (consumed by the dev role's
@@ -450,6 +478,7 @@ resource "teleport_user" "extra_demo_users" {
       [teleport_role.dev_access.metadata.name],
       local.create_prod ? [teleport_role.requester[0].metadata.name] : [],
       var.mcp_demo_server ? [teleport_role.mcp_demo[0].metadata.name] : [],
+      var.mcp_app_tools == null ? [] : [teleport_role.mcp_app_tools[0].metadata.name],
       var.extra_role_names
     )
     traits = {

@@ -154,6 +154,11 @@ module "demo_rbac" {
   request_max_duration  = var.request_max_duration
   mcp_tools             = var.mcp_tools
   mcp_rw_app            = var.enable_mcp ? "mcp-filesystem" : null
+  db_names              = var.demo_db_names != null ? var.demo_db_names : ["*"]
+  mcp_app_tools = var.enable_mcp && length(var.mcp_everything_tools) > 0 ? {
+    app   = "mcp-everything"
+    tools = var.mcp_everything_tools
+  } : null
   # The linux-desktop role lives in modules/linux-desktop; demo-rbac just
   # attaches it to the demo personas.
   extra_role_names = var.enable_linux_desktop ? [module.linux_desktop[0].access_role_name] : []

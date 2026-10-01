@@ -131,6 +131,18 @@ variable "enable_mcp_demo_server" {
   default     = false
 }
 
+variable "demo_db_names" {
+  description = "Database names the demo roles allow. null keeps \"*\", which works for every engine but leaves the Web UI database-name dropdown empty; list concrete names (e.g. [\"postgres\", \"dvdrental\"]) to populate it."
+  type        = list(string)
+  default     = null
+}
+
+variable "mcp_everything_tools" {
+  description = "MCP tools the personas may call on mcp-everything-<env>, granted by a role scoped to that app alone. Empty grants none beyond dev-access's allowlist."
+  type        = list(string)
+  default     = []
+}
+
 variable "enable_httpbin" {
   description = "HTTPBin for inspecting Teleport-injected headers"
   type        = bool
