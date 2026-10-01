@@ -86,6 +86,7 @@ Allow 3–5 minutes after `apply` for instances to boot and register (`tsh ls`, 
 | `request_max_duration` | Max JIT window for approved access requests | `1h` |
 | `env` / `prod_env` / `team` | Labels driving RBAC | `dev` / `prod` / `platform` |
 | `enable_dvdrental` | Restore the public dvdrental sample database on the Postgres host (needs `enable_postgres`) | `false` |
+| `enable_mcp_demo_server` | Teleport's built-in `teleport-mcp-demo` MCP server (needs `enable_mcp`; grant it via a role matching `teleport.internal/resource-type: demo`) | `false` |
 | `enable_vnet_demo` | Register HTTPBin as a TCP app for Teleport VNet (needs `enable_httpbin`) | `false` |
 | `region` | AWS region | `us-east-2` |
 | `create_nat_gateway` | Private subnet + NAT (~$1/day) | `false` |

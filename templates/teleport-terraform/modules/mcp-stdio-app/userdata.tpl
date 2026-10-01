@@ -43,6 +43,11 @@ teleport:
       output: text
 app_service:
   enabled: true
+%{ if mcp_demo_server ~}
+  # Built-in demo server, registered as teleport-mcp-demo. Needs no process
+  # of its own: Teleport serves it from this app_service.
+  mcp_demo_server: true
+%{ endif ~}
   resources:
     # Scope to THIS host's app only. A broad selector (e.g. teleport.dev/origin:
     # dynamic) claims every dynamic app in the env, and the proxy then routes

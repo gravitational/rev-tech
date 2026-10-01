@@ -83,6 +83,9 @@ output "connection_guide" {
        tsh mcp ls
        tsh mcp config mcp-filesystem-${var.env}
        # Paste into Claude Desktop, Cursor, or any MCP client
+    %{~if var.enable_mcp_demo_server}
+       tsh mcp config teleport-mcp-demo   # built-in: user and session info tools
+    %{~endif}
     %{~endif}
     %{~if var.enable_ansible}
 

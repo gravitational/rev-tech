@@ -588,6 +588,7 @@ module "mcp_app" {
   app_name        = "mcp-filesystem"
   app_description = "MCP filesystem demo server"
   http_app_name   = "mcp-everything"
+  mcp_demo_server = var.enable_mcp_demo_server
   tags            = local.resource_tags
 
   subnet_id          = module.network.subnet_id

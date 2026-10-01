@@ -113,6 +113,12 @@ variable "enable_vnet_demo" {
   default     = false
 }
 
+variable "enable_mcp_demo_server" {
+  description = "Teleport's built-in teleport-mcp-demo server on the MCP host (tools teleport_user_info, teleport_session_info, teleport_demo_info). Requires enable_mcp. It carries only the teleport.internal/resource-type=demo label, so grant it with a role matching that label."
+  type        = bool
+  default     = false
+}
+
 variable "enable_httpbin" {
   description = "HTTPBin for inspecting Teleport-injected headers"
   type        = bool
