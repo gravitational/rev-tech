@@ -101,21 +101,6 @@ resource "teleport_role" "dev_access" {
         env  = [var.env]
         team = [var.team]
       }
-      # Kubernetes: read-only in the listed namespaces of env-labelled kube
-      # clusters. "exec" is deliberately absent from verbs, so `kubectl exec`
-      # is refused by Teleport and lands in the audit log. All three stay null
-      # when kube_namespaces is empty, which leaves the role unchanged.
-      kubernetes_labels = length(var.kube_namespaces) > 0 ? { env = [var.env] } : null
-      kubernetes_groups = length(var.kube_namespaces) > 0 ? var.kube_groups : null
-      kubernetes_resources = length(var.kube_namespaces) > 0 ? [
-        for ns in var.kube_namespaces : {
-          kind      = "*"
-          api_group = "*"
-          namespace = ns
-          name      = "*"
-          verbs     = ["get", "list", "watch"]
-        }
-      ] : null
       rules = [
         { resources = ["event"], verbs = ["list", "read"] },
         { resources = ["session"], verbs = ["read", "list"] }

@@ -146,8 +146,6 @@ module "demo_rbac" {
   env                   = var.env
   prod_env              = var.enable_ssh_prod ? var.prod_env : null
   staging_env           = var.enable_ssh_staging ? var.staging_env : null
-  kube_namespaces       = var.kube_namespaces
-  kube_groups           = var.kube_groups
   mcp_demo_server       = var.enable_mcp && var.enable_mcp_demo_server
   team                  = var.team
   demo_user_name        = var.demo_user_name
