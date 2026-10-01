@@ -39,8 +39,11 @@ output "connection_guide" {
     %{~if var.enable_postgres}
        tsh db connect postgres-${var.env} --db-user=writer --db-name=postgres
     %{~endif}
-    %{~if var.enable_postgres && var.enable_dvdrental}
+    %{~if var.enable_postgres && var.enable_dvdrental && !var.postgres_auto_users}
        tsh db connect postgres-${var.env} --db-user=writer --db-name=dvdrental   # sample data
+    %{~endif}
+    %{~if var.enable_postgres && var.postgres_auto_users}
+       tsh db connect postgres-${var.env} --db-name=${var.enable_dvdrental ? "dvdrental" : "postgres"}   # your own auto-provisioned user
     %{~endif}
     %{~if var.enable_mysql}
        tsh db connect mysql-${var.env} --db-user=writer

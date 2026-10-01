@@ -85,6 +85,8 @@ Allow 3–5 minutes after `apply` for instances to boot and register (`tsh ls`, 
 | `auto_approve_reason` | Exact request reason that policy-approves `staging-access` requests | `null` (off) |
 | `request_max_duration` | Max JIT window for approved access requests | `1h` |
 | `env` / `prod_env` / `team` | Labels driving RBAC | `dev` / `prod` / `platform` |
+| `postgres_auto_users` | Postgres registered for auto user provisioning: each user connects as their own account (`teleport-admin` on the host) | `false` |
+| `prod_team` | Team label for the prod node (`modules/teleport-rbac` expects dev `team=dev`, prod `team=platform`) | `null` (= `team`) |
 | `enable_dvdrental` | Restore the public dvdrental sample database on the Postgres host (needs `enable_postgres`) | `false` |
 | `enable_mcp_demo_server` | Teleport's built-in `teleport-mcp-demo` MCP server (needs `enable_mcp`; grant it via a role matching `teleport.internal/resource-type: demo`) | `false` |
 | `enable_vnet_demo` | Register HTTPBin as a TCP app for Teleport VNet (needs `enable_httpbin`) | `false` |

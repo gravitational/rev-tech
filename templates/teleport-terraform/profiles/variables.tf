@@ -18,6 +18,12 @@ variable "env" {
   default     = "dev"
 }
 
+variable "prod_team" {
+  description = "Team label for the prod SSH node. null uses team. modules/teleport-rbac expects dev resources team=dev and prod resources team=platform."
+  type        = string
+  default     = null
+}
+
 variable "prod_env" {
   description = "Environment label for the prod SSH node used in the access request demo"
   type        = string
@@ -97,6 +103,12 @@ variable "enable_rds_mysql" {
 
 variable "enable_grafana" {
   description = "Grafana behind app access with JWT identity injection"
+  type        = bool
+  default     = false
+}
+
+variable "postgres_auto_users" {
+  description = "Register the Postgres host for Teleport auto user provisioning (teleport.dev/db-access = auto, admin_user teleport-admin), so users connect as their own database account. Requires enable_postgres."
   type        = bool
   default     = false
 }

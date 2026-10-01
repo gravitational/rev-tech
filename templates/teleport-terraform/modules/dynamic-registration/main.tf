@@ -18,13 +18,16 @@ resource "teleport_database" "this" {
       "teleport.dev/db-access" = var.db_access_pattern
     })
   }
-  spec = {
-    protocol = var.protocol
-    uri      = var.uri
-    tls = {
-      ca_cert = var.ca_cert_chain
-    }
-  }
+  spec = merge(
+    {
+      protocol = var.protocol
+      uri      = var.uri
+      tls = {
+        ca_cert = var.ca_cert_chain
+      }
+    },
+    var.admin_user != null ? { admin_user = { name = var.admin_user } } : {}
+  )
 }
 
 # fix for dynamic block within map spec: assignment
