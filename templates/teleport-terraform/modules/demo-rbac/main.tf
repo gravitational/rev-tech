@@ -101,6 +101,21 @@ resource "teleport_role" "dev_access" {
         env  = [var.env]
         team = [var.team]
       }
+      # Kubernetes: read-only in the listed namespaces of env-labelled kube
+      # clusters. "exec" is deliberately absent from verbs, so `kubectl exec`
+      # is refused by Teleport and lands in the audit log. All three stay null
+      # when kube_namespaces is empty, which leaves the role unchanged.
+      kubernetes_labels = length(var.kube_namespaces) > 0 ? { env = [var.env] } : null
+      kubernetes_groups = length(var.kube_namespaces) > 0 ? var.kube_groups : null
+      kubernetes_resources = length(var.kube_namespaces) > 0 ? [
+        for ns in var.kube_namespaces : {
+          kind      = "*"
+          api_group = "*"
+          namespace = ns
+          name      = "*"
+          verbs     = ["get", "list", "watch"]
+        }
+      ] : null
       rules = [
         { resources = ["event"], verbs = ["list", "read"] },
         { resources = ["session"], verbs = ["read", "list"] }
@@ -143,6 +158,34 @@ resource "teleport_role" "mcp_rw" {
       }
       mcp = {
         tools = ["*"]
+      }
+    }
+  }
+}
+
+##################################################################################
+# MCP DEMO SERVER — Teleport's built-in demo MCP server (app_service
+# mcp_demo_server: true) registers as teleport-mcp-demo. It carries no env/team
+# labels, only teleport.internal/resource-type=demo, so dev-access's label
+# match can never reach it; this role grants exactly its three tools.
+##################################################################################
+
+resource "teleport_role" "mcp_demo" {
+  count   = var.mcp_demo_server ? 1 : 0
+  version = "v7"
+
+  metadata = {
+    name        = "${local.p}mcp-demo-access"
+    description = "Demo: the built-in teleport-mcp-demo server and its three read-only tools"
+  }
+
+  spec = {
+    allow = {
+      app_labels = {
+        "teleport.internal/resource-type" = ["demo"]
+      }
+      mcp = {
+        tools = ["teleport_user_info", "teleport_session_info", "teleport_demo_info"]
       }
     }
   }
@@ -392,6 +435,7 @@ resource "teleport_user" "demo_user" {
     roles = concat(
       [teleport_role.dev_access.metadata.name],
       local.create_prod ? [teleport_role.requester[0].metadata.name] : [],
+      var.mcp_demo_server ? [teleport_role.mcp_demo[0].metadata.name] : [],
       var.extra_role_names
     )
     # Windows RDP login named after the persona (consumed by the dev role's
@@ -420,6 +464,7 @@ resource "teleport_user" "extra_demo_users" {
     roles = concat(
       [teleport_role.dev_access.metadata.name],
       local.create_prod ? [teleport_role.requester[0].metadata.name] : [],
+      var.mcp_demo_server ? [teleport_role.mcp_demo[0].metadata.name] : [],
       var.extra_role_names
     )
     traits = {

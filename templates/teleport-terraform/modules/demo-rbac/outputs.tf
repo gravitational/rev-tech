@@ -60,3 +60,8 @@ output "demo_user_setup" {
     ]
   ))) : null
 }
+
+output "mcp_demo_role" {
+  description = "Name of the built-in MCP demo server role (null when mcp_demo_server is false)"
+  value       = one(teleport_role.mcp_demo[*].metadata.name)
+}

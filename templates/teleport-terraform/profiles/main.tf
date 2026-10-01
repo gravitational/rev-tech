@@ -146,6 +146,9 @@ module "demo_rbac" {
   env                   = var.env
   prod_env              = var.enable_ssh_prod ? var.prod_env : null
   staging_env           = var.enable_ssh_staging ? var.staging_env : null
+  kube_namespaces       = var.kube_namespaces
+  kube_groups           = var.kube_groups
+  mcp_demo_server       = var.enable_mcp && var.enable_mcp_demo_server
   team                  = var.team
   demo_user_name        = var.demo_user_name
   extra_demo_user_names = var.extra_demo_user_names
@@ -610,6 +613,7 @@ module "mcp_app" {
   app_name        = "mcp-filesystem"
   app_description = "MCP filesystem demo server"
   http_app_name   = "mcp-everything"
+  mcp_demo_server = var.enable_mcp_demo_server
   tags            = local.resource_tags
 
   subnet_id          = module.network.subnet_id

@@ -84,3 +84,21 @@ variable "staging_env" {
   type        = string
   default     = null
 }
+
+variable "kube_namespaces" {
+  description = "Kubernetes namespaces dev-access may read (get/list/watch, no exec) on kube clusters labelled env=<env>. Empty leaves the role without Kubernetes access."
+  type        = list(string)
+  default     = []
+}
+
+variable "kube_groups" {
+  description = "Kubernetes groups dev-access maps to. Bind them in the target namespaces (e.g. a RoleBinding to the built-in view ClusterRole). Used only when kube_namespaces is set."
+  type        = list(string)
+  default     = ["teleport-demo-viewers"]
+}
+
+variable "mcp_demo_server" {
+  description = "Create <prefix>mcp-demo-access for Teleport's built-in teleport-mcp-demo server and attach it to the demo personas"
+  type        = bool
+  default     = false
+}

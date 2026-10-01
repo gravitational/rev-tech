@@ -87,6 +87,8 @@ Allow 3–5 minutes after `apply` for instances to boot and register (`tsh ls`, 
 | `env` / `prod_env` / `team` | Labels driving RBAC | `dev` / `prod` / `platform` |
 | `enable_ssh_staging` / `staging_env` | Staging SSH node; `staging-access` then grants `env=<staging_env>` instead of re-granting dev | `false` / `staging` |
 | `enable_dvdrental` | Restore the public dvdrental sample database on the Postgres host (needs `enable_postgres`) | `false` |
+| `enable_mcp_demo_server` | Teleport's built-in `teleport-mcp-demo` MCP server plus a role for its tools (needs `enable_mcp`) | `false` |
+| `kube_namespaces` / `kube_groups` | Read-only Kubernetes access for the demo dev role in these namespaces of `env=<env>` kube clusters (the cluster is enrolled outside the profile) | `[]` / `["teleport-demo-viewers"]` |
 | `enable_vnet_demo` | Register HTTPBin as a TCP app for Teleport VNet (needs `enable_httpbin`) | `false` |
 | `region` | AWS region | `us-east-2` |
 | `create_nat_gateway` | Private subnet + NAT (~$1/day) | `false` |

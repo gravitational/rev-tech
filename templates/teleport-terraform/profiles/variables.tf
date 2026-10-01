@@ -125,6 +125,24 @@ variable "enable_vnet_demo" {
   default     = false
 }
 
+variable "enable_mcp_demo_server" {
+  description = "Teleport's built-in teleport-mcp-demo server on the MCP host, plus a role for its three tools attached to the demo personas. Requires enable_mcp."
+  type        = bool
+  default     = false
+}
+
+variable "kube_namespaces" {
+  description = "Kubernetes namespaces the demo dev role may read (no exec) on kube clusters labelled env=<env>. The kube cluster itself is enrolled outside this profile."
+  type        = list(string)
+  default     = []
+}
+
+variable "kube_groups" {
+  description = "Kubernetes groups the demo dev role maps to; bind them in kube_namespaces"
+  type        = list(string)
+  default     = ["teleport-demo-viewers"]
+}
+
 variable "enable_httpbin" {
   description = "HTTPBin for inspecting Teleport-injected headers"
   type        = bool

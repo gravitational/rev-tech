@@ -87,6 +87,15 @@ output "connection_guide" {
        tsh mcp ls
        tsh mcp config mcp-filesystem-${var.env}
        # Paste into Claude Desktop, Cursor, or any MCP client
+    %{~if var.enable_mcp_demo_server}
+       tsh mcp config teleport-mcp-demo   # built-in: user and session info tools
+    %{~endif}
+    %{~endif}
+    %{~if length(var.kube_namespaces) > 0}
+
+    Kubernetes (read-only in ${join(", ", var.kube_namespaces)}; exec is denied):
+       tsh kube ls
+       kubectl get pods -n ${var.kube_namespaces[0]}
     %{~endif}
     %{~if var.enable_ansible}
 
