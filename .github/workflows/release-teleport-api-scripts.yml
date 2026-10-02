@@ -1,10 +1,10 @@
 name: Release teleport-api-scripts binaries
 
 # Builds and publishes prebuilt MAU/TPR tracker binaries against the latest
-# stable patch on each of Teleport's two newest supported majors (currently
-# v17 LTS and v18 current). Runs daily; users can also trigger manually with a
-# specific Teleport version. Idempotent: if a release for a given target
-# Teleport version already exists, that target is skipped.
+# published patch on Teleport's current and stable (current - 1) majors, as
+# reported by https://rlz.teleport.sh. Runs daily; users can also trigger
+# manually with a specific Teleport version. Idempotent: if a release for a
+# given target Teleport version already exists, that target is skipped.
 on:
   schedule:
     - cron: '0 6 * * *'   # daily at 06:00 UTC
@@ -39,19 +39,28 @@ jobs:
             tags="v${version#v}"
             mode="manual"
           else
-            # Auto mode: latest stable patch on each of the two newest supported
-            # Teleport majors (v17 LTS + v18 current as of writing). The set
-            # rolls forward automatically: when Teleport ships v19, this picks
-            # v18 + v19 and drops v17 once v17 is no longer the highest of the
-            # two newest majors.
-            tags=$(gh release list \
-                --repo gravitational/teleport \
-                --exclude-pre-releases \
-                --limit 200 \
-                --json tagName -q '.[].tagName' \
-              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-              | sort -V -r \
-              | awk -F. 'BEGIN { count = 0 } { if (!seen[$1]++ && count < 2) { print; count++ } }')
+            # Auto mode: latest published patch on the current major and on the
+            # stable major (current - 1), e.g. v18 + v17. Teleport releases are
+            # now cut from a private repo, so gravitational/teleport no longer
+            # gets GitHub Releases; ask the public release service instead. The
+            # set rolls forward automatically when a new major ships.
+            rlz="https://rlz.teleport.sh"
+            latest=$(curl -fsSL "${rlz}/versions" | jq -r '.latest')
+            current_major="${latest%%.*}"
+            if [[ ! "${current_major}" =~ ^[0-9]+$ ]]; then
+              echo "::error::Unexpected latest version from ${rlz}/versions: '${latest}'"
+              exit 1
+            fi
+            tags=""
+            for major in "${current_major}" "$((current_major - 1))"; do
+              tag=$(curl -fsSL "${rlz}/teleport?majorVersion=${major}" \
+                | jq -r '.[] | select(.status == "published") | .version' \
+                | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+                | sort -V -r \
+                | head -1)
+              [[ -n "${tag}" ]] && tags+="v${tag}"$'\n'
+            done
+            tags="${tags%$'\n'}"
             mode="auto"
           fi
           if [[ -z "${tags}" ]]; then
@@ -99,7 +108,14 @@ jobs:
             fi
 
             if gh release view "${release_tag}" --repo "${REPO}" >/dev/null 2>&1; then
-              echo "::notice::Release ${release_tag} already exists; skipping."
+              # A manual dispatch may have created it as not-Latest; promote it
+              # so the newest-major release ends up Latest either way.
+              if [[ "${latest_flag}" == "--latest=true" ]]; then
+                gh release edit "${release_tag}" --repo "${REPO}" --latest >/dev/null
+                echo "::notice::Release ${release_tag} already exists; ensured it is Latest."
+              else
+                echo "::notice::Release ${release_tag} already exists; skipping."
+              fi
               continue
             fi
             echo "::group::Building ${release_tag}"
@@ -112,6 +128,14 @@ jobs:
             # version, so this round-tripping works.
             sha=$(git ls-remote https://github.com/gravitational/teleport "refs/tags/${tag}" | awk '{print $1}')
             if [[ -z "${sha}" ]]; then
+              # The public repo is a mirror and can lag behind a release
+              # announced by rlz.teleport.sh. In auto mode, skip and let the
+              # next nightly run pick it up.
+              if [[ "${mode}" == "auto" ]]; then
+                echo "::warning::Tag ${tag} not yet on gravitational/teleport; skipping until the next run."
+                echo "::endgroup::"
+                continue
+              fi
               echo "::error::Could not resolve tag ${tag} to a commit SHA"
               exit 1
             fi
