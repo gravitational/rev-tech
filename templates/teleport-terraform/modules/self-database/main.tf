@@ -66,9 +66,13 @@ resource "teleport_provision_token" "db" {
   version = "v2"
   spec = {
     roles = ["Db", "Node"]
-    name  = random_string.token.result
   }
   metadata = {
+    # The token's name lives in metadata. spec has no name attribute, so a
+    # name there was silently dropped and Teleport generated one: unknown at
+    # plan, which made user_data unknown and replaced the host whenever an
+    # expired token was recreated.
+    name    = random_string.token.result
     expires = timeadd(timestamp(), "8h")
   }
   # timestamp() changes on every plan, causing perpetual drift noise.
