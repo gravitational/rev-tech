@@ -67,6 +67,12 @@ variable "mcp_rw_app" {
   default     = null
 }
 
+variable "aws_role_arns" {
+  description = "IAM role ARNs the dev role may assume through the AWS Console app (the profile passes its console roles)"
+  type        = list(string)
+  default     = []
+}
+
 variable "extra_role_names" {
   description = "Names of roles created outside this module to also attach to the demo users — e.g. linux-desktop-access, which lives in modules/linux-desktop."
   type        = list(string)

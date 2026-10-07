@@ -78,7 +78,8 @@ output "connection_guide" {
        tsh apps login demo-panel-${var.env}
     %{~endif}
     %{~if var.enable_aws_console}
-       tsh apps login awsconsole-${var.env}
+       tsh apps login awsconsole-${var.env} --aws-role ${try(values(local.aws_console_role_names)[0], "<role-name>")}
+       tsh aws s3 ls                          # CLI through the same role
     %{~endif}
     %{~if var.enable_mcp}
 
@@ -121,6 +122,11 @@ output "connection_guide" {
 output "demo_user_setup" {
   description = "One-time activation steps for the demo user (null when create_demo_rbac is false)"
   value       = var.create_demo_rbac ? module.demo_rbac[0].demo_user_setup : null
+}
+
+output "aws_role_arns" {
+  description = "IAM roles the AWS Console app can assume (empty unless enable_aws_console). With RBAC other than demo-rbac, grant them as an aws_role_arns trait."
+  value       = local.aws_console_role_arns
 }
 
 output "rds_endpoint" {

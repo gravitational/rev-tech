@@ -62,7 +62,8 @@ provider "teleport" {
 }
 
 locals {
-  user_prefix = lower(split("@", var.user)[0])
+  # Names and Name tags carry this; the creator tag keeps the real user.
+  name_prefix = coalesce(var.name_prefix, lower(split("@", var.user)[0]))
   resource_tags = {
     "teleport.dev/creator" = var.user
     "env"                  = var.env
@@ -142,7 +143,7 @@ module "demo_rbac" {
   count  = var.create_demo_rbac ? 1 : 0
   source = "../modules/demo-rbac"
 
-  name_prefix           = var.demo_rbac_role_prefix != null ? var.demo_rbac_role_prefix : local.user_prefix
+  name_prefix           = var.demo_rbac_role_prefix != null ? var.demo_rbac_role_prefix : local.name_prefix
   env                   = var.env
   prod_env              = var.enable_ssh_prod ? var.prod_env : null
   team                  = var.team
@@ -155,6 +156,7 @@ module "demo_rbac" {
   # The linux-desktop role lives in modules/linux-desktop; demo-rbac just
   # attaches it to the demo personas.
   extra_role_names = var.enable_linux_desktop ? [module.linux_desktop[0].access_role_name] : []
+  aws_role_arns    = local.aws_console_role_arns
 }
 
 # ---------------------------------------------------------------------------
@@ -164,7 +166,7 @@ module "demo_rbac" {
 module "network" {
   source = "../modules/network"
 
-  name_prefix             = "${local.user_prefix}-${var.env}"
+  name_prefix             = "${local.name_prefix}-${var.env}"
   tags                    = local.resource_tags
   env                     = var.env
   cidr_vpc                = var.cidr_vpc
@@ -185,7 +187,7 @@ module "ssh_nodes_dev" {
 
   env           = var.env
   team          = var.team
-  user          = var.user
+  user          = local.name_prefix
   proxy_address = var.proxy_address
   tags          = local.resource_tags
   agent_count   = var.ssh_dev_count
@@ -206,7 +208,7 @@ module "ssh_node_prod" {
 
   env           = var.prod_env
   team          = coalesce(var.prod_team, var.team)
-  user          = var.user
+  user          = local.name_prefix
   proxy_address = var.proxy_address
   tags          = local.resource_tags
   agent_count   = 1
@@ -227,7 +229,7 @@ module "postgres" {
   db_type        = "postgres"
   env            = var.env
   team           = var.team
-  user           = var.user
+  user           = local.name_prefix
   proxy_address  = var.proxy_address
   teleport_db_ca = data.http.teleport_db_ca.response_body
   ami_id         = data.aws_ami.linux.id
@@ -261,7 +263,7 @@ module "mysql" {
   db_type        = "mysql"
   env            = var.env
   team           = var.team
-  user           = var.user
+  user           = local.name_prefix
   proxy_address  = var.proxy_address
   teleport_db_ca = data.http.teleport_db_ca.response_body
   ami_id         = data.aws_ami.linux.id
@@ -290,7 +292,7 @@ module "mongodb" {
   db_type        = "mongodb"
   env            = var.env
   team           = var.team
-  user           = var.user
+  user           = local.name_prefix
   proxy_address  = var.proxy_address
   teleport_db_ca = data.http.teleport_db_ca.response_body
   ami_id         = data.aws_ami.linux.id
@@ -319,7 +321,7 @@ module "cassandra" {
   db_type        = "cassandra"
   env            = var.env
   team           = var.team
-  user           = var.user
+  user           = local.name_prefix
   proxy_address  = var.proxy_address
   teleport_db_ca = data.http.teleport_db_ca.response_body
   ami_id         = data.aws_ami.linux.id
@@ -350,7 +352,7 @@ module "rds_mysql" {
 
   env                  = var.env
   team                 = var.team
-  user                 = var.user
+  user                 = local.name_prefix
   proxy_address        = var.proxy_address
   region               = var.region
   ami_id               = data.aws_ami.linux.id
@@ -369,7 +371,7 @@ module "grafana" {
 
   env           = var.env
   team          = var.team
-  user          = var.user
+  user          = local.name_prefix
   proxy_address = var.proxy_address
   ami_id        = data.aws_ami.linux.id
   instance_type = "t3.small"
@@ -401,7 +403,7 @@ module "httpbin" {
 
   env           = var.env
   team          = var.team
-  user          = var.user
+  user          = local.name_prefix
   proxy_address = var.proxy_address
   ami_id        = data.aws_ami.linux.id
   instance_type = "t3.micro"
@@ -448,7 +450,7 @@ module "demo_panel" {
 
   env           = var.env
   team          = var.team
-  user          = var.user
+  user          = local.name_prefix
   proxy_address = var.proxy_address
   app_repo      = var.demo_panel_app_repo
   ami_id        = data.aws_ami.linux.id
@@ -481,7 +483,7 @@ module "aws_console_host" {
   count  = var.enable_aws_console ? 1 : 0
   source = "../modules/app-aws-console-host"
 
-  user                 = var.user
+  user                 = local.name_prefix
   proxy_address        = var.proxy_address
   ami_id               = data.aws_ami.linux.id
   instance_type        = "t3.micro"
@@ -494,10 +496,50 @@ module "aws_console_host" {
   app_a_uri            = "https://console.aws.amazon.com/ec2/v2/home"
   app_a_aws_account_id = data.aws_caller_identity.current.account_id
   app_a_team           = var.team
-  assume_role_arns     = var.console_role_arns
+  assume_role_arns     = local.aws_console_role_arns
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
+}
+
+# The roles a console user lands in. Each trusts only the console host's
+# instance role, so the only way into them is through Teleport. Their ARNs
+# are built from the name rather than read from the resource: the host's
+# assume-role policy needs them, and the roles' trust needs the host's role,
+# so referencing the resources would be a cycle.
+locals {
+  aws_console_role_names = {
+    for k, _ in var.aws_console_roles : k => "${local.name_prefix}-${var.env}-console-${k}"
+  }
+  aws_console_role_arns = var.enable_aws_console ? concat(
+    [for k, n in local.aws_console_role_names : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${n}"],
+    var.console_role_arns,
+  ) : []
+  aws_console_role_policies = merge([
+    for k, arns in var.aws_console_roles : { for a in arns : "${k}|${a}" => { role = k, policy_arn = a } }
+  ]...)
+}
+
+resource "aws_iam_role" "console" {
+  for_each = var.enable_aws_console ? local.aws_console_role_names : {}
+
+  name = each.value
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { AWS = module.aws_console_host[0].iam_role_arn }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+  tags = local.resource_tags
+}
+
+resource "aws_iam_role_policy_attachment" "console" {
+  for_each = var.enable_aws_console ? local.aws_console_role_policies : {}
+
+  role       = aws_iam_role.console[each.value.role].name
+  policy_arn = each.value.policy_arn
 }
 
 # ---------------------------------------------------------------------------
@@ -508,7 +550,7 @@ module "windows_instance" {
   source = "../modules/windows-instance"
 
   env              = var.env
-  user             = var.user
+  user             = local.name_prefix
   proxy_address    = var.proxy_address
   teleport_version = jsondecode(data.http.teleport_ping.response_body).server_version
   ami_id           = data.aws_ami.windows_server.id
@@ -524,7 +566,7 @@ module "desktop_service" {
 
   env           = var.env
   team          = var.team
-  user          = var.user
+  user          = local.name_prefix
   proxy_address = var.proxy_address
   ami_id        = data.aws_ami.linux.id
   instance_type = "t3.small"
@@ -551,7 +593,7 @@ module "linux_desktop" {
 
   env           = var.env
   team          = var.team
-  user          = var.user
+  user          = local.name_prefix
   proxy_address = var.proxy_address
   ami_id        = data.aws_ami.ubuntu.id
   instance_type = "t3.medium"
@@ -567,7 +609,7 @@ module "linux_desktop" {
     ["ubuntu"]
   )
   create_access_role = var.create_demo_rbac
-  name_prefix        = var.demo_rbac_role_prefix != null ? var.demo_rbac_role_prefix : local.user_prefix
+  name_prefix        = var.demo_rbac_role_prefix != null ? var.demo_rbac_role_prefix : local.name_prefix
 }
 
 # ---------------------------------------------------------------------------
@@ -585,7 +627,7 @@ module "mcp_app" {
 
   env             = var.env
   team            = var.team
-  user            = var.user
+  user            = local.name_prefix
   proxy_address   = var.proxy_address
   ami_id          = data.aws_ami.linux.id
   instance_type   = "t3.small"
@@ -666,7 +708,7 @@ module "ansible" {
 
   env           = var.env
   team          = var.team
-  user          = var.user
+  user          = local.name_prefix
   proxy_address = var.proxy_address
 
   subnet_id          = module.network.subnet_id

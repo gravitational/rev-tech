@@ -82,6 +82,9 @@ resource "teleport_role" "dev_access" {
         env  = [var.env]
         team = [var.team]
       }
+      # null rather than [] when unused, so roles without a console stay
+      # exactly as they were.
+      aws_role_arns = length(var.aws_role_arns) > 0 ? var.aws_role_arns : null
       db_labels = {
         env  = [var.env]
         team = [var.team]
