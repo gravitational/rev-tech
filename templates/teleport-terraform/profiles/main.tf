@@ -155,6 +155,7 @@ module "demo_rbac" {
   # The linux-desktop role lives in modules/linux-desktop; demo-rbac just
   # attaches it to the demo personas.
   extra_role_names = var.enable_linux_desktop ? [module.linux_desktop[0].access_role_name] : []
+  aws_role_arns    = local.aws_console_role_arns
 }
 
 # ---------------------------------------------------------------------------
@@ -494,10 +495,50 @@ module "aws_console_host" {
   app_a_uri            = "https://console.aws.amazon.com/ec2/v2/home"
   app_a_aws_account_id = data.aws_caller_identity.current.account_id
   app_a_team           = var.team
-  assume_role_arns     = var.console_role_arns
+  assume_role_arns     = local.aws_console_role_arns
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
+}
+
+# The roles a console user lands in. Each trusts only the console host's
+# instance role, so the only way into them is through Teleport. Their ARNs
+# are built from the name rather than read from the resource: the host's
+# assume-role policy needs them, and the roles' trust needs the host's role,
+# so referencing the resources would be a cycle.
+locals {
+  aws_console_role_names = {
+    for k, _ in var.aws_console_roles : k => "${local.user_prefix}-${var.profile_label}-${var.env}-console-${k}"
+  }
+  aws_console_role_arns = var.enable_aws_console ? concat(
+    [for k, n in local.aws_console_role_names : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${n}"],
+    var.console_role_arns,
+  ) : []
+  aws_console_role_policies = merge([
+    for k, arns in var.aws_console_roles : { for a in arns : "${k}|${a}" => { role = k, policy_arn = a } }
+  ]...)
+}
+
+resource "aws_iam_role" "console" {
+  for_each = var.enable_aws_console ? local.aws_console_role_names : {}
+
+  name = each.value
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { AWS = module.aws_console_host[0].iam_role_arn }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+  tags = local.resource_tags
+}
+
+resource "aws_iam_role_policy_attachment" "console" {
+  for_each = var.enable_aws_console ? local.aws_console_role_policies : {}
+
+  role       = aws_iam_role.console[each.value.role].name
+  policy_arn = each.value.policy_arn
 }
 
 # ---------------------------------------------------------------------------

@@ -86,19 +86,20 @@ while IFS= read -r dir; do
 done <<< "${template_dirs}"
 
 # ---------------------------------------------------------------------------
-# Run terraform test for any module that has .tftest.hcl files.
+# Run terraform test for any module or profile that has .tftest.hcl files.
 # Tests use mock_provider blocks — no real credentials required.
 # Requires Terraform >= 1.7.
 # ---------------------------------------------------------------------------
-echo "==> terraform test (modules with .tftest.hcl)"
+echo "==> terraform test (modules and profiles with .tftest.hcl)"
 test_module_dirs="$(
-  find "${templates_root}/modules" -name '*.tftest.hcl' -type f \
+  find "${templates_root}/modules" "${templates_root}/profiles" -name '*.tftest.hcl' -type f \
+    -not -path '*/.terraform/*' \
     | xargs -n1 dirname \
     | sed 's|/tests$||' \
     | sort -u
 )"
 if [[ -z "${test_module_dirs}" ]]; then
-  echo "-- no .tftest.hcl files found in modules/"
+  echo "-- no .tftest.hcl files found in modules/ or profiles/"
 else
   while IFS= read -r dir; do
     [[ -z "${dir}" ]] && continue

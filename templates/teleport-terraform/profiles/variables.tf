@@ -189,8 +189,16 @@ variable "demo_panel_app_repo" {
   default     = "https://github.com/tenaciousdlg/app-demo-panel"
 }
 
+variable "aws_console_roles" {
+  description = "IAM roles created for the AWS Console app when enable_aws_console is true: name suffix => managed policy ARNs. Each role trusts only the console host. Users get them through the aws_role_arns output (demo-rbac grants them directly; for other RBAC, grant it as an aws_role_arns trait)."
+  type        = map(list(string))
+  default = {
+    ReadOnly = ["arn:aws:iam::aws:policy/ReadOnlyAccess"]
+  }
+}
+
 variable "console_role_arns" {
-  description = "IAM role ARNs the AWS Console app may assume"
+  description = "Additional existing IAM role ARNs the AWS Console app may assume, beyond aws_console_roles. Each must trust the console host's role."
   type        = list(string)
   default     = []
 }
