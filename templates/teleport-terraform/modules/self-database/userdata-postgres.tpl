@@ -75,6 +75,27 @@ GRANT ALL ON agent_actions TO beamuser;
 GRANT USAGE, SELECT ON SEQUENCE agent_actions_id_seq TO beamuser;
 %{ endif ~}
 EOF
+%{ if seed_dvdrental ~}
+# dvdrental sample database (https://neon.com/postgresqltutorial/dvdrental.zip).
+# Pinned by SHA-256 so a changed upstream file fails the boot loudly instead of
+# restoring something unexpected. Objects in the dump are owned by postgres, so
+# writer and reader get explicit grants afterwards.
+dnf install -y unzip
+curl -fsSL -o /tmp/dvdrental.zip https://neon.com/postgresqltutorial/dvdrental.zip
+echo "832f1ff0daa38ed4a842d8fd78e5dd05e5a6c363d4115914f95bb3cc4ddd0e97  /tmp/dvdrental.zip" | sha256sum -c -
+unzip -o /tmp/dvdrental.zip -d /tmp
+sudo -u postgres createdb dvdrental
+sudo -u postgres pg_restore --no-owner --role=postgres -d dvdrental /tmp/dvdrental.tar
+sudo -u postgres psql -d dvdrental <<EOF
+GRANT CONNECT ON DATABASE dvdrental TO writer, reader;
+GRANT ALL ON SCHEMA public TO writer;
+GRANT USAGE ON SCHEMA public TO reader;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO writer;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO writer;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO reader;
+EOF
+rm -f /tmp/dvdrental.zip /tmp/dvdrental.tar
+%{ endif ~}
 # install teleport
 curl "https://${proxy_address}/scripts/install.sh" | bash
 echo "${token}" > /tmp/token

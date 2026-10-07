@@ -232,6 +232,7 @@ module "postgres" {
   teleport_db_ca = data.http.teleport_db_ca.response_body
   ami_id         = data.aws_ami.linux.id
   instance_type  = "t3.small"
+  seed_dvdrental = var.enable_dvdrental
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -417,6 +418,21 @@ module "httpbin_registration" {
   labels               = { env = var.env, team = var.team, "teleport.dev/app" = "httpbin" }
   rewrite_headers      = ["Host: httpbin-${var.env}.${var.proxy_address}", "Origin: https://httpbin-${var.env}.${var.proxy_address}"]
   insecure_skip_verify = true
+}
+
+# The same HTTPBin as a TCP app, for Teleport VNet (which supports TCP apps
+# only). With VNet running, `curl http://httpbin-tcp-<env>.<proxy>/get` works
+# with no tsh command. Served by the same host: its app_service selects
+# teleport.dev/app=httpbin.
+module "httpbin_tcp_registration" {
+  count         = var.enable_httpbin && var.enable_vnet_demo ? 1 : 0
+  source        = "../modules/dynamic-registration"
+  resource_type = "app"
+  name          = "httpbin-tcp-${var.env}"
+  description   = "HTTPBin over TCP, reachable through Teleport VNet"
+  uri           = "tcp://localhost:80"
+  public_addr   = "httpbin-tcp-${var.env}.${var.proxy_address}"
+  labels        = { env = var.env, team = var.team, "teleport.dev/app" = "httpbin" }
 }
 
 # ---------------------------------------------------------------------------
