@@ -205,7 +205,7 @@ module "ssh_node_prod" {
   source = "../modules/ssh-node"
 
   env           = var.prod_env
-  team          = var.team
+  team          = coalesce(var.prod_team, var.team)
   user          = var.user
   proxy_address = var.proxy_address
   tags          = local.resource_tags
@@ -233,6 +233,7 @@ module "postgres" {
   ami_id         = data.aws_ami.linux.id
   instance_type  = "t3.small"
   seed_dvdrental = var.enable_dvdrental
+  auto_users     = var.postgres_auto_users
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -248,6 +249,9 @@ module "postgres_registration" {
   uri           = "localhost:5432"
   ca_cert_chain = module.postgres[0].ca_cert
   labels        = { env = var.env, team = var.team }
+  # auto: Teleport creates each user's own account (teleport-admin on the host).
+  db_access_pattern = var.postgres_auto_users ? "auto" : "mapped"
+  admin_user        = var.postgres_auto_users ? "teleport-admin" : null
 }
 
 module "mysql" {

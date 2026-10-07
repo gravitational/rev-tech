@@ -80,3 +80,15 @@ variable "seed_dvdrental" {
   type        = bool
   default     = false
 }
+
+variable "auto_users" {
+  description = <<-EOT
+    Postgres only. Prepare the host for Teleport database auto user
+    provisioning: create the "teleport-admin" user (LOGIN CREATEROLE, X.509
+    auth via the existing pg_hba cert rules) and a "dbadmin" role, so roles
+    may grant db_roles reader, writer and dbadmin. Register the database with
+    admin_user = "teleport-admin" and teleport.dev/db-access = auto to use it.
+  EOT
+  type        = bool
+  default     = false
+}
