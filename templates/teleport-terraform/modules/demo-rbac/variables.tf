@@ -68,7 +68,7 @@ variable "mcp_rw_app" {
 }
 
 variable "extra_role_names" {
-  description = "Names of roles created outside this module to also attach to the demo users — e.g. linux-desktop-access, which lives in modules/linux-desktop because its role fields need the v19 provider."
+  description = "Names of roles created outside this module to also attach to the demo users — e.g. linux-desktop-access, which lives in modules/linux-desktop."
   type        = list(string)
   default     = []
 }

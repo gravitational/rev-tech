@@ -10,6 +10,6 @@ enable_httpbin     = true
 enable_demo_panel  = true
 enable_aws_console = true
 enable_windows     = true
-# Teleport 19+ only — drop this flag on 18.x clusters.
+# Needs Teleport 18.10.3 or later.
 enable_linux_desktop = true
 enable_mcp           = true

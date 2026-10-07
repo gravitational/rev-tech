@@ -101,6 +101,18 @@ variable "enable_grafana" {
   default     = false
 }
 
+variable "enable_dvdrental" {
+  description = "Restore the public dvdrental sample database on the Postgres host. Requires enable_postgres."
+  type        = bool
+  default     = false
+}
+
+variable "enable_vnet_demo" {
+  description = "Also register HTTPBin as a TCP app (httpbin-tcp-<env>) so it is reachable through Teleport VNet by its public address. VNet supports TCP apps only. Requires enable_httpbin."
+  type        = bool
+  default     = false
+}
+
 variable "enable_httpbin" {
   description = "HTTPBin for inspecting Teleport-injected headers"
   type        = bool
@@ -126,7 +138,7 @@ variable "enable_windows" {
 }
 
 variable "enable_linux_desktop" {
-  description = "Linux desktop host (Ubuntu + Xfce over Xvfb, browser-based). Requires Teleport 19+ and the v19 provider."
+  description = "Linux desktop host (Ubuntu + Xfce over Xvfb, browser-based). Requires Teleport 18.10.3 or later."
   type        = bool
   default     = false
 }

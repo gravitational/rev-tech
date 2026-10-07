@@ -1,6 +1,6 @@
 # Linux Desktop Module
 
-Linux Desktop Access (Teleport 19+): one Ubuntu 24.04 host running `linux_desktop_service` with an Xfce desktop rendered through Xvfb. Unlike Windows desktop access (which pairs `windows-instance` with `desktop-service` as an RDP proxy), the service runs **on the desktop host itself** — Teleport starts a virtual X11 display per session and launches the desktop environment inside it. Outbound reverse tunnel only; no inbound ports.
+Linux Desktop Access (Teleport 18.10.3+): one Ubuntu 24.04 host running `linux_desktop_service` with an Xfce desktop rendered through Xvfb. Unlike Windows desktop access (which pairs `windows-instance` with `desktop-service` as an RDP proxy), the service runs **on the desktop host itself** — Teleport starts a virtual X11 display per session and launches the desktop environment inside it. Outbound reverse tunnel only; no inbound ports.
 
 ## Overview
 
@@ -10,7 +10,7 @@ Linux Desktop Access (Teleport 19+): one Ubuntu 24.04 host running `linux_deskto
 
 ## Requirements
 
-- **Teleport 19+** cluster and the **v19 Terraform provider**. The `LinuxDesktop` token role and the `linux_desktop_*` role fields don't exist in the 18.x provider — it rejects them client-side. That's also why this module owns its own access role instead of `modules/demo-rbac` (18.x-pinned); fold the role into demo-rbac when the repo moves to the 19 GA provider.
+- **Teleport 18.10.3 or later.** `linux_desktop_service` ships in 18.x, and the 18.x Terraform provider accepts the `LinuxDesktop` token role and the `linux_desktop_*` role fields. This module owns its access role; `modules/demo-rbac` attaches it to the demo personas.
 - Ubuntu AMI. AL2023 ships no desktop environment packages, so this module doesn't use the shared `data.aws_ami.linux`.
 
 ## Usage
@@ -89,4 +89,3 @@ tctl get linux_desktop                  # confirm registration
 
 - **Desktop not listed:** wait for cloud-init to finish (`cloud-init status`), Xfce is a few GB of packages.
 - **Session fails immediately:** the chosen login doesn't exist on the host — check `desktop_logins`.
-- **Role rejected at apply:** you're on the 18.x provider; this module needs v19.

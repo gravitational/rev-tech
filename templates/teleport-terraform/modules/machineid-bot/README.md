@@ -42,7 +42,7 @@ module "machineid_bot" {
 | Output | Description |
 | ------ | ----------- |
 | `bot_token` | Provision token name for the bot |
-| `bot_registration_secret` | Generated registration secret from token status |
+| `bot_registration_secret` | Registration secret this module generates and sets in `spec.bound_keypair.onboarding` (null for `iam` or a preregistered key) |
 | `bot_name` | Bot name |
 | `role_id` | Role ID |
 
@@ -63,7 +63,7 @@ allow:
 - [Machine ID with Ansible](https://goteleport.com/docs/machine-workload-identity/access-guides/ansible/)
 - [Machine ID with MCP](https://goteleport.com/docs/machine-workload-identity/access-guides/mcp/)
 
-Note: this module uses `bound_keypair` join and supports either generated registration secrets or preregistered keys (`onboarding_initial_public_key`).
+Note: `join_method` is `bound_keypair` (default) or `iam`. For `bound_keypair` the module generates a registration secret and sets it in the token spec, or uses a preregistered key (`onboarding_initial_public_key`). For `iam`, pass `iam_allow`.
 
 ## Operational notes — bound keypair tokens
 
@@ -78,7 +78,7 @@ Note: this module uses `bound_keypair` join and supports either generated regist
   limit) causes the backend to re-arm onboarding from the spec — the bot's
   existing keypair binding is invalidated and its next join fails with
   "a valid registration secret is required". Plan any token change as a
-  rebind: apply the change, retrieve the fresh registration secret, wipe the
+  rebind: apply the change, retrieve the registration secret, wipe the
   bot's local state, and let it re-join. (Observed in the field Aug 2026 via
   the Kubernetes operator's reconcile of an unrelated field; the same upsert
   semantics apply to Terraform updates.)

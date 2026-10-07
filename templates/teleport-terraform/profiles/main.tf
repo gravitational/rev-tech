@@ -24,8 +24,10 @@ terraform {
       version = "~> 5.99"
     }
     teleport = {
-      source  = "terraform-staging.releases.development.teleport.dev/gravitational/teleport"
-      version = "19.0.0-dev.terraform.3"
+      source = "terraform.releases.teleport.dev/gravitational/teleport"
+      # Match the target cluster's version. Every module requires this same
+      # source address, so the provider block below configures all of them.
+      version = "18.11.2"
     }
     random = {
       source  = "hashicorp/random"
@@ -150,8 +152,8 @@ module "demo_rbac" {
   request_max_duration  = var.request_max_duration
   mcp_tools             = var.mcp_tools
   mcp_rw_app            = var.enable_mcp ? "mcp-filesystem" : null
-  # The linux-desktop role lives in modules/linux-desktop (needs the v19
-  # provider); demo-rbac just attaches it to the demo personas.
+  # The linux-desktop role lives in modules/linux-desktop; demo-rbac just
+  # attaches it to the demo personas.
   extra_role_names = var.enable_linux_desktop ? [module.linux_desktop[0].access_role_name] : []
 }
 
@@ -230,6 +232,7 @@ module "postgres" {
   teleport_db_ca = data.http.teleport_db_ca.response_body
   ami_id         = data.aws_ami.linux.id
   instance_type  = "t3.small"
+  seed_dvdrental = var.enable_dvdrental
 
   subnet_id          = module.network.subnet_id
   security_group_ids = [module.network.security_group_id]
@@ -417,6 +420,21 @@ module "httpbin_registration" {
   insecure_skip_verify = true
 }
 
+# The same HTTPBin as a TCP app, for Teleport VNet (which supports TCP apps
+# only). With VNet running, `curl http://httpbin-tcp-<env>.<proxy>/get` works
+# with no tsh command. Served by the same host: its app_service selects
+# teleport.dev/app=httpbin.
+module "httpbin_tcp_registration" {
+  count         = var.enable_httpbin && var.enable_vnet_demo ? 1 : 0
+  source        = "../modules/dynamic-registration"
+  resource_type = "app"
+  name          = "httpbin-tcp-${var.env}"
+  description   = "HTTPBin over TCP, reachable through Teleport VNet"
+  uri           = "tcp://localhost:80"
+  public_addr   = "httpbin-tcp-${var.env}.${var.proxy_address}"
+  labels        = { env = var.env, team = var.team, "teleport.dev/app" = "httpbin" }
+}
+
 # ---------------------------------------------------------------------------
 # Application Access: Flask demo panel (shows the user's Teleport identity).
 # ---------------------------------------------------------------------------
@@ -519,10 +537,9 @@ module "desktop_service" {
 }
 
 # ---------------------------------------------------------------------------
-# Desktop Access: Linux desktop (Teleport 19+) — Xfce over Xvfb, rendered in
-# the browser. The service runs on the desktop host itself; the module also
-# owns the linux-desktop-access role (linux_desktop_* role fields need the
-# v19 provider, which demo-rbac's 18.x pin can't express).
+# Desktop Access: Linux desktop — Xfce over Xvfb, rendered in the browser. The
+# service runs on the desktop host itself; the module also owns the
+# linux-desktop-access role.
 # ---------------------------------------------------------------------------
 module "linux_desktop" {
   count  = var.enable_linux_desktop ? 1 : 0
