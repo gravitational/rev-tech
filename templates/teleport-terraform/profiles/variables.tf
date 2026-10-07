@@ -189,6 +189,12 @@ variable "demo_panel_app_repo" {
   default     = "https://github.com/tenaciousdlg/app-demo-panel"
 }
 
+variable "name_prefix" {
+  description = "Prefix for resource names, Name tags, the console IAM roles and the Grafana admin user. Defaults to the local part of user. Set it for a shared environment such as an event, so names carry the environment rather than a person. The teleport.dev/creator tag always keeps user."
+  type        = string
+  default     = null
+}
+
 variable "aws_console_roles" {
   description = "IAM roles created for the AWS Console app when enable_aws_console is true: name suffix => managed policy ARNs. Each role trusts only the console host. Users get them through the aws_role_arns output (demo-rbac grants them directly; for other RBAC, grant it as an aws_role_arns trait)."
   type        = map(list(string))

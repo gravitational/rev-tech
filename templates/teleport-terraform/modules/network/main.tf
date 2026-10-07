@@ -130,6 +130,12 @@ resource "aws_route_table_association" "public" {
 }
 
 resource "aws_security_group" "default" {
+  # The name is immutable, so a new name_prefix replaces the group. Create
+  # the new one first: AWS refuses to delete a group instances still use.
+  lifecycle {
+    create_before_destroy = true
+  }
+
   name        = "${local.name_prefix}-default-sg"
   description = "Allow all inbound traffic from VPC CIDR"
   vpc_id      = aws_vpc.main.id

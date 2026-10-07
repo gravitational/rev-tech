@@ -34,11 +34,11 @@ run "console_roles_are_created_and_granted" {
   command = plan
 
   assert {
-    condition     = aws_iam_role.console["ReadOnly"].name == "sam-aws-console-dev-console-ReadOnly"
-    error_message = "the ReadOnly console role should be named <user>-<profile>-<env>-console-ReadOnly"
+    condition     = aws_iam_role.console["ReadOnly"].name == "sam-dev-console-ReadOnly"
+    error_message = "the ReadOnly console role should be named <name_prefix>-<env>-console-ReadOnly"
   }
   assert {
-    condition     = length(output.aws_role_arns) == 1 && output.aws_role_arns[0] == "arn:aws:iam::123456789012:role/sam-aws-console-dev-console-ReadOnly"
+    condition     = length(output.aws_role_arns) == 1 && output.aws_role_arns[0] == "arn:aws:iam::123456789012:role/sam-dev-console-ReadOnly"
     error_message = "aws_role_arns should carry exactly the created role's ARN"
   }
   assert {
@@ -70,5 +70,22 @@ run "nothing_when_console_is_off" {
   assert {
     condition     = length(aws_iam_role.console) == 0 && length(output.aws_role_arns) == 0
     error_message = "no console roles or ARNs without enable_aws_console"
+  }
+}
+
+run "name_prefix_replaces_the_person_in_names" {
+  command = plan
+
+  variables {
+    name_prefix = "acme"
+  }
+
+  assert {
+    condition     = aws_iam_role.console["ReadOnly"].name == "acme-dev-console-ReadOnly"
+    error_message = "name_prefix should replace the user's prefix in the console role name"
+  }
+  assert {
+    condition     = aws_iam_role.console["ReadOnly"].tags["teleport.dev/creator"] == "sam@example.com"
+    error_message = "the creator tag should keep the real user"
   }
 }
