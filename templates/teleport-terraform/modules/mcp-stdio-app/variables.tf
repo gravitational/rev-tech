@@ -85,3 +85,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "mcp_demo_server" {
+  description = "Enable Teleport's built-in demo MCP server (app_service mcp_demo_server), registered as teleport-mcp-demo with tools teleport_user_info, teleport_session_info and teleport_demo_info"
+  type        = bool
+  default     = false
+}

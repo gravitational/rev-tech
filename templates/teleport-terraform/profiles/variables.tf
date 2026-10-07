@@ -18,6 +18,12 @@ variable "env" {
   default     = "dev"
 }
 
+variable "prod_team" {
+  description = "Team label for the prod SSH node. null uses team. modules/teleport-rbac expects dev resources team=dev and prod resources team=platform."
+  type        = string
+  default     = null
+}
+
 variable "prod_env" {
   description = "Environment label for the prod SSH node used in the access request demo"
   type        = string
@@ -101,6 +107,12 @@ variable "enable_grafana" {
   default     = false
 }
 
+variable "postgres_auto_users" {
+  description = "Register the Postgres host for Teleport auto user provisioning (teleport.dev/db-access = auto, admin_user teleport-admin), so users connect as their own database account. Requires enable_postgres."
+  type        = bool
+  default     = false
+}
+
 variable "enable_dvdrental" {
   description = "Restore the public dvdrental sample database on the Postgres host. Requires enable_postgres."
   type        = bool
@@ -109,6 +121,12 @@ variable "enable_dvdrental" {
 
 variable "enable_vnet_demo" {
   description = "Also register HTTPBin as a TCP app (httpbin-tcp-<env>) so it is reachable through Teleport VNet by its public address. VNet supports TCP apps only. Requires enable_httpbin."
+  type        = bool
+  default     = false
+}
+
+variable "enable_mcp_demo_server" {
+  description = "Teleport's built-in teleport-mcp-demo server on the MCP host (tools teleport_user_info, teleport_session_info, teleport_demo_info). Requires enable_mcp. It carries only the teleport.internal/resource-type=demo label, so grant it with a role matching that label."
   type        = bool
   default     = false
 }
@@ -171,8 +189,22 @@ variable "demo_panel_app_repo" {
   default     = "https://github.com/tenaciousdlg/app-demo-panel"
 }
 
+variable "name_prefix" {
+  description = "Prefix for resource names, Name tags, the console IAM roles and the Grafana admin user. Defaults to the local part of user. Set it for a shared environment such as an event, so names carry the environment rather than a person. The teleport.dev/creator tag always keeps user."
+  type        = string
+  default     = null
+}
+
+variable "aws_console_roles" {
+  description = "IAM roles created for the AWS Console app when enable_aws_console is true: name suffix => managed policy ARNs. Each role trusts only the console host. Users get them through the aws_role_arns output (demo-rbac grants them directly; for other RBAC, grant it as an aws_role_arns trait)."
+  type        = map(list(string))
+  default = {
+    ReadOnly = ["arn:aws:iam::aws:policy/ReadOnlyAccess"]
+  }
+}
+
 variable "console_role_arns" {
-  description = "IAM role ARNs the AWS Console app may assume"
+  description = "Additional existing IAM role ARNs the AWS Console app may assume, beyond aws_console_roles. Each must trust the console host's role."
   type        = list(string)
   default     = []
 }

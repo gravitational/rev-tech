@@ -30,6 +30,12 @@ resource "aws_instance" "windows" {
   instance_type          = var.instance_type
   subnet_id              = var.subnet_id
   vpc_security_group_ids = var.security_group_ids
+  # Replace the host when its userdata changes. In place, the AWS provider
+  # swaps the script and restarts the instance, but cloud-init runs userdata
+  # only on first boot, so labels and config never change. Demo hosts are
+  # rebuilt from userdata, so replacement is safe.
+  user_data_replace_on_change = true
+
   user_data = templatefile("${path.module}/windows.tpl", {
     User            = local.user
     Password        = random_string.windows.result

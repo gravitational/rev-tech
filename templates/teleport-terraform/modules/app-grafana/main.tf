@@ -24,11 +24,15 @@ resource "random_string" "token" {
 resource "teleport_provision_token" "grafana" {
   version = "v2"
   metadata = {
+    # The token's name lives in metadata. spec has no name attribute, so a
+    # name there was silently dropped and Teleport generated one: unknown at
+    # plan, which made user_data unknown and replaced the host whenever an
+    # expired token was recreated.
+    name    = random_string.token.result
     expires = timeadd(timestamp(), "8h")
   }
   spec = {
     roles = ["App", "Node"]
-    name  = random_string.token.result
   }
   # timestamp() changes on every plan, causing perpetual drift noise.
   # The token only needs to live long enough for the instance to boot and register.
@@ -51,6 +55,12 @@ resource "aws_instance" "grafana" {
   # Teleport nodes register via outbound reverse tunnel — no public IP needed.
   associate_public_ip_address = null
   vpc_security_group_ids      = var.security_group_ids
+
+  # Replace the host when its userdata changes. In place, the AWS provider
+  # swaps the script and restarts the instance, but cloud-init runs userdata
+  # only on first boot, so labels and config never change. Demo hosts are
+  # rebuilt from userdata, so replacement is safe.
+  user_data_replace_on_change = true
 
   user_data = templatefile("${path.module}/userdata.tpl", {
     name          = "${var.env}-grafana"

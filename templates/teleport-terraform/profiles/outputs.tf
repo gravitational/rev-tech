@@ -39,8 +39,11 @@ output "connection_guide" {
     %{~if var.enable_postgres}
        tsh db connect postgres-${var.env} --db-user=writer --db-name=postgres
     %{~endif}
-    %{~if var.enable_postgres && var.enable_dvdrental}
+    %{~if var.enable_postgres && var.enable_dvdrental && !var.postgres_auto_users}
        tsh db connect postgres-${var.env} --db-user=writer --db-name=dvdrental   # sample data
+    %{~endif}
+    %{~if var.enable_postgres && var.postgres_auto_users}
+       tsh db connect postgres-${var.env} --db-name=${var.enable_dvdrental ? "dvdrental" : "postgres"}   # your own auto-provisioned user
     %{~endif}
     %{~if var.enable_mysql}
        tsh db connect mysql-${var.env} --db-user=writer
@@ -75,7 +78,8 @@ output "connection_guide" {
        tsh apps login demo-panel-${var.env}
     %{~endif}
     %{~if var.enable_aws_console}
-       tsh apps login awsconsole-${var.env}
+       tsh apps login awsconsole-${var.env} --aws-role ${try(values(local.aws_console_role_names)[0], "<role-name>")}
+       tsh aws s3 ls                          # CLI through the same role
     %{~endif}
     %{~if var.enable_mcp}
 
@@ -83,6 +87,9 @@ output "connection_guide" {
        tsh mcp ls
        tsh mcp config mcp-filesystem-${var.env}
        # Paste into Claude Desktop, Cursor, or any MCP client
+    %{~if var.enable_mcp_demo_server}
+       tsh mcp config teleport-mcp-demo   # built-in: user and session info tools
+    %{~endif}
     %{~endif}
     %{~if var.enable_ansible}
 
@@ -115,6 +122,11 @@ output "connection_guide" {
 output "demo_user_setup" {
   description = "One-time activation steps for the demo user (null when create_demo_rbac is false)"
   value       = var.create_demo_rbac ? module.demo_rbac[0].demo_user_setup : null
+}
+
+output "aws_role_arns" {
+  description = "IAM roles the AWS Console app can assume (empty unless enable_aws_console). With RBAC other than demo-rbac, grant them as an aws_role_arns trait."
+  value       = local.aws_console_role_arns
 }
 
 output "rds_endpoint" {

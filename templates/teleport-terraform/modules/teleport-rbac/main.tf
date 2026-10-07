@@ -55,6 +55,16 @@ terraform {
 }
 
 ##################################################################################
+# AUDIT VISIBILITY
+#
+# No role here grants the audit log (`event`), and `session` is limited to
+# sessions the user took part in -- the same where clause Teleport's own
+# `access` preset uses. Seeing everyone's events and recordings is the
+# auditor preset's job; grant that deliberately (the engineers Access List
+# does), not as a side effect of being able to log in.
+##################################################################################
+
+##################################################################################
 # BASE ROLE
 ##################################################################################
 
@@ -73,9 +83,18 @@ resource "teleport_role" "base_user" {
     }
 
     allow = {
+      # Teleport's built-in teleport-mcp-demo server (app_service
+      # mcp_demo_server). It carries only this label and its three tools
+      # return the caller's own user and session details, so every
+      # authenticated user may use it.
+      app_labels = {
+        "teleport.internal/resource-type" = ["demo"]
+      }
+      mcp = {
+        tools = ["teleport_user_info", "teleport_session_info", "teleport_demo_info"]
+      }
       rules = [
-        { resources = ["event"], verbs = ["list", "read"] },
-        { resources = ["session"], verbs = ["read", "list"] }
+        { resources = ["session"], verbs = ["read", "list"], where = "contains(session.participants, user.metadata.name)" }
       ]
     }
   }
@@ -117,14 +136,16 @@ resource "teleport_role" "dev_access" {
         team                     = ["dev"]
         "teleport.dev/db-access" = ["mapped"]
       }
-      db_names       = ["{{external.db_names}}", "*"]
-      db_users       = ["{{external.db_users}}", "reader", "writer"]
+      db_names = ["{{external.db_names}}", "*"]
+      # Standing access is the person's own identity. Shared accounts (writer,
+      # ubuntu, ec2-user) live only in the requested prod-* roles, so every
+      # use of one is a time-boxed, approved, attributed request.
+      db_users       = ["{{external.db_users}}", "reader"]
       desktop_groups = ["Administrators"]
       host_groups    = ["wheel"]
       logins = [
         "{{email.local(external.username)}}",
-        "{{email.local(external.email)}}",
-        "ubuntu", "ec2-user"
+        "{{email.local(external.email)}}"
       ]
       join_sessions = [
         {
@@ -142,8 +163,7 @@ resource "teleport_role" "dev_access" {
         team = ["dev"]
       }
       rules = [
-        { resources = ["event"], verbs = ["list", "read"] },
-        { resources = ["session"], verbs = ["read", "list"] }
+        { resources = ["session"], verbs = ["read", "list"], where = "contains(session.participants, user.metadata.name)" }
       ]
       windows_desktop_labels = {
         env  = ["dev"]
@@ -195,8 +215,7 @@ resource "teleport_role" "dev_auto_access" {
         team = ["dev"]
       }
       rules = [
-        { resources = ["event"], verbs = ["list", "read"] },
-        { resources = ["session"], verbs = ["read", "list"] }
+        { resources = ["session"], verbs = ["read", "list"], where = "contains(session.participants, user.metadata.name)" }
       ]
     }
   }
@@ -222,7 +241,7 @@ resource "teleport_role" "platform_dev_access" {
       create_host_user_default_shell = "/bin/bash"
       create_db_user                 = true
       create_db_user_mode            = 2 # keep (db users: 2, NOT 3)
-      create_desktop_user            = false
+      create_desktop_user            = true
       desktop_clipboard              = true
       desktop_directory_sharing      = true
       pin_source_ip                  = false
@@ -239,11 +258,13 @@ resource "teleport_role" "platform_dev_access" {
         team = ["*"]
       }
       db_names = ["{{external.db_names}}", "*"]
+      # Personal identity standing; shared writer/ubuntu/ec2-user only via the
+      # requested prod-* roles (see dev-access).
       db_users = [
         "{{external.db_users}}",
         "{{email.local(external.username)}}",
         "{{email.local(external.email)}}",
-        "reader", "writer"
+        "reader"
       ]
       desktop_groups = ["Administrators"]
       host_groups    = ["wheel"]
@@ -257,8 +278,7 @@ resource "teleport_role" "platform_dev_access" {
       ]
       logins = [
         "{{email.local(external.username)}}",
-        "{{email.local(external.email)}}",
-        "ubuntu", "ec2-user"
+        "{{email.local(external.email)}}"
       ]
       mcp = {
         tools = ["*"]
@@ -268,8 +288,7 @@ resource "teleport_role" "platform_dev_access" {
         team = ["*"]
       }
       rules = [
-        { resources = ["event"], verbs = ["list", "read"] },
-        { resources = ["session"], verbs = ["read", "list"] },
+        { resources = ["session"], verbs = ["read", "list"], where = "contains(session.participants, user.metadata.name)" },
         { resources = ["access_graph"], verbs = ["list", "read"] }
       ]
       windows_desktop_labels = {
@@ -322,8 +341,7 @@ resource "teleport_role" "prod_readonly_access" {
         team = ["platform"]
       }
       rules = [
-        { resources = ["event"], verbs = ["list", "read"] },
-        { resources = ["session"], verbs = ["read", "list"] }
+        { resources = ["session"], verbs = ["read", "list"], where = "contains(session.participants, user.metadata.name)" }
       ]
       windows_desktop_labels = {
         env  = ["prod"]
@@ -354,7 +372,7 @@ resource "teleport_role" "prod_access" {
       create_host_user_default_shell = "/bin/bash"
       create_db_user                 = true
       create_db_user_mode            = 2 # keep (db users: 2, NOT 3)
-      create_desktop_user            = false
+      create_desktop_user            = true
       desktop_clipboard              = true
       desktop_directory_sharing      = true
       pin_source_ip                  = false
@@ -401,8 +419,7 @@ resource "teleport_role" "prod_access" {
         team = ["platform"]
       }
       rules = [
-        { resources = ["event"], verbs = ["list", "read"] },
-        { resources = ["session"], verbs = ["read", "list"] }
+        { resources = ["session"], verbs = ["read", "list"], where = "contains(session.participants, user.metadata.name)" }
       ]
       windows_desktop_labels = {
         env  = ["prod"]
@@ -456,8 +473,7 @@ resource "teleport_role" "prod_auto_access" {
         team = ["platform"]
       }
       rules = [
-        { resources = ["event"], verbs = ["list", "read"] },
-        { resources = ["session"], verbs = ["read", "list"] }
+        { resources = ["session"], verbs = ["read", "list"], where = "contains(session.participants, user.metadata.name)" }
       ]
     }
   }

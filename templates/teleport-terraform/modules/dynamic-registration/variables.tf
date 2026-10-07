@@ -91,3 +91,9 @@ variable "db_access_pattern" {
     error_message = "db_access_pattern must be either 'mapped' or 'auto'."
   }
 }
+
+variable "admin_user" {
+  description = "Database admin user Teleport uses for auto user provisioning (e.g. \"teleport-admin\"). null registers without one."
+  type        = string
+  default     = null
+}
