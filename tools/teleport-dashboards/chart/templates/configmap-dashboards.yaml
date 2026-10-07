@@ -1,0 +1,27 @@
+{{- $root := . -}}
+{{- $files := .Files.Glob (printf "%s/*.json" .Values.dashboardsDir) -}}
+{{- if not $files }}
+{{- fail (printf "no dashboards found in %s/ — render a profile first:\n  ./scripts/render-dashboards.py --profile profiles/<name>.yaml --out helm/charts/teleport-dashboards/%s\nInstalling zero dashboards silently is never the intent, so this is a hard failure." .Values.dashboardsDir .Values.dashboardsDir) }}
+{{- end }}
+{{- range $path, $bytes := $files }}
+{{- $name := base $path | trimSuffix ".json" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-{{ $name }}
+  namespace: {{ $root.Values.namespace }}
+  labels:
+    {{- include "teleport-dashboards.labels" $root | nindent 4 }}
+    {{ $root.Values.sidecarLabel }}: {{ $root.Values.sidecarLabelValue | quote }}
+  annotations:
+    {{- if $root.Values.folder }}
+    grafana_folder: {{ $root.Values.folder | quote }}
+    {{- end }}
+    {{- if $root.Values.profile }}
+    teleport.dev/rendered-profile: {{ $root.Values.profile | quote }}
+    {{- end }}
+data:
+  {{ $name }}.json: |
+{{ $root.Files.Get $path | indent 4 }}
+{{- end }}

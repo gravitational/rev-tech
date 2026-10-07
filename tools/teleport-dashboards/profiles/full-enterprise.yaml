@@ -1,0 +1,23 @@
+name: full-enterprise
+# The reference cluster: Teleport Enterprise, Postgres audit backend on CNPG,
+# Identity Security enabled, kube-prometheus-stack scraping everything.
+capabilities:
+  - prometheus
+  - audit.postgres
+  - accessGraph
+  # The teleport-usage exporter is deployed and scraped. Unlocks the MFA
+  # layer-1 posture panels, which are API-only and unreachable otherwise.
+  - usageExporter
+  - cnpg
+  - kubeStateMetrics
+variables:
+  # Prometheus retention was raised to 30d on 2026-09-01, but the TSDB only
+  # holds ~7d of actual data until it accumulates. This value tracks what is
+  # USABLE, not what is configured -- set it to 30d once the data catches up.
+  # scripts/validate-dashboards.py reports the effective history on every run
+  # and fails (L2) if a panel asks for more than exists, so raising this early
+  # is caught rather than silently wrong.
+  prom_retention: 7d
+  # The audit backend is a separate and much longer clock: 116d measured on the
+  # reference cluster. Do not collapse these into one value.
+  audit_retention: 90d
