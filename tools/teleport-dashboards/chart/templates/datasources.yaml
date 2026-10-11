@@ -1,0 +1,99 @@
+{{- if .Values.datasources.create }}
+{{- $root := . -}}
+{{- $ds := .Values.datasources -}}
+
+{{/*
+Datasource provisioning for arbitrary self-hosted Teleport clusters.
+
+Written as a SECRET rather than a ConfigMap because Postgres datasources carry a
+password. The Grafana sidecar shipped with kube-prometheus-stack runs with
+RESOURCE=both, so it watches Secrets and ConfigMaps alike; a ConfigMap would put
+the password in plain text for anyone with namespace read.
+
+Passwords resolve in this order:
+  1. .password in values             -- fine for --set on a throwaway cluster
+  2. .existingSecret / .existingSecretKey -- read at INSTALL time via lookup
+
+`lookup` returns empty during `helm template` and `--dry-run`, because there is
+no cluster to read. That is why a missing password is a hard failure rather than
+a silently password-less datasource: an install that appears to succeed and
+leaves every audit panel broken is the failure mode this whole repo is about.
+Render with datasources.create=false (the default) if you provision elsewhere.
+*/}}
+
+
+{{- $auditPw := "" -}}
+{{- if $ds.auditBackend.enabled -}}
+  {{- $auditPw = include "teleport-dashboards.dsPassword" (dict "ctx" $root "cfg" $ds.auditBackend) -}}
+  {{- if not $ds.auditBackend.host -}}
+    {{- fail "datasources.auditBackend.enabled is true but .host is empty. Set it to host:port for the Teleport audit database (any reachable Postgres -- RDS, a managed instance, or an in-cluster service)." -}}
+  {{- end -}}
+  {{- if not $auditPw -}}
+    {{- fail "datasources.auditBackend.enabled is true but no password resolved. Set .password, or .existingSecret plus .existingSecretKey. Note that existingSecret is read with `lookup`, which returns nothing during `helm template` or --dry-run -- use --set datasources.create=false to render without it." -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $agPw := "" -}}
+{{- if $ds.accessGraph.enabled -}}
+  {{- $agPw = include "teleport-dashboards.dsPassword" (dict "ctx" $root "cfg" $ds.accessGraph) -}}
+  {{- if not $ds.accessGraph.host -}}
+    {{- fail "datasources.accessGraph.enabled is true but .host is empty." -}}
+  {{- end -}}
+  {{- if not $agPw -}}
+    {{- fail "datasources.accessGraph.enabled is true but no password resolved. Set .password, or .existingSecret plus .existingSecretKey." -}}
+  {{- end -}}
+{{- end -}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "teleport-dashboards.fullname" . | default "teleport-dashboards" }}-datasources
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "teleport-dashboards.labels" . | nindent 4 }}
+    {{ $ds.sidecarLabel }}: {{ $ds.sidecarLabelValue | quote }}
+stringData:
+  teleport-datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    {{- if $ds.prometheus.enabled }}
+      # Names are load-bearing. The dashboards resolve datasources through
+      # variables pinned by name regex, because a cluster with several Postgres
+      # datasources otherwise has Grafana bind to whichever sorts first --
+      # silently querying the wrong database and returning plausible rows.
+      - name: {{ $ds.prometheus.name | quote }}
+        type: prometheus
+        access: proxy
+        url: {{ $ds.prometheus.url | quote }}
+        isDefault: {{ $ds.prometheus.isDefault }}
+        editable: false
+    {{- end }}
+    {{- if $ds.auditBackend.enabled }}
+      - name: {{ $ds.auditBackend.name | quote }}
+        type: postgres
+        access: proxy
+        url: {{ $ds.auditBackend.host | quote }}
+        user: {{ $ds.auditBackend.user | quote }}
+        editable: false
+        jsonData:
+          database: {{ $ds.auditBackend.database | quote }}
+          sslmode: {{ $ds.auditBackend.sslmode | quote }}
+          postgresVersion: {{ $ds.auditBackend.postgresVersion }}
+        secureJsonData:
+          password: {{ $auditPw | quote }}
+    {{- end }}
+    {{- if $ds.accessGraph.enabled }}
+      - name: {{ $ds.accessGraph.name | quote }}
+        type: postgres
+        access: proxy
+        url: {{ $ds.accessGraph.host | quote }}
+        user: {{ $ds.accessGraph.user | quote }}
+        editable: false
+        jsonData:
+          database: {{ $ds.accessGraph.database | quote }}
+          sslmode: {{ $ds.accessGraph.sslmode | quote }}
+          postgresVersion: {{ $ds.accessGraph.postgresVersion }}
+        secureJsonData:
+          password: {{ $agPw | quote }}
+    {{- end }}
+{{- end }}
