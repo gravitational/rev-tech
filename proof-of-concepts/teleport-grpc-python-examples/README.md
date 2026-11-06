@@ -165,9 +165,27 @@ sequenceDiagram
 pip3 install -r requirements.txt
 ```
 
-That's `grpcio` — the only runtime dependency. (`generate_stubs.sh` also
-needs `grpcio-tools`, but only if you're regenerating `gen/python/`
-yourself; it installs that itself.)
+That's `grpcio` and `protobuf` — the two runtime dependencies (the
+generated `gen/python/*_pb2.py` files import `google.protobuf` directly;
+it's not a guaranteed transitive dependency of plain `grpcio`, so it's
+listed explicitly rather than relying on something else happening to pull
+it in). `generate_stubs.sh` also needs `grpcio-tools`, but only if you're
+regenerating `gen/python/` yourself; it installs that itself.
+
+**If `python3`/`pip3` on your machine is a Homebrew-managed Python**
+(check with `python3 -c "import sys; print(sys.executable)"` — Homebrew's
+is typically under `/opt/homebrew/...`), a plain `pip install` will
+likely refuse with an "externally managed environment" error (PEP 668).
+Don't reach for `--break-system-packages` for this — use a virtualenv
+instead, which sidesteps the problem entirely and is the generally
+correct way to run Python scripts with their own dependencies regardless
+of this specific error:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python3 simple_ping_example.py   # use .venv/bin/python3 for every script below
+```
 
 ### 0. Already `tsh login`'d? Just run it.
 
