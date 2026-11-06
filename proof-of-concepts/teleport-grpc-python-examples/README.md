@@ -16,12 +16,7 @@ Every script here was tested against a live Teleport cluster — a
 disposable local cluster, an internal cluster, and an Enterprise demo
 cluster — using both connection modes described below.
 
-**Prior art:** [hugoShaka/teleportpy](https://github.com/hugoShaka/teleportpy)
-(a Teleport engineer's prototype) independently hit and solved the same
-core ALPN-routing problem this folder solves (see "Connecting through a
-Proxy" below) — worth a look, though it's an unmaintained proof-of-concept
-with a narrower scope (one `ListUsers` example, no Access Requests, no
-Machine ID). Teleport's own
+Teleport's
 [issue #32658](https://github.com/gravitational/teleport/issues/32658)
 ("Provide non-Go API client examples for gRPC API") was closed
 not-planned in 2024 — official confirmation there's no official Python
