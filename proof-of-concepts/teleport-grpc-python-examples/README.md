@@ -13,9 +13,232 @@ This folder does exactly that: compiles real stubs from
 `tctl`/`tsh` talk to — for a few common operations.
 
 Every script here was run against a real Teleport cluster before being
-committed — both a disposable local test cluster and a real one, over
-both connection modes described below. This isn't "should work" sample
-code; every claim in this README was checked against a live Auth Service.
+committed — a disposable local test cluster, a real internal cluster, and
+a real Enterprise-licensed demo cluster, over both connection modes
+described below. This isn't "should work" sample code; every claim in
+this README was checked against a live Auth Service.
+
+**Prior art:** [hugoShaka/teleportpy](https://github.com/hugoShaka/teleportpy)
+(a Teleport engineer's prototype) independently hit and solved the same
+core ALPN-routing problem this folder solves (see "Connecting through a
+Proxy" below) — worth a look, though it's an unmaintained proof-of-concept
+with a narrower scope (one `ListUsers` example, no access requests, no
+Machine ID). Teleport's own
+[issue #32658](https://github.com/gravitational/teleport/issues/32658)
+("Provide non-Go API client examples for gRPC API") was closed
+not-planned in 2024 — official confirmation there's no official Python
+client and no plan to build one.
+
+## Quick start
+
+### Prerequisites
+
+```bash
+pip3 install -r requirements.txt
+```
+
+That's `grpcio` and `protobuf` — the two runtime dependencies (the
+generated `gen/python/*_pb2.py` files import `google.protobuf` directly;
+it's not a guaranteed transitive dependency of plain `grpcio`, so it's
+listed explicitly rather than relying on something else happening to pull
+it in). `generate_stubs.sh` also needs `grpcio-tools`, but only if you're
+regenerating `gen/python/` yourself; it installs that itself.
+
+**If `python3`/`pip3` on your machine is a Homebrew-managed Python**
+(check with `python3 -c "import sys; print(sys.executable)"` — Homebrew's
+is typically under `/opt/homebrew/...`), a plain `pip install` will
+likely refuse with an "externally managed environment" error (PEP 668).
+Don't reach for `--break-system-packages` for this — use a virtualenv
+instead, which sidesteps the problem entirely and is the generally
+correct way to run Python scripts with their own dependencies regardless
+of this specific error:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python3 simple_ping_example.py   # use .venv/bin/python3 for every script below
+```
+
+### 0. Already `tsh login`'d? Just run it.
+
+If you're in a shell with an active `tsh` session, every script here
+falls back to reading that profile directly from `$TSH_HOME` (or
+`~/.tsh`) — the same plain files `tsh` itself writes — whenever
+`identity.key`/`.crt`/`.cas` aren't present locally. No flags needed:
+
+```bash
+python3 simple_ping_example.py
+```
+
+This reads your proxy address, cluster name, and credentials straight
+from the profile and connects through the proxy (the default mode — a
+tsh profile's address is the Proxy, essentially always). If
+`TELEPORT_PROXY`/`TELEPORT_CLUSTER` happen to already be set in your
+shell to something else, those win — `unset` them first if that's not
+what you want.
+
+One real limitation, not a bug: if your tsh identity uses a
+hardware-backed key (PIV/YubiKey — some environments enforce this), there
+is no raw private key to read, and this fails with a clear error. That's
+inherent to this environment's security policy, not something a Python
+TLS library can work around — see "Connecting through a Proxy" below for
+why Go's tooling doesn't hit this (it uses `crypto.Signer`, a pluggable
+signing interface Python's `ssl` module has no equivalent for). Use a
+Machine ID bot (Option A below) instead; those always have a software key.
+
+Everything below is for when you want to be explicit about which
+identity to use (e.g. Machine ID) rather than relying on your current
+session.
+
+### 1. Get an identity (your mTLS credentials)
+
+Every example authenticates via an identity: a private key + client
+certificate + CA chain. You have two options:
+
+**Option A — Machine ID (recommended, and what `machine_id_example.py` is
+built around).** This is how an automated/unattended caller should get
+credentials. A cluster administrator creates a bot and a one-time join
+token:
+
+```bash
+tctl bots add my-bot --roles=access-request-admin,access
+```
+
+Then, using the join token that command prints, fetch a short-lived
+identity:
+
+```bash
+tbot start identity \
+  --destination=file:///path/to/tbot-identity \
+  --storage=file:///path/to/tbot-storage \
+  --proxy-server=<cluster-proxy-host>:443 \
+  --token=<join-token-from-above> \
+  --join-method=token \
+  --oneshot
+```
+
+This writes several files into the destination directory. The three
+`machine_id_example.py` reads are `key`, `tlscert`, and
+`teleport-host-ca.crt` (the CA that signed the Auth Service's own
+certificate). In production, drop `--oneshot` and run `tbot` as a
+long-lived process so it keeps renewing the identity in the background.
+
+Note: Machine ID bots cannot be access-request **requesters** — Teleport
+rejects `CreateAccessRequestV2` for a bot identity with `INVALID_ARGUMENT`
+by design (access requests are a human-escalation workflow). Bots work
+fine as **reviewers** (`approve_access_request.py`).
+
+**Option B — a human user's identity.** If you're testing interactively,
+any mechanism your cluster admin provides for issuing a user identity file
+works the same way — it's still just a key/cert/CA triple, and
+`teleport_grpc_client.py` doesn't care how it was produced.
+
+Whichever option you use, the RBAC gotchas below apply to it.
+
+The identity's roles need appropriate RBAC. Three gotchas worth knowing:
+
+- **Creating** an access request doesn't require a special grant — it's
+  essentially always available to an authenticated identity (except bots,
+  per the note above).
+- **Listing/reading** access requests over gRPC (`ListAccessRequests`,
+  `GetAccessRequestsV2`) silently returns *zero results* — no error — if
+  the caller's roles don't grant `list`/`read` on the `access_request`
+  resource. The built-in `editor` preset role does **not** include this.
+  Give your identity a role like:
+
+  ```yaml
+  kind: role
+  version: v7
+  metadata:
+    name: access-request-admin
+  spec:
+    allow:
+      rules:
+      - resources: [access_request]
+        verbs: [list, read, create, update, delete]
+  ```
+
+- **Reviewing** a request via `SubmitAccessReview`
+  (`approve_access_request.py` — the real `tsh request approve` call) has
+  a *different* authorization check: the reviewer's role needs
+  `allow.review_requests.roles` listing the requested role, e.g.:
+
+  ```yaml
+  kind: role
+  version: v7
+  metadata:
+    name: access-request-reviewer
+  spec:
+    allow:
+      review_requests:
+        roles: ["access"]
+  ```
+
+  **`allow.review_requests` is an Enterprise-only field** — on an
+  unlicensed/OSS cluster, creating a role with it fails outright, and
+  `SubmitAccessReview` can never succeed for anyone, regardless of role.
+  Use `review_access_request_example.py` (`SetAccessRequestState`) there
+  instead — see its docstring for how the two calls differ.
+
+### 2. (Re)generate the Python stubs (optional — already included)
+
+```bash
+./generate_stubs.sh
+```
+
+Only needed if you're bumping the pinned Teleport version (see below) or
+adding RPCs beyond what's already compiled into `gen/python/` (unlikely —
+`generate_stubs.sh` already compiles all of `api/proto`, not just
+`AuthService`).
+
+### 3. Pick a connection mode
+
+Every example takes the same connection flags (`--help` on any of them
+shows the full list).
+
+**Via proxy (default)** — the realistic case for most deployments,
+including any Machine ID bot that only has network access to the public
+Proxy (see "Connecting through a Proxy" below):
+
+```bash
+python3 ping_example.py --proxy <proxy-host>:443 --cluster-name <cluster> \
+  --key identity.key --cert identity.crt --cas identity.cas
+```
+
+**Direct (`--direct`)** — you have network-level access to the Auth
+Service's own port (on-prem, same host, VPN):
+
+```bash
+python3 ping_example.py --direct --proxy <auth-host>:3025 --tls-server-name <nodename> \
+  --key identity.key --cert identity.crt --cas identity.cas
+```
+
+`--cluster-name` (default mode) is the cluster's name as Teleport knows
+it, used to build the ALPN routing protocol string. `--tls-server-name`
+(`--direct` mode) must match a SAN on the Auth Service's host certificate
+(its nodename, by default) — if you see `UNAUTHENTICATED: Hostname
+Verification Check failed`, this is the fix.
+
+### 4. Run the examples
+
+```bash
+python3 ping_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
+python3 machine_id_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
+
+python3 create_access_request_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
+# -> prints a request id
+
+python3 list_access_requests_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
+
+# the real tsh request approve/deny call (needs an Enterprise-licensed cluster + reviewer role):
+python3 approve_access_request.py <request-id> --proxy <proxy-host>:443 --cluster-name <cluster> ...
+
+# the raw admin-override state set (works anywhere, bypasses review semantics):
+python3 review_access_request_example.py <request-id> --proxy <proxy-host>:443 --cluster-name <cluster> ...
+```
+
+(Add `--direct` and swap `--proxy`/`--cluster-name` for
+`--proxy`/`--tls-server-name` for direct mode.)
 
 ## How it fits together
 
@@ -33,7 +256,7 @@ flowchart LR
         D -->|"--direct: plain mTLS"| E["Teleport\nAuth Service"]
     end
 
-    F["ping_example.py\ncreate_access_request_example.py\nlist_access_requests_example.py\nreview_access_request_example.py\nmachine_id_example.py"] --> D
+    F["ping_example.py\ncreate_access_request_example.py\nlist_access_requests_example.py\napprove_access_request.py\nreview_access_request_example.py\nmachine_id_example.py"] --> D
 ```
 
 - **Proto → Python** happens once (or whenever you deliberately bump the
@@ -135,18 +358,24 @@ sequenceDiagram
     Py->>Auth: ListAccessRequests(filter={id})
     Auth-->>Py: [ AccessRequestV3 { state: PENDING } ]
 
-    Py->>Auth: SetAccessRequestState(id, state: APPROVED)
-    Auth-->>Py: Empty
+    Py->>Auth: SubmitAccessReview(id, proposed_state: APPROVED)
+    Auth-->>Py: AccessRequestV3 { state: APPROVED }
 
     Py->>Auth: ListAccessRequests(filter={id})
     Auth-->>Py: [ AccessRequestV3 { state: APPROVED } ]
 ```
 
+Verified for real: two separate users (`alice`, `bob`) each created a
+pending request; a properly-authorized reviewer approved `alice`'s
+specifically via `SubmitAccessReview`; `bob`'s was confirmed still
+`PENDING` afterward — proof this is a precise, authorized state
+transition, not a blanket write.
+
 ## Folder contents
 
 | File | What it does |
 |---|---|
-| `requirements.txt` | The one runtime dependency (`grpcio`). `pip3 install -r requirements.txt`. |
+| `requirements.txt` | The two runtime dependencies (`grpcio`, `protobuf`). `pip3 install -r requirements.txt`. |
 | `generate_stubs.sh` | Pulls Teleport's `.proto` files (at a pinned version) + deps and compiles them to `gen/python/`. |
 | `gen/python/` | Generated output (checked in so the examples run without a network dependency; see below for why). |
 | `gen/TELEPORT_VERSION` | Which Teleport release tag `gen/python/` was generated from. |
@@ -154,187 +383,9 @@ sequenceDiagram
 | `ping_example.py` | Connectivity check — `AuthService.Ping`. |
 | `create_access_request_example.py` | Creates a pending access request (`CreateAccessRequestV2`), then confirms it exists (`ListAccessRequests`). |
 | `list_access_requests_example.py` | Lists all access requests (`tctl requests ls` equivalent). |
-| `review_access_request_example.py` | Approves (or denies) a request by ID (`SetAccessRequestState`). |
+| `approve_access_request.py` | Approves/denies a request via `SubmitAccessReview` — the exact call `tsh request approve`/`deny` make. Needs an Enterprise-licensed cluster and a reviewer role. |
+| `review_access_request_example.py` | Approves/denies a request via `SetAccessRequestState` — a direct, unconditional admin-override state set that bypasses review/threshold semantics entirely. Works on OSS. |
 | `machine_id_example.py` | Same `Ping` call, but authenticated as a Machine ID bot via `tbot` instead of a user identity. |
-
-## Quick start
-
-### Prerequisites
-
-```bash
-pip3 install -r requirements.txt
-```
-
-That's `grpcio` and `protobuf` — the two runtime dependencies (the
-generated `gen/python/*_pb2.py` files import `google.protobuf` directly;
-it's not a guaranteed transitive dependency of plain `grpcio`, so it's
-listed explicitly rather than relying on something else happening to pull
-it in). `generate_stubs.sh` also needs `grpcio-tools`, but only if you're
-regenerating `gen/python/` yourself; it installs that itself.
-
-**If `python3`/`pip3` on your machine is a Homebrew-managed Python**
-(check with `python3 -c "import sys; print(sys.executable)"` — Homebrew's
-is typically under `/opt/homebrew/...`), a plain `pip install` will
-likely refuse with an "externally managed environment" error (PEP 668).
-Don't reach for `--break-system-packages` for this — use a virtualenv
-instead, which sidesteps the problem entirely and is the generally
-correct way to run Python scripts with their own dependencies regardless
-of this specific error:
-
-```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python3 simple_ping_example.py   # use .venv/bin/python3 for every script below
-```
-
-### 0. Already `tsh login`'d? Just run it.
-
-If you're in a shell with an active `tsh` session, every script here
-falls back to reading that profile directly from `$TSH_HOME` (or
-`~/.tsh`) — the same plain files `tsh` itself writes — whenever
-`identity.key`/`.crt`/`.cas` aren't present locally. No flags needed:
-
-```bash
-python3 simple_ping_example.py
-```
-
-This reads your proxy address, cluster name, and credentials straight
-from the profile and connects through the proxy (the default mode — a
-tsh profile's address is the Proxy, essentially always). If
-`TELEPORT_PROXY`/`TELEPORT_CLUSTER` happen to already be set in your
-shell to something else, those win — `unset` them first if that's not
-what you want.
-
-One real limitation, not a bug: if your tsh identity uses a
-hardware-backed key (PIV/YubiKey — some environments enforce this), there
-is no raw private key to read, and this fails with a clear error. That's
-inherent to this environment's security policy, not something a Python
-TLS library can work around — see "Connecting through a Proxy" above for
-why Go's tooling doesn't hit this (it uses `crypto.Signer`, a pluggable
-signing interface Python's `ssl` module has no equivalent for). Use a
-Machine ID bot (Option A below) instead; those always have a software key.
-
-Everything below is for when you want to be explicit about which
-identity to use (e.g. Machine ID) rather than relying on your current
-session.
-
-### 1. Get an identity (your mTLS credentials)
-
-Every example authenticates via an identity: a private key + client
-certificate + CA chain. You have two options:
-
-**Option A — Machine ID (recommended, and what `machine_id_example.py` is
-built around).** This is how an automated/unattended caller should get
-credentials. A cluster administrator creates a bot and a one-time join
-token:
-
-```bash
-tctl bots add my-bot --roles=access-request-admin,access
-```
-
-Then, using the join token that command prints, fetch a short-lived
-identity:
-
-```bash
-tbot start identity \
-  --destination=file:///path/to/tbot-identity \
-  --storage=file:///path/to/tbot-storage \
-  --proxy-server=<cluster-proxy-host>:443 \
-  --token=<join-token-from-above> \
-  --join-method=token \
-  --oneshot
-```
-
-This writes several files into the destination directory. The three
-`machine_id_example.py` reads are `key`, `tlscert`, and
-`teleport-host-ca.crt` (the CA that signed the Auth Service's own
-certificate). In production, drop `--oneshot` and run `tbot` as a
-long-lived process so it keeps renewing the identity in the background.
-
-**Option B — a human user's identity.** If you're testing interactively,
-any mechanism your cluster admin provides for issuing a user identity file
-works the same way — it's still just a key/cert/CA triple, and
-`teleport_grpc_client.py` doesn't care how it was produced.
-
-Whichever option you use, the RBAC gotcha below applies to it.
-
-The identity's roles need appropriate RBAC. One gotcha worth knowing:
-
-- **Creating** an access request doesn't require a special grant — it's
-  essentially always available to an authenticated identity.
-- **Listing/reading** access requests over gRPC (`ListAccessRequests`,
-  `GetAccessRequestsV2`) silently returns *zero results* — no error — if
-  the caller's roles don't grant `list`/`read` on the `access_request`
-  resource. The built-in `editor` preset role does **not** include this.
-  Give your identity a role like:
-
-  ```yaml
-  kind: role
-  version: v7
-  metadata:
-    name: access-request-admin
-  spec:
-    allow:
-      rules:
-      - resources: [access_request]
-        verbs: [list, read, create, update, delete]
-  ```
-
-### 2. (Re)generate the Python stubs (optional — already included)
-
-```bash
-./generate_stubs.sh
-```
-
-Only needed if you're bumping the pinned Teleport version (see below) or
-adding RPCs beyond what's already compiled into `gen/python/` (unlikely —
-`generate_stubs.sh` already compiles all of `api/proto`, not just
-`AuthService`).
-
-### 3. Pick a connection mode
-
-Every example takes the same connection flags (`--help` on any of them
-shows the full list).
-
-**Via proxy (default)** — the realistic case for most deployments,
-including any Machine ID bot that only has network access to the public
-Proxy (see "Connecting through a Proxy" above):
-
-```bash
-python3 ping_example.py --proxy <proxy-host>:443 --cluster-name <cluster> \
-  --key identity.key --cert identity.crt --cas identity.cas
-```
-
-**Direct (`--direct`)** — you have network-level access to the Auth
-Service's own port (on-prem, same host, VPN):
-
-```bash
-python3 ping_example.py --direct --proxy <auth-host>:3025 --tls-server-name <nodename> \
-  --key identity.key --cert identity.crt --cas identity.cas
-```
-
-`--cluster-name` (default mode) is the cluster's name as Teleport knows
-it, used to build the ALPN routing protocol string. `--tls-server-name`
-(`--direct` mode) must match a SAN on the Auth Service's host certificate
-(its nodename, by default) — if you see `UNAUTHENTICATED: Hostname
-Verification Check failed`, this is the fix.
-
-### 4. Run the examples
-
-```bash
-python3 ping_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
-python3 machine_id_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
-
-python3 create_access_request_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
-# -> prints a request id
-
-python3 list_access_requests_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
-
-python3 review_access_request_example.py <request-id> --proxy <proxy-host>:443 --cluster-name <cluster> ...
-```
-
-(Add `--direct` and swap `--proxy`/`--cluster-name` for
-`--proxy`/`--tls-server-name` for direct mode.)
 
 ## Versioning & upgrading
 
@@ -419,6 +470,12 @@ EOF
 TELEPORT_AUTH_SERVER TELEPORT_PROXY TELEPORT_CLUSTER` first — those env
 vars point `tctl`/`tbot` at the *real* cluster and collide with a local
 one.)
+
+This downloads the plain OSS `teleport` binary, which means
+`approve_access_request.py` (`SubmitAccessReview`) can never succeed here
+— `allow.review_requests` is Enterprise-only (see the RBAC gotcha in
+"Quick start"). Use `review_access_request_example.py` instead for a
+full local demo.
 
 ## Expanding this to other RPCs
 
