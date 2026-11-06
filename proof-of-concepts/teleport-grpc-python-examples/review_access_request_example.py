@@ -1,4 +1,12 @@
-"""Approve (or deny) a pending access request over the raw gRPC Auth API.
+"""Approve (or deny) a pending access request over the raw gRPC Auth API,
+via `SetAccessRequestState` -- a direct, unconditional state set that
+bypasses the review/threshold system entirely.
+
+This is NOT what `tsh request approve` calls -- see
+approve_access_request.py for that (`SubmitAccessReview`, the reviewer
+flow, which respects review thresholds). Use this one for raw/admin-style
+access instead of a genuine review; use approve_access_request.py to
+match tsh's actual behavior.
 
 Equivalent of: tctl requests approve <request-id> --reason "..."
 
