@@ -146,6 +146,7 @@ sequenceDiagram
 
 | File | What it does |
 |---|---|
+| `requirements.txt` | The one runtime dependency (`grpcio`). `pip3 install -r requirements.txt`. |
 | `generate_stubs.sh` | Pulls Teleport's `.proto` files (at a pinned version) + deps and compiles them to `gen/python/`. |
 | `gen/python/` | Generated output (checked in so the examples run without a network dependency; see below for why). |
 | `gen/TELEPORT_VERSION` | Which Teleport release tag `gen/python/` was generated from. |
@@ -157,6 +158,16 @@ sequenceDiagram
 | `machine_id_example.py` | Same `Ping` call, but authenticated as a Machine ID bot via `tbot` instead of a user identity. |
 
 ## Quick start
+
+### Prerequisites
+
+```bash
+pip3 install -r requirements.txt
+```
+
+That's `grpcio` — the only runtime dependency. (`generate_stubs.sh` also
+needs `grpcio-tools`, but only if you're regenerating `gen/python/`
+yourself; it installs that itself.)
 
 ### 0. Already `tsh login`'d? Just run it.
 
