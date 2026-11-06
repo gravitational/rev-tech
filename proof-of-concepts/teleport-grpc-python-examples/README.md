@@ -16,12 +16,6 @@ Every script here was tested against a live Teleport cluster — a
 disposable local cluster, an internal cluster, and an Enterprise demo
 cluster — using both connection modes described below.
 
-Teleport's
-[issue #32658](https://github.com/gravitational/teleport/issues/32658)
-("Provide non-Go API client examples for gRPC API") was closed
-not-planned in 2024 — official confirmation there's no official Python
-client and no plan to build one.
-
 ## Quick start
 
 ### Step 1 (required): generate the stubs
