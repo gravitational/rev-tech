@@ -350,7 +350,7 @@ def resolve_connection(
                 f"No identity found at {key}/{cert}/{cas}, and no active tsh profile "
                 f"under $TSH_HOME (or ~/.tsh). Provide an identity, or `tsh login` first."
             )
-        print(f"No local identity files; using active tsh profile ({tsh.proxy_addr}, cluster {tsh.cluster})", file=sys.stderr)
+        print(f"No specific identity provided; using active tsh profile ({tsh.proxy_addr}, cluster {tsh.cluster})", file=sys.stderr)
         key, cert, cas = tsh.key_path, tsh.cert_path, tsh.cas_path
         proxy = proxy or tsh.proxy_addr
         cluster = cluster or tsh.cluster
