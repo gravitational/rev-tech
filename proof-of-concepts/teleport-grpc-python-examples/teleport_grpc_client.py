@@ -197,6 +197,7 @@ class ProxyRoutedChannel:
         host, port = proxy_addr.rsplit(":", 1)
 
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2  # PROTOCOL_TLS_CLIENT alone doesn't forbid TLSv1/1.1
         ctx.load_verify_locations(cafile=ca_path)
         ctx.load_cert_chain(certfile=cert_path, keyfile=key_path)
         ctx.set_alpn_protocols([_alpn_auth_protocol(cluster_name), "h2"])
