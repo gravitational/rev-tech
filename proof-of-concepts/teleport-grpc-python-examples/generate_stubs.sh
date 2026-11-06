@@ -19,7 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="$(mktemp -d)"
 trap 'rm -rf "$SRC_DIR"' EXIT
 
-pip install --user --quiet -r "$SCRIPT_DIR/requirements.txt" grpcio-tools
+python3 -m pip install --user --quiet -r "$SCRIPT_DIR/requirements.txt" grpcio-tools
 
 echo "Fetching api/proto from gravitational/teleport @ ${TELEPORT_VERSION} (sparse checkout)..."
 git clone --filter=blob:none --no-checkout --depth 1 --branch "$TELEPORT_VERSION" \
