@@ -1,28 +1,26 @@
-# Teleport Auth Service — Python gRPC Examples
+# Teleport gRPC API — Python Examples
 
-Teleport's control plane (the Auth Service) is a gRPC server. Everything
-`tctl`/`tsh` do — pinging the cluster, managing access requests, users,
-roles, nodes, etc. — happens over that gRPC API. Teleport doesn't ship an
-official Python client for it, but since it's just gRPC + protobuf, you can
-generate your own bindings from Teleport's open-source `.proto` files and
-call it directly from Python.
+The Teleport Auth Service provides a gRPC API for remotely interacting
+with your cluster. It's the same API `tctl` and `tsh` use to manage
+Access Requests, users, roles, and other cluster resources. Teleport
+publishes an official Go client for the API, but not a Python one. Because
+the API is defined in Teleport's open-source `.proto` files, you can
+generate Python bindings from them and call the API directly.
 
-This folder does exactly that: compiles real stubs from
+This folder generates those bindings from
 [gravitational/teleport](https://github.com/gravitational/teleport)'s
-`api/proto`, and uses them to call `AuthService` — the same service
-`tctl`/`tsh` talk to — for a few common operations.
+`api/proto` and uses them to perform a few common operations through the
+API.
 
-Every script here was run against a real Teleport cluster before being
-committed — a disposable local test cluster, a real internal cluster, and
-a real Enterprise-licensed demo cluster, over both connection modes
-described below. This isn't "should work" sample code; every claim in
-this README was checked against a live Auth Service.
+Every script here was tested against a live Teleport cluster — a
+disposable local cluster, an internal cluster, and an Enterprise demo
+cluster — using both connection modes described below.
 
 **Prior art:** [hugoShaka/teleportpy](https://github.com/hugoShaka/teleportpy)
 (a Teleport engineer's prototype) independently hit and solved the same
 core ALPN-routing problem this folder solves (see "Connecting through a
 Proxy" below) — worth a look, though it's an unmaintained proof-of-concept
-with a narrower scope (one `ListUsers` example, no access requests, no
+with a narrower scope (one `ListUsers` example, no Access Requests, no
 Machine ID). Teleport's own
 [issue #32658](https://github.com/gravitational/teleport/issues/32658)
 ("Provide non-Go API client examples for gRPC API") was closed
@@ -144,7 +142,7 @@ long-lived process so it keeps renewing the identity in the background.
 
 Note: Machine ID bots cannot be access-request **requesters** — Teleport
 rejects `CreateAccessRequestV2` for a bot identity with `INVALID_ARGUMENT`
-by design (access requests are a human-escalation workflow). Bots work
+by design (Access Requests are a human-escalation workflow). Bots work
 fine as **reviewers** (`approve_access_request.py`).
 
 **Option B — a human user's identity.** If you're testing interactively,
@@ -156,10 +154,10 @@ Whichever option you use, the RBAC gotchas below apply to it.
 
 The identity's roles need appropriate RBAC. Three gotchas worth knowing:
 
-- **Creating** an access request doesn't require a special grant — it's
+- **Creating** an Access Request doesn't require a special grant — it's
   essentially always available to an authenticated identity (except bots,
   per the note above).
-- **Listing/reading** access requests over gRPC (`ListAccessRequests`,
+- **Listing/reading** Access Requests over gRPC (`ListAccessRequests`,
   `GetAccessRequestsV2`) silently returns *zero results* — no error — if
   the caller's roles don't grant `list`/`read` on the `access_request`
   resource. The built-in `editor` preset role does **not** include this.
@@ -280,8 +278,8 @@ flowchart LR
   way most real deployments require — with `--direct` to opt out and dial
   the Auth Service's own port instead. See the dedicated section below —
   this isn't a minor detail, it took real work to get right.
-- **Each example script** builds a gRPC stub this way and calls one RPC on
-  `AuthService`.
+- **Each example script** builds a gRPC client this way and makes one
+  Teleport API call.
 
 ## Connecting through a Proxy (the default)
 
@@ -353,7 +351,7 @@ future Teleport release without notice. Re-verify after bumping
 `TELEPORT_VERSION` (see "Versioning & upgrading"), same as everything
 else generated/derived from source in this folder.
 
-### Access request lifecycle (what most of the examples walk through)
+### Access Request lifecycle (what most of the examples walk through)
 
 ```mermaid
 sequenceDiagram
@@ -389,8 +387,8 @@ transition, not a blanket write.
 | `gen/TELEPORT_VERSION` | Which Teleport release tag `gen/python/` was generated from (also written by `generate_stubs.sh`). |
 | `teleport_grpc_client.py` | Shared helper: builds an mTLS-authenticated `AuthServiceStub`, routed through a Proxy by default or directly with `--direct` (see above). Also the shared argparse connection flags every example uses. |
 | `ping_example.py` | Connectivity check — `AuthService.Ping`. |
-| `create_access_request_example.py` | Creates a pending access request (`CreateAccessRequestV2`), then confirms it exists (`ListAccessRequests`). |
-| `list_access_requests_example.py` | Lists all access requests (`tctl requests ls` equivalent). |
+| `create_access_request_example.py` | Creates a pending Access Request (`CreateAccessRequestV2`), then confirms it exists (`ListAccessRequests`). |
+| `list_access_requests_example.py` | Lists all Access Requests (`tctl requests ls` equivalent). |
 | `approve_access_request.py` | Approves/denies a request via `SubmitAccessReview` — the exact call `tsh request approve`/`deny` make. Needs an Enterprise-licensed cluster and a reviewer role. |
 | `review_access_request_example.py` | Approves/denies a request via `SetAccessRequestState` — a direct, unconditional admin-override state set that bypasses review/threshold semantics entirely. Works on OSS. |
 | `machine_id_example.py` | Same `Ping` call, but authenticated as a Machine ID bot via `tbot` instead of a user identity. |
