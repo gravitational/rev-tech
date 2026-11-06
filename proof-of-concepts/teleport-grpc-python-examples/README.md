@@ -50,8 +50,12 @@ upgrading" below for what the pinned version means and when to bump it.
 
 ### Step 2: install the runtime dependencies
 
+Use a venv — do this by default, don't wait to hit an error first:
+
 ```bash
-pip3 install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python3 simple_ping_example.py   # use .venv/bin/python3 for every script below
 ```
 
 That's `grpcio` and `protobuf` — the two runtime dependencies the
@@ -62,20 +66,17 @@ relying on something else happening to pull it in). This is separate
 from `generate_stubs.sh`'s own `.venv-stubgen/` above — that one's just
 for the one-time compile step and isn't used when running the examples.
 
-**If `python3`/`pip3` on your machine is a Homebrew-managed Python**
-(check with `python3 -c "import sys; print(sys.executable)"` — Homebrew's
-is typically under `/opt/homebrew/...`), a plain `pip install` will
-likely refuse with an "externally managed environment" error (PEP 668).
-Don't reach for `--break-system-packages` for this — use a virtualenv
-instead, which sidesteps the problem entirely and is the generally
-correct way to run Python scripts with their own dependencies regardless
-of this specific error:
-
-```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python3 simple_ping_example.py   # use .venv/bin/python3 for every script below
-```
+**Why a venv by default, not just `pip3 install -r requirements.txt`:**
+on a Homebrew-managed Python (common on macOS), that fails outright with
+an "externally managed environment" error (PEP 668) — this has bitten
+real people testing this, repeatedly, not a hypothetical edge case. If
+you've confirmed your `python3`/`pip3` isn't Homebrew-managed (check with
+`python3 -c "import sys; print(sys.executable)"` — Homebrew's is
+typically under `/opt/homebrew/...`), plain `pip3 install -r
+requirements.txt` works fine too. Either way, don't reach for
+`--break-system-packages` — the venv sidesteps the problem entirely and
+is the generally correct way to run a script with its own dependencies
+regardless of this specific error.
 
 ### Step 3: already `tsh login`'d? Just run it.
 
