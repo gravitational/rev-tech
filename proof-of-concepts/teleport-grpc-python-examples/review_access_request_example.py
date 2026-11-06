@@ -2,14 +2,15 @@
 
 Equivalent of: tctl requests approve <request-id> --reason "..."
 
-Usage:
+Usage (routed through a Teleport Proxy, the default):
     python3 review_access_request_example.py <request-id> --approve \\
         --reason "approved via gRPC example" \\
-        --proxy <host:port> --tls-server-name <name> \\
+        --proxy <proxy-host>:443 --cluster-name <cluster> \\
         --key identity.key --cert identity.crt --cas identity.cas
 
 Pair with create_access_request_example.py: run that first, copy the "id:"
-it prints, then pass it here. Run with --help to see all connection flags.
+it prints, then pass it here. Run with --help to see all connection flags
+(including --direct, to connect to Auth's own port instead).
 """
 import argparse
 

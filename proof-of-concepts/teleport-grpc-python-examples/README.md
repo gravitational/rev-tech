@@ -28,9 +28,9 @@ flowchart LR
     subgraph "Per-call"
         C["Identity\n(key + cert + CA)\nissued to a user or a\nMachine ID bot"] --> D["teleport_grpc_client.py"]
         B --> D
-        D -->|"direct: plain mTLS"| E["Teleport\nAuth Service"]
-        D -->|"--via-proxy: ALPN-routed\nmTLS, in-process relay"| G["Teleport\nProxy"]
+        D -->|"default: ALPN-routed\nmTLS, in-process relay"| G["Teleport\nProxy"]
         G -.->|TLS Routing| E
+        D -->|"--direct: plain mTLS"| E["Teleport\nAuth Service"]
     end
 
     F["ping_example.py\ncreate_access_request_example.py\nlist_access_requests_example.py\nreview_access_request_example.py\nmachine_id_example.py"] --> D
@@ -45,14 +45,14 @@ flowchart LR
   unattended/automated callers) a **Machine ID bot** managed by `tbot`.
   Either way, it's the same three things: a private key, a client
   certificate, and the CA to trust the server with.
-- **Connection mode** is a choice every example's `--via-proxy` flag makes
-  explicit: dial the Auth Service's own port directly, or route through a
-  Teleport Proxy the way most real deployments require. See the dedicated
-  section below — this isn't a minor detail, it took real work to get right.
+- **Connection mode** defaults to routing through a Teleport Proxy — the
+  way most real deployments require — with `--direct` to opt out and dial
+  the Auth Service's own port instead. See the dedicated section below —
+  this isn't a minor detail, it took real work to get right.
 - **Each example script** builds a gRPC stub this way and calls one RPC on
   `AuthService`.
 
-## Connecting through a Proxy (`--via-proxy`)
+## Connecting through a Proxy (the default)
 
 Most real Teleport clusters only expose the Proxy publicly (e.g. port
 443) — not the Auth Service's own listening port. A pure Python gRPC
@@ -149,7 +149,7 @@ sequenceDiagram
 | `generate_stubs.sh` | Pulls Teleport's `.proto` files (at a pinned version) + deps and compiles them to `gen/python/`. |
 | `gen/python/` | Generated output (checked in so the examples run without a network dependency; see below for why). |
 | `gen/TELEPORT_VERSION` | Which Teleport release tag `gen/python/` was generated from. |
-| `teleport_grpc_client.py` | Shared helper: builds an mTLS-authenticated `AuthServiceStub`, either directly or `--via-proxy` (see above). Also the shared argparse connection flags every example uses. |
+| `teleport_grpc_client.py` | Shared helper: builds an mTLS-authenticated `AuthServiceStub`, routed through a Proxy by default or directly with `--direct` (see above). Also the shared argparse connection flags every example uses. |
 | `ping_example.py` | Connectivity check — `AuthService.Ping`. |
 | `create_access_request_example.py` | Creates a pending access request (`CreateAccessRequestV2`), then confirms it exists (`ListAccessRequests`). |
 | `list_access_requests_example.py` | Lists all access requests (`tctl requests ls` equivalent). |
@@ -170,8 +170,8 @@ python3 simple_ping_example.py
 ```
 
 This reads your proxy address, cluster name, and credentials straight
-from the profile and connects via `--via-proxy` automatically (a tsh
-profile's address is the Proxy, essentially always). If
+from the profile and connects through the proxy (the default mode — a
+tsh profile's address is the Proxy, essentially always). If
 `TELEPORT_PROXY`/`TELEPORT_CLUSTER` happen to already be set in your
 shell to something else, those win — `unset` them first if that's not
 what you want.
@@ -265,47 +265,47 @@ adding RPCs beyond what's already compiled into `gen/python/` (unlikely —
 ### 3. Pick a connection mode
 
 Every example takes the same connection flags (`--help` on any of them
-shows the full list):
+shows the full list).
 
-**Direct** — you have network-level access to the Auth Service's own
-port (on-prem, same host, VPN):
+**Via proxy (default)** — the realistic case for most deployments,
+including any Machine ID bot that only has network access to the public
+Proxy (see "Connecting through a Proxy" above):
 
 ```bash
-python3 ping_example.py --proxy <auth-host>:3025 --tls-server-name <nodename> \
+python3 ping_example.py --proxy <proxy-host>:443 --cluster-name <cluster> \
   --key identity.key --cert identity.crt --cas identity.cas
 ```
 
-**Via proxy** — the realistic case for most deployments, including any
-Machine ID bot that only has network access to the public Proxy (see
-"Connecting through a Proxy" above):
+**Direct (`--direct`)** — you have network-level access to the Auth
+Service's own port (on-prem, same host, VPN):
 
 ```bash
-python3 ping_example.py --via-proxy --proxy <proxy-host>:443 --cluster-name <cluster> \
+python3 ping_example.py --direct --proxy <auth-host>:3025 --tls-server-name <nodename> \
   --key identity.key --cert identity.crt --cas identity.cas
 ```
 
-`--tls-server-name` (direct mode) must match a SAN on the Auth Service's
-host certificate (its nodename, by default) — if you see
-`UNAUTHENTICATED: Hostname Verification Check failed`, this is the fix.
-`--cluster-name` (via-proxy mode) is the cluster's name as Teleport knows
-it, used to build the ALPN routing protocol string.
+`--cluster-name` (default mode) is the cluster's name as Teleport knows
+it, used to build the ALPN routing protocol string. `--tls-server-name`
+(`--direct` mode) must match a SAN on the Auth Service's host certificate
+(its nodename, by default) — if you see `UNAUTHENTICATED: Hostname
+Verification Check failed`, this is the fix.
 
 ### 4. Run the examples
 
 ```bash
-python3 ping_example.py --via-proxy --proxy <proxy-host>:443 --cluster-name <cluster> ...
-python3 machine_id_example.py --via-proxy --proxy <proxy-host>:443 --cluster-name <cluster> ...
+python3 ping_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
+python3 machine_id_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
 
-python3 create_access_request_example.py --via-proxy ...
+python3 create_access_request_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
 # -> prints a request id
 
-python3 list_access_requests_example.py --via-proxy ...
+python3 list_access_requests_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
 
-python3 review_access_request_example.py <request-id> --via-proxy ...
+python3 review_access_request_example.py <request-id> --proxy <proxy-host>:443 --cluster-name <cluster> ...
 ```
 
-(Drop `--via-proxy --cluster-name ...` and swap `--proxy`/`--tls-server-name`
-for direct mode.)
+(Add `--direct` and swap `--proxy`/`--cluster-name` for
+`--proxy`/`--tls-server-name` for direct mode.)
 
 ## Versioning & upgrading
 
@@ -418,8 +418,8 @@ are already sitting in `gen/python/teleport/<resource>/v1/`.
 - These are raw, low-level gRPC calls — no retry/backoff, no pagination
   handling beyond what's shown, no MFA-challenge handling. Treat this as a
   foundation to build on, not a full-featured client.
-- `--via-proxy` relies on Teleport's internal ALPN routing scheme, derived
-  from source rather than a published API contract — see the caveat in
-  "Connecting through a Proxy" above.
+- The default (proxy-routed) mode relies on Teleport's internal ALPN
+  routing scheme, derived from source rather than a published API
+  contract — see the caveat in "Connecting through a Proxy" above.
 - `gen/python/` is ~8 MB of generated code. Regenerate it with
   `generate_stubs.sh`, don't hand-edit it.

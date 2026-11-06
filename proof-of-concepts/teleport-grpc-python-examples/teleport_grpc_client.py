@@ -3,16 +3,19 @@
 Every example script in this folder takes the same connection flags (run
 any of them with --help to see this exact list):
 
-    --proxy             host:port to connect to. Default: 127.0.0.1:3025
-    --tls-server-name   SAN on the auth server's host cert (direct-connect
-                         mode only). Default: local-test
+    --proxy             host:port to connect to (a Proxy, by default).
+    --cluster-name      the cluster's name, required by default (see below).
+    --direct            connect to the Auth Service's own port directly
+                         instead of routing through a Proxy.
+    --tls-server-name   SAN on the auth server's host cert; --direct mode
+                         only. Default: local-test
     --key               path to the identity's private key.
     --cert              path to the identity's client certificate.
     --cas               path to the CA(s) used to verify the auth server.
-    --via-proxy         route through a Teleport Proxy instead of
-                         connecting to the Auth Service's own port directly
-                         (see below). Requires --cluster-name.
-    --cluster-name      the cluster's name, required with --via-proxy.
+
+Routing through a Proxy is the default -- that's the realistic topology
+for most real clusters (see "Connecting through a Proxy" below). Pass
+--direct to connect to Auth's own port instead.
 
 --key/--cert/--cas point at whatever identity you got from `tbot` (Machine
 ID) or a human user identity file -- see README.md "Quick start." Relative
@@ -20,11 +23,7 @@ paths are resolved from this folder; absolute paths work as-is.
 
 ## Two ways to connect
 
-**Direct** (default): dial the Auth Service's own listening port directly.
-Needs network-level access to that port (on-prem/same-host/VPN setups).
-Simple mTLS, nothing clever -- `build_stub()`.
-
-**Via proxy** (--via-proxy): most real clusters only expose the Proxy
+**Via proxy** (default): most real clusters only expose the Proxy
 publicly (e.g. port 443), not the Auth Service's own port. Teleport routes
 different protocols through that single port using the TLS ClientHello's
 ALPN extension ("TLS Routing") -- e.g. Teleport's own Go tooling offers the
@@ -54,6 +53,11 @@ against `teleport.cluster.local` specifically, decoupled from the SNI value
 certificate chain itself is still fully validated against the real Auth
 host CA; nothing about trust is weakened, the verification target is just
 different from the SNI value.
+
+**Direct** (--direct): dial the Auth Service's own listening port
+directly. Needs network-level access to that port (on-prem/same-host/VPN
+setups) -- the exception, not the rule, for most real clusters. Simple
+mTLS, nothing clever -- `build_stub()`.
 """
 import argparse
 import os
@@ -81,17 +85,34 @@ def add_connection_args(
     default_cert: str = "identity.crt",
     default_cas: str = "identity.cas",
 ) -> argparse.ArgumentParser:
-    """Adds the connection flags shared by every example."""
+    """Adds the connection flags shared by every example.
+
+    Routing through a Teleport Proxy is the default -- that's the
+    realistic topology for most real clusters (see README.md "Connecting
+    through a Proxy"). Pass --direct to connect to the Auth Service's own
+    port instead.
+    """
     group = parser.add_argument_group("Teleport connection")
     group.add_argument(
         "--proxy",
-        default="127.0.0.1:3025",
-        help="host:port to connect to (default: %(default)s)",
+        default=None,
+        help="host:port to connect to (Proxy by default, Auth's own port with --direct; "
+        "falls back to your active tsh profile if omitted)",
+    )
+    group.add_argument(
+        "--cluster-name",
+        default=None,
+        help="cluster name; required unless --direct or an active tsh profile supplies it",
+    )
+    group.add_argument(
+        "--direct",
+        action="store_true",
+        help="connect to the Auth Service's own port directly instead of routing through a Proxy",
     )
     group.add_argument(
         "--tls-server-name",
         default="local-test",
-        help="SAN on the auth server's host certificate; direct-connect mode only (default: %(default)s)",
+        help="SAN on the auth server's host certificate; --direct mode only (default: %(default)s)",
     )
     group.add_argument(
         "--key",
@@ -107,16 +128,6 @@ def add_connection_args(
         "--cas",
         default=default_cas,
         help="path to the CA(s) used to verify the auth server (default: %(default)s)",
-    )
-    group.add_argument(
-        "--via-proxy",
-        action="store_true",
-        help="route through a Teleport Proxy (TLS Routing) instead of connecting to Auth directly",
-    )
-    group.add_argument(
-        "--cluster-name",
-        default=None,
-        help="cluster name; required with --via-proxy",
     )
     return parser
 
@@ -320,7 +331,7 @@ def resolve_connection(
     key: str = "identity.key",
     cert: str = "identity.crt",
     cas: str = "identity.cas",
-    via_proxy: bool = False,
+    via_proxy: bool = True,
 ):
     """Falls back to the active `tsh` profile under $TSH_HOME (or ~/.tsh)
     whenever the --key/--cert/--cas files don't exist locally -- so a script
@@ -349,20 +360,23 @@ def resolve_connection(
 def build_stub_from_args(args: argparse.Namespace):
     """Pairs with add_connection_args(): build_stub_from_args(parser.parse_args()).
 
-    See resolve_connection() for the tsh-profile fallback behavior.
+    Via-proxy is the default (pass --direct to opt out). See
+    resolve_connection() for the tsh-profile fallback behavior -- note that
+    a tsh-derived identity always forces via-proxy mode, even with
+    --direct, since a tsh profile's address is essentially always a Proxy.
 
     Always returns (stub, close) -- call close() when done with the stub
     (a no-op in direct mode, where there's nothing of ours to tear down).
     """
-    proxy = args.proxy if args.proxy != "127.0.0.1:3025" else None
     proxy, cluster, key, cert, cas, via_proxy = resolve_connection(
-        proxy, args.cluster_name, args.key, args.cert, args.cas, args.via_proxy
+        args.proxy, args.cluster_name, args.key, args.cert, args.cas, via_proxy=not args.direct
     )
-    proxy = proxy or "127.0.0.1:3025"  # restore the direct-mode default if nothing else set it
 
     if via_proxy:
+        if not proxy:
+            raise SystemExit("--proxy is required in via-proxy mode (or an active tsh profile)")
         if not cluster:
-            raise SystemExit("--via-proxy requires --cluster-name (or an active tsh profile)")
+            raise SystemExit("--cluster-name is required in via-proxy mode (or an active tsh profile)")
         stub, relay = build_stub_via_proxy(
             proxy_addr=proxy,
             cluster_name=cluster,
@@ -373,7 +387,7 @@ def build_stub_from_args(args: argparse.Namespace):
         return stub, relay.close
 
     stub = build_stub(
-        auth_addr=proxy,
+        auth_addr=proxy or "127.0.0.1:3025",  # implicit default for local-test convenience
         tls_server_name=args.tls_server_name,
         identity_key=key,
         identity_cert=cert,

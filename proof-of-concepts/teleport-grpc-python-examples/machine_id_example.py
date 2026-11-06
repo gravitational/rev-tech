@@ -30,15 +30,16 @@ In production, run `tbot` as a long-lived process (not `--oneshot`) so it
 keeps renewing the identity in the background; this example just reads
 whatever's currently on disk.
 
-Usage (direct -- needs network access to Auth's own port):
-    python3 machine_id_example.py --proxy <host:port> --tls-server-name <name> \\
+Usage (routed through a Teleport Proxy, the default -- the realistic case
+for most bots, since they usually can't reach Auth's own port; see
+teleport_grpc_client.py):
+    python3 machine_id_example.py --proxy <cluster-proxy-host>:443 \\
+        --cluster-name <cluster> \\
         --key tbot-identity/key --cert tbot-identity/tlscert \\
         --cas tbot-identity/teleport-host-ca.crt
 
-Usage (routed through a Teleport Proxy -- the realistic case for most bots,
-since they usually can't reach Auth's own port; see teleport_grpc_client.py):
-    python3 machine_id_example.py --via-proxy --proxy <cluster-proxy-host>:443 \\
-        --cluster-name <cluster> \\
+Usage (direct, --direct -- needs network access to Auth's own port):
+    python3 machine_id_example.py --direct --proxy <host:port> --tls-server-name <name> \\
         --key tbot-identity/key --cert tbot-identity/tlscert \\
         --cas tbot-identity/teleport-host-ca.crt
 

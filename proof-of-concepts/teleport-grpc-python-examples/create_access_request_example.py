@@ -2,13 +2,14 @@
 
 Equivalent of: tctl requests create --user=alice --roles=access
 
-Usage:
+Usage (routed through a Teleport Proxy, the default):
     python3 create_access_request_example.py --user alice --roles access \\
         --reason "need temporary access for debugging" \\
-        --proxy <host:port> --tls-server-name <name> \\
+        --proxy <proxy-host>:443 --cluster-name <cluster> \\
         --key identity.key --cert identity.crt --cas identity.cas
 
-Run with --help to see all connection flags and their defaults.
+Run with --help to see all connection flags and their defaults (including
+--direct, to connect to Auth's own port instead).
 """
 import argparse
 import uuid

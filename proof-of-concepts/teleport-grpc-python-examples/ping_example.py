@@ -1,12 +1,12 @@
 """Simplest possible call: Ping the Auth Service to confirm connectivity.
 
-Usage (direct):
-    python3 ping_example.py --proxy <host:port> --tls-server-name <name> \\
+Usage (routed through a Teleport Proxy, the default -- see teleport_grpc_client.py):
+    python3 ping_example.py --proxy <proxy-host>:443 --cluster-name <cluster> \\
         --key identity.key --cert identity.crt --cas identity.cas
 
-Usage (routed through a Teleport Proxy -- see teleport_grpc_client.py):
-    python3 ping_example.py --via-proxy --proxy <proxy-host>:443 \\
-        --cluster-name <cluster> --key identity.key --cert identity.crt --cas identity.cas
+Usage (direct, --direct):
+    python3 ping_example.py --direct --proxy <host:port> --tls-server-name <name> \\
+        --key identity.key --cert identity.crt --cas identity.cas
 
 Run with --help to see all connection flags and their defaults.
 """

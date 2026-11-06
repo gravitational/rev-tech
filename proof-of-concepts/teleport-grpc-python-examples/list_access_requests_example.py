@@ -2,11 +2,12 @@
 
 Equivalent of: tctl requests ls
 
-Usage:
-    python3 list_access_requests_example.py --proxy <host:port> --tls-server-name <name> \\
+Usage (routed through a Teleport Proxy, the default):
+    python3 list_access_requests_example.py --proxy <proxy-host>:443 --cluster-name <cluster> \\
         --key identity.key --cert identity.crt --cas identity.cas
 
-Run with --help to see all connection flags and their defaults.
+Run with --help to see all connection flags and their defaults (including
+--direct, to connect to Auth's own port instead).
 """
 import argparse
 
