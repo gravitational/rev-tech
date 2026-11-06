@@ -66,6 +66,7 @@ import ssl
 import sys
 import threading
 import types
+from typing import Optional, Tuple
 
 GEN_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gen", "python")
 sys.path.insert(0, GEN_DIR)
@@ -210,7 +211,7 @@ class ProxyRoutedChannel:
         self._listener.bind(("127.0.0.1", 0))
         self._listener.listen(1)
         self.local_port = self._listener.getsockname()[1]
-        self._local: socket.socket | None = None
+        self._local: Optional[socket.socket] = None
 
         threading.Thread(target=self._accept, daemon=True).start()
 
@@ -252,7 +253,7 @@ def build_stub_via_proxy(
     return authservice_pb2_grpc.AuthServiceStub(channel), relay
 
 
-def tsh_profile_identity() -> types.SimpleNamespace | None:
+def tsh_profile_identity() -> Optional[types.SimpleNamespace]:
     """Reads the active `tsh` profile from $TSH_HOME (or ~/.tsh), tsh's own
     on-disk layout -- no tsh dependency at runtime, just its plain files.
     Returns None if there's no active profile or its key files are missing
@@ -284,7 +285,7 @@ def tsh_profile_identity() -> types.SimpleNamespace | None:
     )
 
 
-def pinned_teleport_version() -> str | None:
+def pinned_teleport_version() -> Optional[str]:
     """Returns the Teleport version gen/python was compiled from, read from
     gen/TELEPORT_VERSION (written by generate_stubs.sh), or None if missing.
     """
@@ -326,8 +327,8 @@ def check_server_compatibility(server_version: str) -> None:
 
 
 def resolve_connection(
-    proxy: str | None,
-    cluster: str | None,
+    proxy: Optional[str],
+    cluster: Optional[str],
     key: str = "identity.key",
     cert: str = "identity.crt",
     cas: str = "identity.cas",

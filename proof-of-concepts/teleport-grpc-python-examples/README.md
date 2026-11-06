@@ -31,18 +31,36 @@ client and no plan to build one.
 
 ## Quick start
 
-### Prerequisites
+### Step 1 (required): generate the stubs
+
+**`gen/` is not checked into this repo** — it's ~7 MB / 400+ files of
+generated code, and keeping that out of git history is worth the one
+extra command. Nothing here runs without it:
+
+```bash
+./generate_stubs.sh
+```
+
+This is self-contained — it creates its own throwaway `.venv-stubgen/`
+for `grpcio-tools` (so it works even on a Homebrew-managed Python that
+refuses system-wide package installs; see below), fetches Teleport's
+`.proto` files at a pinned version, and compiles `gen/python/`. Takes a
+few seconds, needs network access, nothing else. See "Versioning &
+upgrading" below for what the pinned version means and when to bump it.
+
+### Step 2: install the runtime dependencies
 
 ```bash
 pip3 install -r requirements.txt
 ```
 
-That's `grpcio` and `protobuf` — the two runtime dependencies (the
-generated `gen/python/*_pb2.py` files import `google.protobuf` directly;
-it's not a guaranteed transitive dependency of plain `grpcio`, so it's
-listed explicitly rather than relying on something else happening to pull
-it in). `generate_stubs.sh` also needs `grpcio-tools`, but only if you're
-regenerating `gen/python/` yourself; it installs that itself.
+That's `grpcio` and `protobuf` — the two runtime dependencies the
+*examples themselves* need (the generated `gen/python/*_pb2.py` files
+import `google.protobuf` directly; it's not a guaranteed transitive
+dependency of plain `grpcio`, so it's listed explicitly rather than
+relying on something else happening to pull it in). This is separate
+from `generate_stubs.sh`'s own `.venv-stubgen/` above — that one's just
+for the one-time compile step and isn't used when running the examples.
 
 **If `python3`/`pip3` on your machine is a Homebrew-managed Python**
 (check with `python3 -c "import sys; print(sys.executable)"` — Homebrew's
@@ -59,7 +77,7 @@ python3 -m venv .venv
 .venv/bin/python3 simple_ping_example.py   # use .venv/bin/python3 for every script below
 ```
 
-### 0. Already `tsh login`'d? Just run it.
+### Step 3: already `tsh login`'d? Just run it.
 
 If you're in a shell with an active `tsh` session, every script here
 falls back to reading that profile directly from `$TSH_HOME` (or
@@ -90,7 +108,7 @@ Everything below is for when you want to be explicit about which
 identity to use (e.g. Machine ID) rather than relying on your current
 session.
 
-### 1. Get an identity (your mTLS credentials)
+### Step 4: get an identity (your mTLS credentials)
 
 Every example authenticates via an identity: a private key + client
 certificate + CA chain. You have two options:
@@ -180,18 +198,7 @@ The identity's roles need appropriate RBAC. Three gotchas worth knowing:
   Use `review_access_request_example.py` (`SetAccessRequestState`) there
   instead — see its docstring for how the two calls differ.
 
-### 2. (Re)generate the Python stubs (optional — already included)
-
-```bash
-./generate_stubs.sh
-```
-
-Only needed if you're bumping the pinned Teleport version (see below) or
-adding RPCs beyond what's already compiled into `gen/python/` (unlikely —
-`generate_stubs.sh` already compiles all of `api/proto`, not just
-`AuthService`).
-
-### 3. Pick a connection mode
+### Step 5: pick a connection mode
 
 Every example takes the same connection flags (`--help` on any of them
 shows the full list).
@@ -219,7 +226,7 @@ it, used to build the ALPN routing protocol string. `--tls-server-name`
 (its nodename, by default) — if you see `UNAUTHENTICATED: Hostname
 Verification Check failed`, this is the fix.
 
-### 4. Run the examples
+### Step 6: run the examples
 
 ```bash
 python3 ping_example.py --proxy <proxy-host>:443 --cluster-name <cluster> ...
@@ -376,9 +383,9 @@ transition, not a blanket write.
 | File | What it does |
 |---|---|
 | `requirements.txt` | The two runtime dependencies (`grpcio`, `protobuf`). `pip3 install -r requirements.txt`. |
-| `generate_stubs.sh` | Pulls Teleport's `.proto` files (at a pinned version) + deps and compiles them to `gen/python/`. |
-| `gen/python/` | Generated output (checked in so the examples run without a network dependency; see below for why). |
-| `gen/TELEPORT_VERSION` | Which Teleport release tag `gen/python/` was generated from. |
+| `generate_stubs.sh` | **Run this first.** Pulls Teleport's `.proto` files (at a pinned version) + deps and compiles them to `gen/python/`, using its own throwaway `.venv-stubgen/`. |
+| `gen/python/` | Generated output — **not checked into git** (~7 MB / 400+ files; see "Versioning & upgrading" for why that tradeoff was made). Produced by `generate_stubs.sh`. |
+| `gen/TELEPORT_VERSION` | Which Teleport release tag `gen/python/` was generated from (also written by `generate_stubs.sh`). |
 | `teleport_grpc_client.py` | Shared helper: builds an mTLS-authenticated `AuthServiceStub`, routed through a Proxy by default or directly with `--direct` (see above). Also the shared argparse connection flags every example uses. |
 | `ping_example.py` | Connectivity check — `AuthService.Ping`. |
 | `create_access_request_example.py` | Creates a pending access request (`CreateAccessRequestV2`), then confirms it exists (`ListAccessRequests`). |
@@ -396,25 +403,25 @@ currently on `master`. This is deliberate, not an oversight:
 
 - Teleport's proto definitions change between releases — fields get added,
   RPCs get deprecated or renamed, whole services get introduced. Pinning
-  means regenerating the stubs is a conscious, reviewable action (the diff
-  shows exactly what changed) rather than a silent moving target that
-  could change out from under you on an unrelated commit.
-- Because `gen/python/` is checked in, "what version is this built
-  against" is always answered by `gen/TELEPORT_VERSION` — no need to
-  re-derive it.
+  means every clone gets byte-identical stubs for a known-good version,
+  not whatever happened to be on `master` the day someone ran the script.
+- `gen/python/` is deliberately **not checked into git** — ~7 MB / 400+
+  generated files isn't worth carrying in history when regenerating it
+  is one fast, deterministic command. `gen/TELEPORT_VERSION` (also
+  generated, also not checked in) is always the source of truth for
+  "what version is this built against," not something to track separately.
 
-**If you upgrade:**
+**If you're upgrading the pinned version:**
 
-1. Bump `TELEPORT_VERSION` in `generate_stubs.sh` to the new tag.
+1. Bump `TELEPORT_VERSION` in `generate_stubs.sh` to the new tag, as its
+   own commit.
 2. Re-run `./generate_stubs.sh`.
-3. **Re-run every example script against a real cluster before
-   committing.** A stub set that compiles cleanly can still fail at
+3. **Re-run every example script against a real cluster before pushing
+   that commit.** A stub set that compiles cleanly can still fail at
    runtime — a field might get renamed, a request message's required
    fields might change, an RPC might be deprecated in favor of a new one.
    Compilation succeeding only proves the `.proto` syntax is valid, not
    that these examples still call it correctly.
-4. Commit the diff in `gen/python/` (and the new `gen/TELEPORT_VERSION`)
-   as its own reviewable change, separate from any example-code changes.
 
 As a rule of thumb, keep the pinned version reasonably close to the
 Teleport version your actual cluster runs — Teleport generally supports
@@ -462,8 +469,9 @@ EOF
 
 ./teleport/teleport start --config=teleport.yaml &
 
-# create a role with the RBAC rule from "Quick start" above, then use
-# tctl/tbot (both in the same tarball) to get an identity as shown above.
+# ./generate_stubs.sh if you haven't already (see "Quick start" above),
+# then create a role with the RBAC rule from there, and use tctl/tbot
+# (both in the same tarball) to get an identity as shown above.
 ```
 
 (If you're running this inside a Teleport Beams sandbox, `unset
@@ -507,5 +515,10 @@ are already sitting in `gen/python/teleport/<resource>/v1/`.
 - The default (proxy-routed) mode relies on Teleport's internal ALPN
   routing scheme, derived from source rather than a published API
   contract — see the caveat in "Connecting through a Proxy" above.
-- `gen/python/` is ~8 MB of generated code. Regenerate it with
-  `generate_stubs.sh`, don't hand-edit it.
+- `gen/python/` is ~7 MB of generated code, not checked into git — run
+  `./generate_stubs.sh` before anything else, and never hand-edit its
+  output (it's regenerated from scratch on every run).
+- Needs Python 3.9+ (uses PEP 585 lowercase generics like `list[str]`,
+  avoided PEP 604's `X | None` syntax so it also runs on an unpatched
+  macOS Python 3.9 — found by actually hitting `TypeError: unsupported
+  operand type(s) for |` on a real machine, not by assumption).
