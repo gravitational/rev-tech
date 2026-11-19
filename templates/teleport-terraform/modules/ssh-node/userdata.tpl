@@ -5,7 +5,7 @@ hostnamectl set-hostname "${name}"
 
 # Install auditd — Teleport SSH service automatically writes session events to the
 # Linux Audit System when it detects auditd running. No Teleport config needed.
-dnf install -y audit nginx
+dnf install -y audit
 systemctl enable --now auditd
 
 curl "https://${proxy_address}/scripts/install.sh" | bash
@@ -54,5 +54,3 @@ EOF
 
 systemctl enable teleport
 systemctl start teleport
-systemctl enable nginx
-systemctl restart nginx
