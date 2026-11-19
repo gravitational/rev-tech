@@ -1,0 +1,14 @@
+name: oss-postgres
+# Teleport OSS on Kubernetes with a Postgres audit backend. No Access Graph
+# (Enterprise only), so the Identity Security dashboard renders no panels and is
+# skipped entirely, and the executive board loses its Posture row.
+capabilities:
+  - prometheus
+  - audit.postgres
+  # The teleport-usage exporter is deployed and scraped. Unlocks the MFA
+  # layer-1 posture panels, which are API-only and unreachable otherwise.
+  - usageExporter
+  - kubeStateMetrics
+variables:
+  prom_retention: 15d
+  audit_retention: 90d

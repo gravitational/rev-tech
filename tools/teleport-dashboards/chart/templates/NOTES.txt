@@ -1,0 +1,16 @@
+{{ .Chart.Name }} {{ .Chart.Version }} installed.
+
+Profile:   {{ .Values.profile | default "(unrecorded — set --set profile=<name>)" }}
+Namespace: {{ .Values.namespace }}
+Sidecar:   {{ .Values.sidecarLabel }}={{ .Values.sidecarLabelValue }}
+
+This chart deploys whatever is in {{ .Values.dashboardsDir }}/. It does NOT
+filter panels for your deployment — scripts/render-dashboards.py does that
+before install. Installing a profile that does not match the cluster will
+leave panels whose datasource is missing rendering "No data".
+
+Verify what landed:
+  kubectl -n {{ .Values.namespace }} get cm -l {{ .Values.sidecarLabel }}={{ .Values.sidecarLabelValue }}
+
+Dashboard UIDs are a cross-dashboard contract; drill-down links reference them
+directly. scripts/validate-dashboards.py enforces this (S5-dangling-link).

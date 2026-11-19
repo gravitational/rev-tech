@@ -1,0 +1,152 @@
+# tbot.yaml — Machine ID agent that maintains the usage exporter's identity.
+#
+# tbot joins Teleport with the Kubernetes join method (the exporter
+# ServiceAccount's projected JWT), then writes short-lived renewable
+# certificates into the teleport-usage-exporter-identity Secret. The exporter
+# mounts that Secret and reads the identity file from it.
+#
+# Why this works without restarting the exporter:
+#   kubelet updates a mounted Secret in place (within its sync period, ~60s by
+#   default), so the identity file's CONTENT changes under a running process.
+#   The exporter hashes that file every 30s and rebuilds its Teleport client
+#   when the hash moves, so a rotation is picked up with no restart at all.
+#
+#   Its predecessor did not do this. It called LoadIdentityFile once at startup
+#   and held those credentials for the process lifetime, so the first rotation
+#   broke every API call -- and because failures were swallowed, it recorded
+#   zeros for 68 days while reporting success. The Reloader annotation on the
+#   exporter Deployment is a second line of defence, not the mechanism.
+#
+# Substitutions (envsubst, or edit by hand):
+#   ${TELEPORT_DOMAIN}      e.g. teleport.example.com
+#   ${TELEPORT_TBOT_IMAGE}  the tbot image, which MUST match your cluster's
+#                           edition and major version:
+#                             OSS         public.ecr.aws/gravitational/teleport-distroless:18
+#                             Enterprise  public.ecr.aws/gravitational/teleport-ent-distroless:18
+#                           Defaulting this to Enterprise would make an OSS user
+#                           silently pull an Enterprise image, so it has no default.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: teleport-usage-exporter
+  namespace: teleport
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: teleport-usage-exporter-tbot-config
+  namespace: teleport
+data:
+  tbot.yaml: |
+    version: v2
+    proxy_server: "${TELEPORT_DOMAIN}:443"
+    onboarding:
+      join_method: kubernetes
+      token: teleport-usage-exporter-token
+    # tbot's own renewable bot certificate, kept in-cluster rather than on disk.
+    storage:
+      type: kubernetes_secret
+      name: teleport-usage-exporter-tbot-state
+    # The identity the exporter consumes.
+    outputs:
+      - type: identity
+        destination:
+          type: kubernetes_secret
+          name: teleport-usage-exporter-identity
+---
+# tbot manages exactly two Secrets in this namespace and nothing else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tbot-teleport-usage-exporter
+  namespace: teleport
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "update", "patch"]
+    resourceNames:
+      - teleport-usage-exporter-tbot-state
+      - teleport-usage-exporter-identity
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tbot-teleport-usage-exporter
+  namespace: teleport
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tbot-teleport-usage-exporter
+subjects:
+  - kind: ServiceAccount
+    name: teleport-usage-exporter
+    namespace: teleport
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teleport-usage-exporter-tbot
+  namespace: teleport
+  labels:
+    app.kubernetes.io/name: teleport-usage-exporter-tbot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: teleport-usage-exporter-tbot
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: teleport-usage-exporter-tbot
+    spec:
+      serviceAccountName: teleport-usage-exporter
+      containers:
+        - name: tbot
+          # `command` rather than `args`: the image entrypoint is already
+          # `teleport`, so passing tbot as args yields `teleport tbot start` and
+          # fails with "unexpected tbot".
+          image: ${TELEPORT_TBOT_IMAGE}
+          command:
+            - tbot
+            - start
+            - --config=/config/tbot.yaml
+          env:
+            # tbot needs to know which pod/namespace it is so the kubernetes
+            # join method can present the right ServiceAccount token.
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: KUBERNETES_TOKEN_PATH
+              value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            # The upstream teleport-distroless image declares no USER, so
+            # runAsNonRoot alone fails the kubelet check ("image will run as
+            # root"). 9807 is the uid Teleport's own charts use. The rest of the
+            # hardening is kept: tbot needs no privileges and writes its state
+            # to a Kubernetes Secret via the API rather than to disk.
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 9807
+            runAsGroup: 9807
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: config
+          configMap:
+            name: teleport-usage-exporter-tbot-config
