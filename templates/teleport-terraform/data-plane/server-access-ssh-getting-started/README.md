@@ -13,7 +13,6 @@ This template deploys a minimal AWS environment with Teleport registered SSH nod
   - `team = platform | sre | app-team`
 - AWS networking baseline (VPC, subnets, security group; optional NAT gateway via `create_nat_gateway`)
 - Multi-node deployments via `agent_count` (e.g. 3 SSH nodes)
-- Each EC2 instance also runs **nginx** as a “something is running” service
 - Agents install the cluster's current version and stay up to date via [Agent Managed Updates](https://goteleport.com/docs/upgrading/agent-managed-updates/).
 
 ---
@@ -175,7 +174,7 @@ allow:
 - NAT gateway — **only if `create_nat_gateway=true`**; by default nodes launch in the public subnet with public IPs for egress (inbound is still blocked by the security group)
 - Route tables
 - Security group
-- EC2 instances running Teleport node service and nginx process
+- EC2 instances running the Teleport node service
 
 Everything is tagged with 
 
